@@ -6,13 +6,7 @@
 #include "ColorDepthFrame.h"
 
 #define MEASURE_FUNCTION_TIME
-#include <pcl/common/time.h> //fps calculations
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/visualization/boost.h>
-#include <pcl/visualization/image_viewer.h>
-#include <pcl/console/print.h>
-#include <pcl/console/parse.h>
-#include <pcl/console/time.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/distances.h>
 #include <pcl/correspondence.h>
@@ -66,91 +60,72 @@ public:
     
     InteractiveRegisterer& operator=(const InteractiveRegisterer& rhs);
     
-    // Set the number of correspondences
+    /** \brief Set the number of correspondences
+     */
 	void setNumPoints(int numOfPoints);
-    
-    // Set the frames used to establish the correspondences
+    /** \brief Set the frames used to establish the correspondences
+     */
     void setInputFrames(vector<ColorDepthFrame::Ptr> frames);
     
-    // Set the distribution of the viewports in the visualizer
+    /** \brief Set the distribution of the viewports in the visualizer
+     * \param wndHeight window height (visor)
+     * \param wndWidth window width (visor)
+     * \param vp number of vertical ports (visor)
+     * \param hp number of horizontal ports (visor)
+     * \param camDist camera dist to (0,0,0) (visor)
+     * \param markerRadius marker sphere radius (visor)
+     */
     void setVisualizerParameters(int wndHeight, int wndWidth, int vp, int hp, float camDist, float markerRadius);
     
-    // Manually interact with a visualizer to place the markers that serve as correspondences
+    /** \brief Manually interact with a visualizer to place the markers that serve as correspondences
+     */
     void setCorrespondencesManually();
     void saveCorrespondences(string path, string extension);
     void loadCorrespondences(string path, string extension);
     
-    // Estimate the orthogonal transformations in the n-1 views respect to the 0-th view
+    /** \brief Estimate the orthogonal transformations in the n-1 views respect to the 0-th view
+     */
     void computeTransformations();
     
+    /** \brief Registers all the frames to the 0-th frame and return the corresponding registered clouds
+     *  \param pUnregFrames A list of unregistered clouds
+     *  \param pRegClouds A list of registered clouds
+     */
     void registrate(vector<ColorDepthFrame::Ptr> pUnregFrames, vector<PointCloudPtr>& pRegClouds);
+    /** \brief Registers all the clouds to the 0-th cloud and return the registered clouds
+     *  \param pUnregClouds A list of unregistered clouds
+     *  \param pRegClouds A list of registered clouds
+     */
     void registrate(vector<PointCloudPtr> pUnregClouds, vector<PointCloudPtr>& pRegClouds);
 
-    
-    // ok
-
-//    void translate(const PointCloudPtr, PointT, PointCloud&);
-//    void translate(const PointCloudPtr, Eigen::Vector4f, PointCloud&);
-    
-
-    
-//
-////    void align(DepthFrame&, DepthFrame&);
-//
-//    void computeTransformation();
-//    void computeFineTransformation();
-//    
-//	bool loadTransformation(string filePath);
-//	void saveTransformation(string filePath);
-//    
-//    void registration(DepthFrame::Ptr, DepthFrame::Ptr,
-//                      PointCloud&, PointCloud&,
-//                      bool backgroundPoints = true, bool userPoints = true);
-//    void registration(ColorDepthFrame::Ptr, ColorDepthFrame::Ptr,
-//                      PointCloud&, PointCloud&,
-//                      bool backgroundPoints = true, bool userPoints = true);
-//    
-//    PointT registration(PointT point, int viewpoint);
-//    void registration(PointT point, PointT& regPoint, int viewpoint);
-//    void registration(PointT pointA, PointT pointB, PointT& regPointA, PointT& regPointB);
-//	void registration(PointCloudPtr pCloudA, PointCloudPtr pCloudB, PointCloud& regCloudA, PointCloud& regCloudB);
-//    void registration(PointCloudPtr pCloud, PointCloud& regCloud, int viewpoint);
-//    void registration(vector<PointCloudPtr> pCloudsA, vector<PointCloudPtr> pCloudsB, vector<PointCloudPtr>& pRegCloudsA, vector<PointCloudPtr>& pRegCloudsB);
-//    
-//    PointT deregistration(PointT regPoint, int viewpoint);
-//    void deregistration(PointT regPoint, PointT& point, int viewpoint);
-//    void deregistration(PointT regPointA, PointT regPointB, PointT& pointA, PointT& pointB);
-//    void deregistration(PointCloudPtr pRegCloudA, PointCloudPtr pRegCloudB, PointCloud& cloudA, PointCloud& cloudB);
-//    void deregistration(PointCloudPtr pRegCloud, PointCloud& cloud, int viewpoint);
-//    void deregistration(vector<PointCloudPtr> pRegCloudsA, vector<PointCloudPtr> pRegCloudsB, vector<PointCloudPtr>& pCloudsA, vector<PointCloudPtr>& pCloudsB);
-//
-//    pair<PointCloudPtr,PointCloudPtr> getRegisteredClouds();
-//    
-//	void visualizeRegistration(PointCloudPtr, PointCloudPtr);
-//	void visualizeRegistration(pcl::visualization::PCLVisualizer::Ptr, 
-//		PointCloudPtr, PointCloudPtr);
-//	void visualizeRegistration(DepthFrame::Ptr, DepthFrame::Ptr);
-//    
-//    PointT getLeftRefPoint();
-//    PointT getRightRefPoint();
     
     typedef boost::shared_ptr<InteractiveRegisterer> Ptr;
     
 private:
-    // Callback function to deal with keyboard presses in visualizer
+    /** \brief Callback function to deal with keyboard presses in visualizer
+     */
     void keyboardCallback(const pcl::visualization::KeyboardEvent& event, void* ptr);
-    // Callback function to deal with mouse presses in visualizer
+    /** \brief Callback function to deal with mouse presses in visualizer
+     */
     void mouseCallback(const pcl::visualization::MouseEvent& event, void* ptr);
-    // Callback function to deal with point picking actions in visualizer (shift+mouse press)
+    /** \brief Callback function to deal with point picking actions in visualizer (shift+mouse press)
+     */
     void ppCallback(const pcl::visualization::PointPickingEvent& event, void* ptr);
     
+    /** \brief Set the position of the camera in the PCLVisualizer
+     */
     void setDefaultCamera(VisualizerPtr pViz, int vid);
     
+    /** \brief Compute the orthogonal tranformation of a set of points to another (from src to target)
+     * \param pSrcMarkersCloud Source set of markers to register to target
+     * \param pTgtMarkersCloud Target set of markers
+     * \param T The 4x4 orthogonal transformation matrix
+     */
     void getTransformation(const PointCloudPtr pSrcMarkersCloud, const PointCloudPtr pTgtMarkersCloud, Eigen::Matrix4f& T);
     
-////    void align (const PointCloudPtr, const PointCloudPtr, PointCloudPtr, PointCloudPtr, PointCloudPtr, PointCloudPtr);
-    
+    //
     // Members
+    //
     
     VisualizerPtr m_pViz;
     vector<int> m_VIDs; // viewport identifiers
@@ -173,14 +148,9 @@ private:
     int m_NumOfPoints; // number of points //int num_points_;
     int m_Pendents;
     
-//    bool m_bTranslate, m_bAlign; //must_translate_, must_align_;
-    
-    pcl::CorrespondencesPtr m_pCorrespondences; //corresps_;
+    pcl::CorrespondencesPtr m_pCorrespondences;
 
     vector<Eigen::Vector4f> m_vMarkers;
     vector<Eigen::Matrix4f> m_Transformations;
     vector<Eigen::Matrix4f> m_ITransformations;
-    
-//	Eigen::Vector4f m_tLeft, m_tRight;
-//	Eigen::Matrix4f m_Transformation, m_InverseTransformation;
 };
