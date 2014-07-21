@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DepthFrame.h"
-#include "Reader.h"
+#include "KinectReader.h"
 #include "Sequence.h"
 
 #include <opencv2/opencv.hpp>

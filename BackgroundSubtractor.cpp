@@ -3,7 +3,7 @@
 #include "DepthFrame.h"
 #include "ColorFrame.h"
 
-#include "CvExtraTools.h"
+#include "cvxtended.h"
 
 #include <boost/timer.hpp>
 
@@ -207,9 +207,9 @@ void BackgroundSubtractor<DepthFrame>::model()
     
     int t = 1;
     m_pSeq->restart();
-	while (t <= m_NumOfSamples && m_pSeq->hasNextFrame())
+	while (t <= m_NumOfSamples && m_pSeq->hasNextFrames())
 	{
-        depthFrames = m_pSeq->nextFrame();
+        depthFrames = m_pSeq->nextFrames();
         
         vector<cv::Mat> depthMaps (m_pSeq->getNumOfViews());
         vector<cv::Mat> depthMasks (depthMaps.size());
@@ -236,9 +236,9 @@ void BackgroundSubtractor<ColorFrame>::model()
     
     int t = 1;
     m_pSeq->restart();
-	while (t <= m_NumOfSamples && m_pSeq->hasNextFrame())
+	while (t <= m_NumOfSamples && m_pSeq->hasNextFrames())
 	{
-        colorFrames = m_pSeq->nextFrame();
+        colorFrames = m_pSeq->nextFrames();
         
         vector<cv::Mat> hsImages (m_pSeq->getNumOfViews());
         vector<cv::Mat> hsMasks (hsImages.size());
