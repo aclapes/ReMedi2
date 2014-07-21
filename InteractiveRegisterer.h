@@ -127,30 +127,26 @@ private:
     // Members
     //
     
+    // Number of points to compute the transformation
+    int m_NumOfPoints;
+
+    bool m_bMark;   // mark keyboard button is down
+    
+    int m_Pendents;
+    pcl::CorrespondencesPtr m_pCorrespondences;
+    
     VisualizerPtr m_pViz;
     vector<int> m_VIDs; // viewport identifiers
     int m_WndHeight, m_WndWidth;
     int m_Vp, m_Hp;
     float m_CameraDistance;
     float m_MarkerRadius;
-    
     int m_Viewport; // current viewport
-    bool m_bMark;   // mark keyboard button is down
-    
-    vector<ColorDepthFrame::Ptr> m_pFrames;
 
+    vector<ColorDepthFrame::Ptr> m_pFrames;
     vector<ColorPointCloudPtr> m_pClouds;
     vector<PointCloudPtr> m_pMarkers;
-    
-    // Re-position the points
-    bool m_bReset; //reallocate_points_;
-    // Number of points to compute the transformation
-    int m_NumOfPoints; // number of points //int num_points_;
-    int m_Pendents;
-    
-    pcl::CorrespondencesPtr m_pCorrespondences;
 
-    vector<Eigen::Vector4f> m_vMarkers;
     vector<Eigen::Matrix4f> m_Transformations;
     vector<Eigen::Matrix4f> m_ITransformations;
 };

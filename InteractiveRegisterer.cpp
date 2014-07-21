@@ -149,7 +149,10 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
 void InteractiveRegisterer::computeTransformations()
 {
     for (int v = 0; v < m_pFrames.size(); v++)
+    {
         getTransformation(m_pMarkers[v], m_pMarkers[0], m_Transformations[v]); // v (src) to 0 (tgt)
+        m_ITransformations[v] = m_Transformations[v].inverse();
+    }
 }
 
 /** \brief Registers all the frames to the 0-th frame and return the corresponding registered clouds
