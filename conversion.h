@@ -29,6 +29,7 @@ void MatToPointCloud(cv::Mat depth, pcl::PointCloud<pcl::PointXYZ>&);
 void MatToPointCloud(cv::Mat depth, cv::Mat mask, pcl::PointCloud<pcl::PointXYZ>&);
 
 void MatToColoredPointCloud(cv::Mat depth, cv::Mat color, pcl::PointCloud<pcl::PointXYZRGB>& cloud);
+void MatToColoredPointCloud(cv::Mat depth, cv::Mat color, cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& cloud);
 
 void PointCloudToMat(pcl::PointCloud<pcl::PointXYZ>&, cv::Mat&);
 

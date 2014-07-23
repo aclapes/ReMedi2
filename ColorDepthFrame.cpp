@@ -14,15 +14,17 @@ ColorDepthFrame::ColorDepthFrame()
 }
 
 ColorDepthFrame::ColorDepthFrame(cv::Mat colorMat, cv::Mat depthMat)
-: ColorFrame(colorMat), DepthFrame(depthMat)
+: ColorFrame(colorMat), DepthFrame(depthMat), m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
 {
-    
+    // Create a point cloud
+    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
 }
 
 ColorDepthFrame::ColorDepthFrame(cv::Mat colorMat, cv::Mat depthMat, cv::Mat colorMask, cv::Mat depthMask)
-: ColorFrame(colorMat, colorMask), DepthFrame(depthMat, depthMask)
+: ColorFrame(colorMat, colorMask), DepthFrame(depthMat, depthMask), m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
 {
-    
+    // Create a point cloud
+    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
 }
 
 ColorDepthFrame::ColorDepthFrame(const ColorDepthFrame& rhs)
@@ -37,6 +39,7 @@ ColorDepthFrame& ColorDepthFrame::operator=(const ColorDepthFrame& rhs)
     {
         ColorFrame::operator=(rhs);
         DepthFrame::operator=(rhs);
+        m_pColoredCloud = rhs.m_pColoredCloud;
     }
     
     return *this;
@@ -124,9 +127,9 @@ void ColorDepthFrame::getDepthMask(cv::Mat& depthMask)
     DepthFrame::getMask(depthMask);
 }
 
-void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& cloud)
+void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
 {
-    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), cloud);
+    coloredCloud = *m_pColoredCloud;
 }
 
 void ColorDepthFrame::setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals)

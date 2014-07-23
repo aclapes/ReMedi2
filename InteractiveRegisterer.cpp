@@ -184,16 +184,17 @@ void InteractiveRegisterer::registrate(vector<PointCloudPtr> pUnregClouds, vecto
     for (int v = 0; v < pUnregClouds.size(); v++)
     {
         pRegClouds[v] = PointCloudPtr(new PointCloud);
-        if (v == 0)
-        {
-            translate(pUnregClouds[v], m_pMarkers[v]->points[0], *(pRegClouds[v]));
-        }
-        else
-        {
-            PointCloudPtr pCtrCloud (new PointCloud);
-            translate(pUnregClouds[v], m_pMarkers[v]->points[0], *pCtrCloud);
-            pcl::transformPointCloud(*pCtrCloud, *(pRegClouds[v]), m_Transformations[v]);
-        }
+//        if (v == 0)
+//        {
+//            translate(pUnregClouds[v], m_pMarkers[v]->points[0], *(pRegClouds[v]));
+//        }
+//        else
+//        {
+//            PointCloudPtr pCtrCloud (new PointCloud);
+//            translate(pUnregClouds[v], m_pMarkers[v]->points[0], *pCtrCloud);
+//            pcl::transformPointCloud(*pCtrCloud, *(pRegClouds[v]), m_Transformations[v]);
+//        }
+        pcl::transformPointCloud(*(pUnregClouds[v]), *(pRegClouds[v]), m_Transformations[v]);
     }
 }
 
@@ -207,13 +208,31 @@ void InteractiveRegisterer::getTransformation(const PointCloudPtr pSrcMarkersClo
     Eigen::Vector4f centroidSrc, centroidTgt;
     pcl::compute3DCentroid(*pSrcMarkersCloud, centroidSrc);
     pcl::compute3DCentroid(*pTgtMarkersCloud, centroidTgt);
-        
+    
+    // Translation
+    
     PointCloudPtr pSrcCenteredMarkersCloud (new PointCloud);
     PointCloudPtr pTgtCenteredMarkersCloud (new PointCloud);
-        
-    translate(pSrcMarkersCloud, centroidSrc, *pSrcCenteredMarkersCloud);
-    translate(pTgtMarkersCloud, centroidTgt, *pTgtCenteredMarkersCloud);
-        
+    
+    Eigen::Matrix4f A, B;
+    
+    A <<
+    1, 0, 0,  -centroidSrc.x(),
+    0, 1, 0,  -centroidSrc.y(),
+    0, 0, 1,  -centroidSrc.z(),
+    0, 0, 0,  1;
+    
+    B <<
+    1, 0, 0,  -centroidTgt.x(),
+    0, 1, 0,  -centroidTgt.y(),
+    0, 0, 1,  -centroidTgt.z(),
+    0, 0, 0,  1;
+
+    pcl::transformPointCloud(*pSrcMarkersCloud, *pSrcCenteredMarkersCloud, A);
+    pcl::transformPointCloud(*pTgtMarkersCloud, *pTgtCenteredMarkersCloud, B);
+    //translate(pSrcMarkersCloud, centroidSrc, *pSrcCenteredMarkersCloud);
+//    translate(pTgtMarkersCloud, centroidTgt, *pTgtCenteredMarkersCloud);
+    
     // To opencv
         
     int n = 0;
@@ -286,13 +305,17 @@ void InteractiveRegisterer::getTransformation(const PointCloudPtr pSrcMarkersClo
 //    cout << r << endl;
 //    cout << (cv::determinant(r) < 0) << endl;
 
-    T <<
+    Eigen::Matrix4f R;
+    R <<
         r.at<float>(0,0), r.at<float>(0,1), r.at<float>(0,2),  0,
         r.at<float>(1,0), r.at<float>(1,1), r.at<float>(1,2),  0,
         r.at<float>(2,0), r.at<float>(2,1), r.at<float>(2,2),  0,
                        0,                0,                0,  1;
         
-    cout << T << endl;
+    cout << R << endl;
+    
+    // Translate the src to origin (A), rotate (R) to align src to tgt, and perform the inverse translation of target (B^-1).
+    T = B.inverse() * R * A;
 }
 
 /** \brief Callback function to deal with keyboard presses in visualizer

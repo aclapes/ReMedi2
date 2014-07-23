@@ -44,14 +44,13 @@ public:
     void getColorMask(cv::Mat& colorMask);
     void getDepthMask(cv::Mat& depthMask);
     
-    void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& cloud);
+    void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     void setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals);
     
     typedef boost::shared_ptr<ColorDepthFrame> Ptr;
     
-//private:
-//    ColorFrame m_ColorFrame;
-//    DepthFrame m_DepthFrame;
+private:
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pColoredCloud;
 };
 
 #endif /* defined(__remedi__ColorDepthFrame__) */

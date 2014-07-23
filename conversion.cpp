@@ -187,6 +187,43 @@ void MatToColoredPointCloud(cv::Mat depth, cv::Mat color, pcl::PointCloud<pcl::P
     }
 }
 
+void MatToColoredPointCloud(cv::Mat depth, cv::Mat color, cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& cloud)
+{
+	cloud.height = depth.rows;
+    cloud.width =  depth.cols;
+    cloud.resize(cloud.height * cloud.width);
+    cloud.is_dense = true;
+    
+    float invfocal = (1/285.63f) / (depth.cols/320.f); // Kinect inverse focal length. If depth map resolution
+    
+	float z;
+	float rwx, rwy, rwz;
+	pcl::PointXYZRGB p;
+    
+    for (unsigned int y = 0; y < cloud.height; y++) for (unsigned int x = 0; x < cloud.width; x++)
+    {
+        if (mask.at<unsigned char>(y,x) > 0)
+        {
+            z = (float) depth.at<unsigned short>(y,x) /*z_us*/;
+            
+            rwx = (x - 320.0) * invfocal * z;
+            rwy = (y - 240.0) * invfocal * z;
+            rwz = z;
+            
+            p.x = rwx/1000.f;
+            p.y = rwy/1000.f;
+            p.z = rwz/1000.f;
+            
+            cv::Vec3b c = color.at<cv::Vec3b>(y,x);
+            p.b = c[0];
+            p.g = c[1];
+            p.r = c[2];
+            
+            cloud.at(x,y) = p;
+        }
+    }
+}
+
 void MatToPointCloud(cv::Mat mat, cv::Mat mask, pcl::PointCloud<pcl::PointXYZ>& cloud)
 {
 	cloud.height = mat.rows;
