@@ -12,6 +12,9 @@
 #include "ColorFrame.h"
 #include "DepthFrame.h"
 
+#include <pcl/point_types.h>
+#include <pcl/common/transforms.h>
+
 #include <iostream>
 
 using namespace std;
@@ -46,6 +49,9 @@ public:
     
     void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     void setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals);
+    
+    void getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    void getRegisteredAndReferencedColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     
     typedef boost::shared_ptr<ColorDepthFrame> Ptr;
     

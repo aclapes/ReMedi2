@@ -286,6 +286,34 @@ void PointCloudToMat(pcl::PointCloud<pcl::PointXYZ>& cloud, cv::Mat& mat)
     }
 }
 
+void PointCloudToMat(pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud, int height, int width, cv::Mat& mat)
+{
+    mat = cv::Mat::zeros(height, width, CV_16UC1);
+    
+    float invfocal = (1/285.63f) / (width/320.f); // Kinect inverse focal length. If depth map resolution
+    
+    for (unsigned int i = 0; i < pCloud->points.size(); i++)
+    {
+        float rwx = pCloud->points[i].x;
+        float rwy = pCloud->points[i].y;
+        float rwz = pCloud->points[i].z;
+        
+        float x, y, z;
+        
+        if (rwz > 0)
+        {
+            z = rwz * 1000.f;
+			x = std::floor( ((rwx ) / (invfocal * rwz )) + (width / 2.f) );
+			y = std::floor( ((rwy ) / (invfocal * rwz )) + (height / 2.f) );
+            
+			if (x > 0 && x < width && y > 0 && y < height)
+            {
+                mat.at<unsigned short>(y,x) = z;
+            }
+        }
+    }
+}
+
 
 void MaskDensePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pCloudSrc, cv::Mat maskMat, 
 	pcl::PointCloud<pcl::PointXYZ>& cloudTgt)

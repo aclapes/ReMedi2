@@ -71,8 +71,10 @@ namespace cvx
     
     void fillErrorsWithMedian(cv::InputArray src, int size, cv::OutputArray dst);
     
-    void open(cv::InputArray src, int smoothSize, cv::OutputArray dst);
-    void close(cv::InputArray src, int smoothSize, cv::OutputArray dst);
+    void dilate(cv::InputArray src, int size, cv::OutputArray dst);
+    void erode(cv::InputArray src, int size, cv::OutputArray dst);
+    void open(cv::InputArray src, int size, cv::OutputArray dst);
+    void close(cv::InputArray src, int size, cv::OutputArray dst);
     
     float overlap(cv::InputArray src1, cv::InputArray src2);
     cv::Mat replicate(cv::Mat src, int times);

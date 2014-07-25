@@ -47,9 +47,13 @@ public:
      */
     void setInputSequences(vector<Sequence<ColorDepthFrame>::Ptr> pSequences);
     
+    /** \brief Set an static frame for multiple purposes
+     *  \param fid Frame numerical ID
+     */
+    void setDefaultFrame(int fid);
+    
     /** \brief Set the parameters of the interactive registerer
      * \param  p : number of points used to compute the orthogonal transformation among views
-     * \param  fid frame identifier (numerical value)
      * \param  wndHeight : window height (visor)
      * \param  wndWidth : window width (visor)
      * \param  vp : number of vertical ports (visor)
@@ -57,10 +61,9 @@ public:
      * \param  camDist : camera dist to (0,0,0) (visor)
      * \param  markerRadius : marker sphere radius (visor)
      */
-    void setRegistererParameters(int p, int fid, int wndHeight, int wndWidth, int vp, int hp, float camDist, float markerRadius);
+    void setRegistererParameters(int p, int wndHeight, int wndWidth, int vp, int hp, float camDist, float markerRadius);
     
     /** \brief Set the parameters of the table modeler
-     * \param  fid : frame identifier (numerical value)
      * \param  leafsz : leaf size in the voxel grid downsampling (speeds up the normal computation)
      * \param  normrad : neighborhood radius in normals estimation
      * \param  sacIters : num of iterations in RANSAC used for plane estimation
@@ -69,7 +72,7 @@ public:
      * \param  border : distance to the border table when considering blobs
      * \param  condifence : statistical removal of tabletop outlier points (along the y dimension)
      */
-    void setTableModelerParameters(int fid, float leafsz, float normrad, int sacIters, float sacDist, float yoffset, float border, int confidence);
+    void setTableModelerParameters(float leafsz, float normrad, int sacIters, float sacDist, float yoffset, float border, int confidence);
     
     // Set the parameters of the background subtractor
     void setSubtractorParameters(int n, int modality, int k, float lrate, float bg, int opening);
@@ -90,6 +93,7 @@ public:
 private:
     Sequence<ColorDepthFrame>::Ptr m_pBgSeq;
     vector<Sequence<ColorDepthFrame>::Ptr> m_pSequences;
+    int m_fID;
     
     InteractiveRegisterer::Ptr m_pRegisterer;
     bool m_bSetRegistererCorrespondences;

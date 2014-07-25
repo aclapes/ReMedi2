@@ -9,7 +9,8 @@
 #include "ReMedi.h"
 
 ReMedi::ReMedi()
-: m_pRegisterer(new InteractiveRegisterer),
+: m_fID(0),
+  m_pRegisterer(new InteractiveRegisterer),
   m_bSetRegistererCorrespondences(false),
   m_pTableModeler(new TableModeler)
 {
@@ -27,11 +28,15 @@ ReMedi& ReMedi::operator=(const ReMedi& rhs)
     {
         m_pBgSeq = rhs.m_pBgSeq;
         m_pSequences = rhs.m_pSequences;
+        m_fID = rhs.m_fID;
         
         m_pRegisterer = rhs.m_pRegisterer;
         m_bSetRegistererCorrespondences = rhs.m_bSetRegistererCorrespondences;
+        
         m_pTableModeler = rhs.m_pTableModeler;
+        
 //        m_pSubtractor = rhs.m_pSubtractor;
+        
 //        m_pMonitorizer = rhs.m_pMonitorizer;
     }
     
@@ -49,14 +54,22 @@ void ReMedi::setBackgroundSequence(Sequence<ColorDepthFrame>::Ptr pBgSeq)
 
 /** \brief Set the list of sequences to be processed
  *  \param pSequences Input sequences
- */void ReMedi::setInputSequences(vector<Sequence<ColorDepthFrame>::Ptr> pSequences)
+ */
+void ReMedi::setInputSequences(vector<Sequence<ColorDepthFrame>::Ptr> pSequences)
 {
     m_pSequences = pSequences;
 }
 
+/** \brief Set an static frame for multiple purposes
+ *  \param fid Frame numerical ID
+ */
+void ReMedi::setDefaultFrame(int fid)
+{
+    m_fID = fid;
+}
+
 /** \brief Set the parameters of the interactive registerer
  * \param  p : number of points used to compute the orthogonal transformation among views
- * \param  fid frame identifier (numerical value)
  * \param  wndHeight : window height (visor)
  * \param  wndWidth : window width (visor)
  * \param  vp : number of vertical ports (visor)
@@ -64,19 +77,15 @@ void ReMedi::setBackgroundSequence(Sequence<ColorDepthFrame>::Ptr pBgSeq)
  * \param  camDist : camera dist to (0,0,0) (visor)
  * \param  markerRadius : marker sphere radius (visor)
  */
-void ReMedi::setRegistererParameters(int p, int fid, int wndHeight, int wndWidth, int vp, int hp, float camDist, float markerRadius)
+void ReMedi::setRegistererParameters(int p, int wndHeight, int wndWidth, int vp, int hp, float camDist, float markerRadius)
 {
     m_bSetRegistererCorrespondences = (p != -1); // 3 is the minimum num of correspondences to compute a transformation in a 3D space
     m_pRegisterer->setNumPoints(p);
-    
-    vector<ColorDepthFrame::Ptr> frames = m_pBgSeq->getFrames(fid);
-    m_pRegisterer->setInputFrames(frames);
     
     m_pRegisterer->setVisualizerParameters(wndHeight, wndWidth, vp, hp, camDist, markerRadius);
 }
 
 /** \brief Set the parameters of the table modeler
- * \param  fid : frame identifier (numerical value)
  * \param  leafsz : leaf size in the voxel grid downsampling (speeds up the normal computation)
  * \param  normrad : neighborhood radius in normals estimation
  * \param  sacIters : num of iterations in RANSAC used for plane estimation
@@ -85,15 +94,13 @@ void ReMedi::setRegistererParameters(int p, int fid, int wndHeight, int wndWidth
  * \param  border : distance to the border table when considering blobs
  * \param  condifence : statistical removal of tabletop outlier points (along the y dimension)
  */
-void ReMedi::setTableModelerParameters(int fid, float leafsz, float normrad, int sacIters, float sacDist, float yoffset, float border, int confidence)
+void ReMedi::setTableModelerParameters(float leafsz, float normrad, int sacIters, float sacDist, float yoffset, float border, int confidence)
 {
-    vector<ColorDepthFrame::Ptr> frames = m_pBgSeq->getFrames(fid);
-    m_pTableModeler->setInputFrames(frames);
-    
     m_pTableModeler->setLeafSize(leafsz);
     m_pTableModeler->setNormalRadius(normrad);
     m_pTableModeler->setSACIters(sacIters);
     m_pTableModeler->setSACDistThresh(sacDist);
+    m_pTableModeler->setYOffset(yoffset);
     m_pTableModeler->setInteractionBorder(border);
     m_pTableModeler->setConfidenceLevel(confidence);
 }
@@ -121,32 +128,54 @@ void ReMedi::setMonitorizerParameters(float leafsz, float clusterDist)
 void ReMedi::initialize()
 {
     // Register views (and select new correspondences if it's the case)
-    if (m_bSetRegistererCorrespondences)
+
+    m_pRegisterer->setInputFrames( m_pBgSeq->getFrames(m_fID) );
+    
+    if (!m_bSetRegistererCorrespondences)
+        m_pRegisterer->loadCorrespondences("registerer_correspondences", "pcd");
+    else
     {
         m_pRegisterer->setCorrespondencesManually();
         m_pRegisterer->saveCorrespondences("registerer_correspondences", "pcd");
     }
-    m_pRegisterer->loadCorrespondences("registerer_correspondences", "pcd");
+    
     m_pRegisterer->computeTransformations();
+    m_pRegisterer->registrate(*m_pBgSeq);
     
-    // dbg->
-    vector<ColorDepthFrame::Ptr> pUnregFrames = m_pBgSeq->getFrames(2);
-    
-    vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> pRegClouds;
-    m_pRegisterer->registrate(pUnregFrames, pRegClouds);
-    
-    VisualizerPtr pViz (new Visualizer);
-    pViz->addPointCloud(pRegClouds[0], "cloud0");
-    pViz->addPointCloud(pRegClouds[1], "cloud1");
-    pViz->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 1, "cloud0");
-    pViz->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 0, 0, "cloud1");
-    pViz->addCoordinateSystem(0.1, 0, 0, 0, "csg");
-    pViz->spin();
-    // <-dbg
+//    // dbg <--
+//    vector<ColorDepthFrame::Ptr> pFrames = m_pBgSeq->getFrames(2);
+//    
+//    ColorPointCloudPtr pColorCloud0 (new ColorPointCloud);
+//    ColorPointCloudPtr pColorCloud1 (new ColorPointCloud);
+//    
+//    pFrames[0]->getRegisteredAndReferencedColoredPointCloud(*pColorCloud0);
+//    pFrames[1]->getRegisteredAndReferencedColoredPointCloud(*pColorCloud1);
+//    
+//    pFrames[0]->getRegisteredAndReferencedColoredPointCloud(*pColorCloud0);
+//    pFrames[1]->getRegisteredAndReferencedColoredPointCloud(*pColorCloud1);
+//                        
+//    VisualizerPtr pViz (new Visualizer);
+//    pViz->addPointCloud(pColorCloud0, "cloud0");
+//    pViz->addPointCloud(pColorCloud1, "cloud1");
+//    pViz->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 0.5, "cloud0");
+//    pViz->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 0, 0, "cloud1");
+//    pViz->addCoordinateSystem(0.5, 0, 0, 0, "csg");
+//    pViz->spin();
+//    // dbg -->
 
     // Model the tables
     
+    m_pTableModeler->setInputFrames( m_pBgSeq->getFrames(m_fID) );
     m_pTableModeler->model();
+    
+    // dbg <--
+    cv::namedWindow("a");
+    vector<ColorDepthFrame::Ptr> frames = m_pBgSeq->getFrames(4);
+    cv::Mat topMask;
+    m_pTableModeler->segmentTop(frames[0], topMask);
+    cv::imshow("a", topMask > 0);
+    cv::waitKey();
+    // dbg -->
 }
 
 void ReMedi::run()

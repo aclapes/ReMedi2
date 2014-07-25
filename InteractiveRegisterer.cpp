@@ -148,11 +148,33 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
  */
 void InteractiveRegisterer::computeTransformations()
 {
-    for (int v = 0; v < m_pFrames.size(); v++)
+    m_Transformations[0] = Eigen::Matrix4f::Identity();
+    m_ITransformations[0] = Eigen::Matrix4f::Identity(); // I^-1 = I
+    
+    for (int v = 1; v < m_pFrames.size(); v++)
     {
         getTransformation(m_pMarkers[v], m_pMarkers[0], m_Transformations[v]); // v (src) to 0 (tgt)
+        
         m_ITransformations[v] = m_Transformations[v].inverse();
     }
+}
+
+/** \brief Set the registration of the several views in the sequence
+ *  \param seq A sequence of Depth frames
+ */
+void InteractiveRegisterer::registrate(Sequence<DepthFrame>& seq)
+{
+    seq.setReferencePoints( getFirstCorrespondences() );
+    seq.setRegistrationTransformations(m_Transformations);
+}
+
+/** \brief Set the registration of the several views in the sequence
+ *  \param seq An sequence of ColorDepth frames
+ */
+void InteractiveRegisterer::registrate(Sequence<ColorDepthFrame>& seq)
+{
+    seq.setReferencePoints( getFirstCorrespondences() );
+    seq.setRegistrationTransformations(m_Transformations);
 }
 
 /** \brief Registers all the frames to the 0-th frame and return the corresponding registered clouds
@@ -205,9 +227,12 @@ void InteractiveRegisterer::registrate(vector<PointCloudPtr> pUnregClouds, vecto
  */
 void InteractiveRegisterer::getTransformation(const PointCloudPtr pSrcMarkersCloud, const PointCloudPtr pTgtMarkersCloud, Eigen::Matrix4f& T)
 {
-    Eigen::Vector4f centroidSrc, centroidTgt;
-    pcl::compute3DCentroid(*pSrcMarkersCloud, centroidSrc);
-    pcl::compute3DCentroid(*pTgtMarkersCloud, centroidTgt);
+//    Eigen::Vector4f centroidSrc, centroidTgt;
+//    pcl::compute3DCentroid(*pSrcMarkersCloud, centroidSrc);
+//    pcl::compute3DCentroid(*pTgtMarkersCloud, centroidTgt);
+//    
+    Eigen::Vector4f centroidSrc = pSrcMarkersCloud->points[0].getVector4fMap();
+    Eigen::Vector4f centroidTgt = pTgtMarkersCloud->points[0].getVector4fMap();
     
     // Translation
     
@@ -276,8 +301,8 @@ void InteractiveRegisterer::getTransformation(const PointCloudPtr pSrcMarkersClo
 //    cout << h << endl;
     
     cv::SVD svd;
-    cv::Mat s, u, vt;
-    svd.compute(h, s, u, vt);
+    cv::Mat S, u, vt;
+    svd.compute(h, S, u, vt);
         
     cv::Mat v, ut;
     cv::transpose(vt, v);
@@ -293,29 +318,26 @@ void InteractiveRegisterer::getTransformation(const PointCloudPtr pSrcMarkersClo
 //    cout << v << endl;
 //    cout << (cv::determinant(v) < 0) << endl;
     
-    cv::Mat r;
-    r = v * ut;
+    cv::Mat R;
+    R = v * ut;
         
-//    cout << r << endl;
-//    cout << (cv::determinant(r) < 0) << endl;
-    if (cv::determinant(r) < 0)
-    {
-        r.col(2) = r.col(2) * (-1);
-    }
-//    cout << r << endl;
-//    cout << (cv::determinant(r) < 0) << endl;
 
-    Eigen::Matrix4f R;
-    R <<
-        r.at<float>(0,0), r.at<float>(0,1), r.at<float>(0,2),  0,
-        r.at<float>(1,0), r.at<float>(1,1), r.at<float>(1,2),  0,
-        r.at<float>(2,0), r.at<float>(2,1), r.at<float>(2,2),  0,
+    if (cv::determinant(R) < 0)
+    {
+        R.col(2) = R.col(2) * (-1);
+    }
+
+    Eigen::Matrix4f W;
+    W <<
+        R.at<float>(0,0), R.at<float>(0,1), R.at<float>(0,2),  0,
+        R.at<float>(1,0), R.at<float>(1,1), R.at<float>(1,2),  0,
+        R.at<float>(2,0), R.at<float>(2,1), R.at<float>(2,2),  0,
                        0,                0,                0,  1;
         
-    cout << R << endl;
+    cout << W << endl;
     
     // Translate the src to origin (A), rotate (R) to align src to tgt, and perform the inverse translation of target (B^-1).
-    T = B.inverse() * R * A;
+    T = B.inverse() * W * A;
 }
 
 /** \brief Callback function to deal with keyboard presses in visualizer
@@ -348,7 +370,7 @@ void InteractiveRegisterer::ppCallback(const pcl::visualization::PointPickingEve
     if (event.getPointIndex () < 0 || !m_bMark)
         return;
     
-    PointT p;
+    Point p;
     event.getPoint(p.x, p.y, p.z);
     
     if (m_pMarkers[m_Viewport]->width < m_NumOfPoints)
@@ -378,5 +400,18 @@ void InteractiveRegisterer::setDefaultCamera(VisualizerPtr pViz, int vid)
     cameras[vid].view[1] = -1; // y dim upside-down
     
     pViz->setCameraParameters(cameras[vid], vid);
+}
+
+/** \brief Get the set of first correspondences across the views
+ *  \return correspondences List containing the first correspondences
+ */
+vector<pcl::PointXYZ> InteractiveRegisterer::getFirstCorrespondences()
+{
+    vector<pcl::PointXYZ> correspondences;
+    
+    for (int v = 0; v < m_pMarkers.size(); v++)
+        correspondences.push_back(m_pMarkers[v]->points[0]);
+    
+    return correspondences;
 }
 

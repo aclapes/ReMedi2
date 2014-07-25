@@ -13,12 +13,12 @@
 //
 
 template<typename FrameT>
-Sequence<FrameT>::Sequence()
+SequenceBase<FrameT>::SequenceBase()
 {
 }
 
 template<typename FrameT>
-Sequence<FrameT>::Sequence(int numOfViews)
+SequenceBase<FrameT>::SequenceBase(int numOfViews)
 {
     m_Paths.resize(numOfViews);
     m_Streams.resize(numOfViews);
@@ -27,7 +27,7 @@ Sequence<FrameT>::Sequence(int numOfViews)
 }
 
 template<typename FrameT>
-Sequence<FrameT>::Sequence(vector<vector<string> > paths)
+SequenceBase<FrameT>::SequenceBase(vector<vector<string> > paths)
 {
     m_Paths = paths;
     
@@ -37,13 +37,13 @@ Sequence<FrameT>::Sequence(vector<vector<string> > paths)
 }
 
 template<typename FrameT>
-Sequence<FrameT>::Sequence(const Sequence& rhs)
+SequenceBase<FrameT>::SequenceBase(const SequenceBase<FrameT>& rhs)
 {
     *this = rhs;
 }
 
 template<typename FrameT>
-Sequence<FrameT>& Sequence<FrameT>::operator=(const Sequence<FrameT>& rhs)
+SequenceBase<FrameT>& SequenceBase<FrameT>::operator=(const SequenceBase<FrameT>& rhs)
 {
     if (this != &rhs)
     {
@@ -59,37 +59,37 @@ Sequence<FrameT>& Sequence<FrameT>::operator=(const Sequence<FrameT>& rhs)
 }
 
 template<typename FrameT>
-string Sequence<FrameT>::getPath()
+string SequenceBase<FrameT>::getPath()
 {
     return m_Path;
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setPath(string path)
+void SequenceBase<FrameT>::setPath(string path)
 {
     m_Path = path;
 }
 
 template<typename FrameT>
-string Sequence<FrameT>::getName()
+string SequenceBase<FrameT>::getName()
 {
     return m_Name;
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setName(string name)
+void SequenceBase<FrameT>::setName(string name)
 {
     m_Name = name;
 }
 
 template<typename FrameT>
-int Sequence<FrameT>::getNumOfViews()
+int SequenceBase<FrameT>::getNumOfViews()
 {
     return m_Paths.size();
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setNumOfViews(int n)
+void SequenceBase<FrameT>::setNumOfViews(int n)
 {
     m_Paths.resize(n);
     m_FrameCounter.resize(n);
@@ -97,7 +97,7 @@ void Sequence<FrameT>::setNumOfViews(int n)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setFramesPaths(vector<vector<string> > paths)
+void SequenceBase<FrameT>::setFramesPaths(vector<vector<string> > paths)
 {
     m_Paths = paths;
     
@@ -106,7 +106,7 @@ void Sequence<FrameT>::setFramesPaths(vector<vector<string> > paths)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::addStream(vector<typename FrameT::Ptr> stream)
+void SequenceBase<FrameT>::addStream(vector<typename FrameT::Ptr> stream)
 {
     m_Streams.push_back(stream);
     m_FrameCounter.push_back(-1);
@@ -115,7 +115,7 @@ void Sequence<FrameT>::addStream(vector<typename FrameT::Ptr> stream)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setStream(vector<typename FrameT::Ptr> stream, int view)
+void SequenceBase<FrameT>::setStream(vector<typename FrameT::Ptr> stream, int view)
 {
     while (view >= m_Streams.size())
         m_Streams.push_back(vector<typename FrameT::Ptr>());
@@ -124,7 +124,7 @@ void Sequence<FrameT>::setStream(vector<typename FrameT::Ptr> stream, int view)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setStreams(vector<vector<typename FrameT::Ptr> > streams)
+void SequenceBase<FrameT>::setStreams(vector<vector<typename FrameT::Ptr> > streams)
 {
     m_Streams = streams;
     
@@ -133,7 +133,7 @@ void Sequence<FrameT>::setStreams(vector<vector<typename FrameT::Ptr> > streams)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::addFrameFilePath(string framePath, int view)
+void SequenceBase<FrameT>::addFrameFilePath(string framePath, int view)
 {
     while (view >= m_Paths.size())
     {
@@ -148,27 +148,27 @@ void Sequence<FrameT>::addFrameFilePath(string framePath, int view)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::addFrameFilePath(vector<string> framePaths)
+void SequenceBase<FrameT>::addFrameFilePath(vector<string> framePaths)
 {
     for (int i = 0; i < m_Paths.size(); i++)
         m_Paths[i].push_back(framePaths[i]);
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::addFrame(typename FrameT::Ptr frame, int view)
+void SequenceBase<FrameT>::addFrame(typename FrameT::Ptr frame, int view)
 {
     m_Streams[view].push_back(frame);
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::addFrame(vector<typename FrameT::Ptr> frame)
+void SequenceBase<FrameT>::addFrame(vector<typename FrameT::Ptr> frame)
 {
     for (int i = 0; i < m_Streams.size(); i++)
         m_Streams[i].push_back(frame[i]);
 }
 
 template<typename FrameT>
-bool Sequence<FrameT>::hasNextFrames(int step)
+bool SequenceBase<FrameT>::hasNextFrames(int step)
 {
     for (int i = 0; i < m_Paths.size(); i++)
         if (m_FrameCounter[i] + m_Delays[i] + step > m_Paths[i].size() - 1)
@@ -178,7 +178,7 @@ bool Sequence<FrameT>::hasNextFrames(int step)
 }
 
 template<typename FrameT>
-bool Sequence<FrameT>::hasPreviousFrames(int step)
+bool SequenceBase<FrameT>::hasPreviousFrames(int step)
 {
     for (int i = 0; i < m_Paths.size(); i++)
         if (m_FrameCounter[i] + m_Delays[i] - step < 0)
@@ -188,7 +188,7 @@ bool Sequence<FrameT>::hasPreviousFrames(int step)
 }
 
 template<typename FrameT>
-vector<typename FrameT::Ptr> Sequence<FrameT>::nextFrames(int step)
+vector<typename FrameT::Ptr> SequenceBase<FrameT>::nextFrames(int step)
 {
     for (int v = 0; v < m_Paths.size(); v++)
         m_FrameCounter[v] += step;
@@ -210,7 +210,7 @@ vector<typename FrameT::Ptr> Sequence<FrameT>::nextFrames(int step)
 }
 
 template<typename FrameT>
-vector<typename FrameT::Ptr> Sequence<FrameT>::previousFrames(int step)
+vector<typename FrameT::Ptr> SequenceBase<FrameT>::previousFrames(int step)
 {
     for (int v = 0; v < m_Paths.size(); v++)
         m_FrameCounter[v] -= step;
@@ -231,7 +231,7 @@ vector<typename FrameT::Ptr> Sequence<FrameT>::previousFrames(int step)
 }
 
 template<typename FrameT>
-vector<typename FrameT::Ptr> Sequence<FrameT>::getFrames(int i)
+vector<typename FrameT::Ptr> SequenceBase<FrameT>::getFrames(int i)
 {
     vector<typename FrameT::Ptr> frames;
     for (int v = 0; v < m_Paths.size(); v++)
@@ -249,7 +249,7 @@ vector<typename FrameT::Ptr> Sequence<FrameT>::getFrames(int i)
 }
 
 template<typename FrameT>
-vector<int> Sequence<FrameT>::getNumOfFrames()
+vector<int> SequenceBase<FrameT>::getNumOfFrames()
 {
     vector<int> numOfFrames;
     for (int i = 0; i < m_Paths.size(); i++)
@@ -259,7 +259,7 @@ vector<int> Sequence<FrameT>::getNumOfFrames()
 }
 
 template<typename FrameT>
-vector<int> Sequence<FrameT>::getCurrentFramesID()
+vector<int> SequenceBase<FrameT>::getCurrentFramesID()
 {
     vector<int> counters;
     for (int i = 0; i < m_Paths.size(); i++)
@@ -269,7 +269,7 @@ vector<int> Sequence<FrameT>::getCurrentFramesID()
 }
 
 template<typename FrameT>
-vector<float> Sequence<FrameT>::getProgress()
+vector<float> SequenceBase<FrameT>::getProgress()
 {
     vector<float> progresses;
     for (int i = 0; i < m_Paths.size(); i++)
@@ -279,7 +279,7 @@ vector<float> Sequence<FrameT>::getProgress()
 }
 
 template<typename FrameT>
-vector<int> Sequence<FrameT>::at()
+vector<int> SequenceBase<FrameT>::at()
 {
     vector<int> frameDelayedCounter(m_Streams.size());
     
@@ -290,20 +290,20 @@ vector<int> Sequence<FrameT>::at()
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::setDelays(vector<int> delays)
+void SequenceBase<FrameT>::setDelays(vector<int> delays)
 {
     m_Delays = delays;
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::restart()
+void SequenceBase<FrameT>::restart()
 {
     m_FrameCounter.clear();
     m_FrameCounter.resize(m_Streams.size(), -1);
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::readFrame(vector<string> paths, int f, FrameT& frame)
+void SequenceBase<FrameT>::readFrame(vector<string> paths, int f, FrameT& frame)
 {
     assert (f < paths.size());
     
@@ -311,7 +311,7 @@ void Sequence<FrameT>::readFrame(vector<string> paths, int f, FrameT& frame)
 }
 
 template<typename FrameT>
-void Sequence<FrameT>::allocate()
+void SequenceBase<FrameT>::allocate()
 {
     m_Streams.resize(m_Paths.size());
     
@@ -329,6 +329,54 @@ void Sequence<FrameT>::allocate()
     }
 }
 
+// Sequence<DepthFrame>
+
+Sequence<DepthFrame>::Sequence()
+{
+}
+
+Sequence<DepthFrame>::Sequence(int numOfViews)
+: SequenceBase<DepthFrame>(numOfViews)
+{
+}
+
+Sequence<DepthFrame>::Sequence(vector< vector<string> > paths)
+: SequenceBase<DepthFrame>(paths)
+{
+}
+
+Sequence<DepthFrame>::Sequence(const Sequence& rhs)
+: SequenceBase(rhs)
+{
+    *this = rhs;
+}
+
+Sequence<DepthFrame>& Sequence<DepthFrame>::operator=(const Sequence<DepthFrame>& rhs)
+{
+    if (this != &rhs)
+    {
+        SequenceBase<DepthFrame>::operator=(rhs);
+        m_ReferencePoints = rhs.m_ReferencePoints;
+        m_Transformations = rhs.m_Transformations;
+    }
+    
+    return *this;
+}
+
+void Sequence<DepthFrame>::setReferencePoints(vector<pcl::PointXYZ> points)
+{
+    m_ReferencePoints = points;
+}
+
+vector<pcl::PointXYZ> Sequence<DepthFrame>::getReferencePoints()
+{
+    return m_ReferencePoints;
+}
+
+void Sequence<DepthFrame>::setRegistrationTransformations(vector<Eigen::Matrix4f> transformations)
+{
+    m_Transformations = transformations;
+}
 
 //
 // Sequence<ColorDepthFrame>
@@ -370,6 +418,9 @@ Sequence<ColorDepthFrame>& Sequence<ColorDepthFrame>::operator=(const Sequence<C
         m_Streams = rhs.m_Streams;
         m_FrameCounter = rhs.m_FrameCounter;
         m_Delays = rhs.m_Delays;
+        
+        m_ReferencePoints = rhs.m_ReferencePoints;
+        m_Transformations = rhs.m_Transformations;
     }
     
     return *this;
@@ -503,6 +554,12 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::nextFrames(int step)
         else
             readFrame(m_Paths[v], m_FrameCounter[v] + delay, *frame);
         
+        if (v < m_Transformations.size())
+        {
+            frame->setReferencePoint(m_ReferencePoints[v]);
+            frame->setRegistrationTransformation(m_Transformations[v]);
+        }
+        
         frames.push_back(frame);
     }
     
@@ -523,6 +580,12 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::previousFrames(int step)
         else
             readFrame(m_Paths[v], m_FrameCounter[v] + m_Delays[v], *frame);
         
+        if (v < m_Transformations.size())
+        {
+            frame->setReferencePoint(m_ReferencePoints[v]);
+            frame->setRegistrationTransformation(m_Transformations[v]);
+        }
+        
         frames.push_back(frame);
     }
     
@@ -539,6 +602,12 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(int i)
             frame = m_Streams[v][i];
         else
             readFrame(m_Paths[v], i, *frame);
+        
+        if (v < m_Transformations.size())
+        {
+            frame->setReferencePoint(m_ReferencePoints[v]);
+            frame->setRegistrationTransformation(m_Transformations[v]);
+        }
         
         frames.push_back(frame);
     }
@@ -588,6 +657,21 @@ void Sequence<ColorDepthFrame>::setDelays(vector<int> delays)
     m_Delays = delays;
 }
 
+void Sequence<ColorDepthFrame>::setReferencePoints(vector<pcl::PointXYZ> points)
+{
+    m_ReferencePoints = points;
+}
+
+vector<pcl::PointXYZ> Sequence<ColorDepthFrame>::getReferencePoints()
+{
+    return m_ReferencePoints;
+}
+
+void Sequence<ColorDepthFrame>::setRegistrationTransformations(vector<Eigen::Matrix4f> transformations)
+{
+    m_Transformations = transformations;
+}
+
 void Sequence<ColorDepthFrame>::restart()
 {
     m_FrameCounter.clear();
@@ -623,7 +707,9 @@ void Sequence<ColorDepthFrame>::readFrame(vector< pair<string,string> > paths, i
 //
 // Template instanciation
 // ------------------------------------------------------
-template class Sequence<Frame>;
-template class Sequence<ColorFrame>;
+template class SequenceBase<Frame>;
+template class SequenceBase<ColorFrame>;
+template class SequenceBase<DepthFrame>;
+
 template class Sequence<DepthFrame>;
 // ------------------------------------------------------

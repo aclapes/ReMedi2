@@ -39,6 +39,7 @@ ColorDepthFrame& ColorDepthFrame::operator=(const ColorDepthFrame& rhs)
     {
         ColorFrame::operator=(rhs);
         DepthFrame::operator=(rhs);
+        
         m_pColoredCloud = rhs.m_pColoredCloud;
     }
     
@@ -135,4 +136,22 @@ void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& co
 void ColorDepthFrame::setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals)
 {
     DepthFrame::setNormals(pNormals);
+}
+
+void ColorDepthFrame::getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
+{
+    pcl::transformPointCloud(*m_pColoredCloud, coloredCloud, m_T);
+}
+
+void ColorDepthFrame::getRegisteredAndReferencedColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
+{
+    // Register the reference point
+    pcl::PointXYZ regReferencePoint = getRegisteredReferencePoint();
+    
+    // Build a translation matrix to the registered reference the cloud after its own registration
+    Eigen::Matrix4f E = Eigen::Matrix4f::Identity();
+    E.col(3) = regReferencePoint.getVector4fMap(); // set translation column
+    
+    // Apply registration first and then referenciation (right to left order in matrix product)
+    pcl::transformPointCloud(*m_pColoredCloud, coloredCloud, E.inverse() * m_T);
 }

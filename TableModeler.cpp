@@ -2,9 +2,14 @@
 
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/conditional_removal.h>
+
+#include <pcl/io/pcd_io.h>
+
+#include "cvxtended.h"
 
 
 TableModeler::TableModeler()
@@ -21,8 +26,7 @@ TableModeler& TableModeler::operator=(const TableModeler& rhs)
 {
     if (this != &rhs)
     {
-        //    m_pCloudA = other.m_pCloudA;
-        //    m_pCloudB = other.m_pCloudB;
+        m_pFrames = rhs.m_pFrames;
         
         m_LeafSize = rhs.m_LeafSize;
         m_NormalRadius = rhs.m_NormalRadius;
@@ -103,39 +107,72 @@ void TableModeler::setConfidenceLevel(int level)
 
 void TableModeler::model()
 {
-    for (int v = 0; v < m_pFrames.size(); v++)
-    {
-        PointCloudPtr pCloud (new PointCloud);
-        m_pFrames[v]->getPointCloud(*pCloud);
-        
-        // Estimate the table plane (using RANSAC internally and normals' orientation information)
-        
-        PointCloudPtr pTable (new PointCloud);
-        PointCloudPtr pNonTable (new PointCloud);
-        pcl::ModelCoefficients::Ptr pTableCoefficients (new pcl::ModelCoefficients);
-        
-        estimate(pCloud, *pTable, *pNonTable, *pTableCoefficients);
-        
-        // Find the transform: table's normal to (0,0,0) and its direction rotated to XY
-        
-        Eigen::Affine3f T, TI;
-        getTransformation(pTableCoefficients, T);
-        TI = T.inverse();
-        
-        // Transform the plane
-        
-        PointCloudPtr pTableTransformed (new PointCloud);
-        pcl::transformPointCloud(*pTable, *pTableTransformed, T);
-        
-        // Get the table's 3D surrounding bounding box
-        
-        Point min, max;
-        getMinMax3D(pTableTransformed, 1, m_ConfidenceLevel, min, max);
-        
-        // dbg <--
-        visualizePlaneEstimation(pCloud, pTable, T, min, max);
-        // dbg -->
-    }
+    // Find...
+    
+    PointCloudPtr pTable (new PointCloud);
+    PointCloudPtr pContourOrg (new PointCloud);
+    pcl::ModelCoefficients::Ptr pTableCoefficients (new pcl::ModelCoefficients);
+    
+    extractTableContour(m_pFrames[0], 5, *pTable, *pTableCoefficients, *pContourOrg);
+    
+    PointT referencePoint = m_pFrames[0]->getReferencePoint();
+    PointT contourPoint;
+    findClosestContourPointToReference(pContourOrg, referencePoint, contourPoint);
+    
+    // Find the transform: table's normal to (0,0,0) and its direction rotated to XY
+    
+    getTransformation(pContourOrg, pTableCoefficients, referencePoint, contourPoint, m_Transformation);
+    
+    // Transform the plane
+    
+    PointCloudPtr pTableTransformed (new PointCloud);
+    pcl::transformPointCloud(*pTable, *pTableTransformed, m_Transformation);
+    
+    // Get the table's 3D surrounding bounding box
+
+    getMinMax3D(pTableTransformed, 1, m_ConfidenceLevel, m_Min, m_Max);
+    
+    // Visualize
+    
+    PointCloudPtr pCloud (new PointCloud);
+    m_pFrames[0]->getPointCloud(*pCloud);
+    
+    PointCloudPtr pCloudTransformed (new PointCloud);
+    pcl::transformPointCloud(*pCloud, *pCloudTransformed, m_Transformation);
+    
+    visualizePlaneEstimation(pCloud, pTable, pCloudTransformed, pTableTransformed, m_Min, m_Max);
+}
+
+void TableModeler::segmentTop(DepthFrame::Ptr pFrame, cv::Mat& top)
+{
+    PointCloudPtr pRegisteredCloud (new PointCloud);
+    pFrame->getRegisteredPointCloud(*pRegisteredCloud);
+    
+    PointCloudPtr pTopRegisteredCloud (new PointCloud);
+    segmentTop(pRegisteredCloud, *pTopRegisteredCloud);
+    
+    PointCloudPtr pTopCloud (new PointCloud);
+    pFrame->getDeregisteredPointCloud(pTopRegisteredCloud, *pTopCloud);
+    
+    cv::Mat aux;
+    PointCloudToMat(pTopCloud, pFrame->getResY(), pFrame->getResX(), aux);
+    
+    cvx::close(aux, 1, top);
+}
+
+void TableModeler::segmentTop(PointCloudPtr pCloud, PointCloud& top)
+{
+    PointCloudPtr pCloudTransformed (new PointCloud);
+    pcl::transformPointCloud(*pCloud, *pCloudTransformed, m_Transformation);
+    
+    PointT min (m_Min.x, m_Min.y - 0.05, m_Min.z); // 5 mm
+    PointT max (m_Max.x, m_Max.y + m_YOffset, m_Max.z);
+    
+    PointCloudPtr pTopTransformed (new PointCloud);
+    PointCloudPtr pAux (new PointCloud); // top's complementary points
+    filter(pCloudTransformed, min, max, *pTopTransformed, *pAux);
+    
+    pcl::transformPointCloud(*pTopTransformed, top, m_Transformation.inverse());
 }
 
 //void TableModeler::transform(PointCloudPtr pPlane, Eigen::Affine3f transformation, PointCloud planeTransformed)
@@ -147,7 +184,7 @@ void TableModeler::model()
 //    PointCloudPtr pPlaneF (new PointCloud);
 //
 //    // Create the filtering object
-//    pcl::StatisticalOutlierRemoval<Point> sor;
+//    pcl::StatisticalOutlierRemoval<PointT> sor;
 //    sor.setInputCloud (pPlaneT);
 //    sor.setMeanK (100);
 //    sor.setStddevMulThresh (1);
@@ -167,31 +204,37 @@ void TableModeler::model()
 //    pcl::transformPointCloud(*pCloud, *pCloudT, yton);
 //}
 
-void TableModeler::estimate(PointCloudPtr pCloud, PointCloud& planeSegmented, PointCloud& nonPlaneSegmented, pcl::ModelCoefficients& coefficients)
+void TableModeler::estimate(PointCloudPtr pCloud, float leafSize, PointT reference, PointCloud& planeSegmented, PointCloud& nonPlaneSegmented, pcl::ModelCoefficients& coefficients)
 {
 	// downsampling
 
-	PointCloudPtr pCloudFiltered (new PointCloud);
+    PointCloudPtr pCloudFiltered (new PointCloud);
     
-	pcl::ApproximateVoxelGrid<Point> sor;
-	sor.setInputCloud (pCloud);
-	sor.setLeafSize (m_LeafSize, m_LeafSize, m_LeafSize);
-	sor.filter(*pCloudFiltered);
-	
+    if (leafSize == 0)
+        *pCloudFiltered = *pCloud;
+    else
+    {
+        pcl::VoxelGrid<PointT> sor;
+        sor.setInputCloud (pCloud);
+        sor.setLeafSize (m_LeafSize, m_LeafSize, m_LeafSize);
+        sor.setSaveLeafLayout(true);
+        sor.filter(*pCloudFiltered);
+    }
+
 	// normal estimation
 
 	pcl::PointCloud<pcl::Normal>::Ptr pNormalsFiltered (new pcl::PointCloud<pcl::Normal>);
     
-    pcl::NormalEstimation<Point, pcl::Normal> ne;
+    pcl::NormalEstimation<PointT, pcl::Normal> ne;
     ne.setInputCloud(pCloudFiltered);
-    pcl::search::KdTree<Point>::Ptr tree (new pcl::search::KdTree<Point> ());
+    pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());
     ne.setSearchMethod (tree);
     ne.setRadiusSearch (m_NormalRadius); // neighbors in a sphere of radius X meter
     ne.compute (*pNormalsFiltered);
 
 	// model estimation
 
-    pcl::SACSegmentationFromNormals<Point, pcl::Normal> sac (false);
+    pcl::SACSegmentationFromNormals<PointT, pcl::Normal> sac (false);
 	sac.setOptimizeCoefficients (true); // optional
     sac.setModelType (pcl::SACMODEL_NORMAL_PLANE);
     sac.setMethodType (pcl::SAC_RANSAC);
@@ -200,13 +243,16 @@ void TableModeler::estimate(PointCloudPtr pCloud, PointCloud& planeSegmented, Po
 
     // create filtering object
     
-    pcl::ExtractIndices<Point> pointExtractor;
-    pcl::ExtractIndices<pcl::Normal>   normalExtractor;
+    pcl::ExtractIndices<PointT> pointExtractor;
+    pcl::ExtractIndices<pcl::Normal> normalExtractor;
+    
+    pointExtractor.setKeepOrganized(true);
+    normalExtractor.setKeepOrganized(true);
 
     pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
     PointCloudPtr pPlane (new PointCloud);
     PointCloudPtr pNonPlane (new PointCloud);
-    pcl::PointCloud<pcl::Normal>::Ptr   pNonPlaneNormals (new pcl::PointCloud<pcl::Normal>);
+    pcl::PointCloud<pcl::Normal>::Ptr pNonPlaneNormals (new pcl::PointCloud<pcl::Normal>);
     
     pcl::ModelCoefficients::Ptr pCoefficients (new pcl::ModelCoefficients);
 
@@ -236,13 +282,22 @@ void TableModeler::estimate(PointCloudPtr pCloud, PointCloud& planeSegmented, Po
         normalExtractor.setIndices(inliers);
         normalExtractor.setNegative(true);
         normalExtractor.filter(*pNonPlaneNormals);
-
-		if ( (found = isCloudIncludingOrigin(pPlane)) )
+        
+        // dbg <--
+//        Visualizer vis;
+//        vis.addPointCloud(pPlane, "plane");
+//        vis.addPointCloud(pNonPlane, "nonplane");
+//        vis.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 1, 0, 0, "plane");
+//        vis.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "nonplane");
+//        vis.spin();
+        // dbg -->
+        
+		if ( (found = isCloudIncludingReference(pPlane, leafSize, reference)) )
 		{
             // Prepare to return the segmented plane
             PointCloudPtr pPlaneFiltered (new PointCloud);
             
-            pcl::StatisticalOutlierRemoval<Point> sor;
+            pcl::StatisticalOutlierRemoval<PointT> sor;
 			sor.setInputCloud (pPlane);
 			sor.setMeanK (50);
 			sor.setStddevMulThresh (1);
@@ -281,7 +336,7 @@ void TableModeler::estimate(PointCloudPtr pCloud, PointCloud& planeSegmented, Po
 //			PointCloudPtr pPlaneF (new PointCloud);
 //			 
 //			// Create the filtering object
-//			pcl::StatisticalOutlierRemoval<Point> sor;
+//			pcl::StatisticalOutlierRemoval<PointT> sor;
 //			sor.setInputCloud (pPlaneT);
 //			sor.setMeanK (100);
 //			sor.setStddevMulThresh (1);
@@ -329,16 +384,17 @@ void TableModeler::estimate(PointCloudPtr pCloud, PointCloud& planeSegmented, Po
  *  \param pPlaneCoefficients The coefficients of the plane (normal's components and bias)
  *  \param T The 3D affine transformation itself
  */
-void TableModeler::getTransformation(pcl::ModelCoefficients::Ptr pCoefficients, Eigen::Affine3f& T)
+void TableModeler::getTransformation(PointCloudPtr pPlane, pcl::ModelCoefficients::Ptr pCoefficients, PointT referencePoint, PointT contourPoint, Eigen::Affine3f& T)
 {
-    Eigen::Vector3f origin (0, 0, pCoefficients->values[3]/pCoefficients->values[2]);
     Eigen::Vector3f n (pCoefficients->values[0], pCoefficients->values[1], pCoefficients->values[2]);
     //n = -n; // if it is upside down, but it is not now :D
-    Eigen::Vector3f u ( 1, 1, (- n.x() - n.y() ) / n.z() );
-    Eigen::Vector3f v = n.cross(u);
+    Eigen::Vector3f reference = referencePoint.getVector3fMap();
+    Eigen::Vector3f u = contourPoint.getVector3fMap() - reference;
     
-    pcl::getTransformationFromTwoUnitVectorsAndOrigin(n.normalized(), v.normalized(), -origin, T);
+    //pcl::getTransformationFromTwoUnitVectorsAndOrigin(n.normalized(), v.normalized(), -origin, T);
+    pcl::getTransformationFromTwoUnitVectorsAndOrigin(n, u, reference, T);
 }
+
 
 float getPVal(int confidence)
 {
@@ -361,7 +417,7 @@ float getPVal(int confidence)
  *  \param min Minimum value of the 3D bounding box
  *  \param max Maximum value of the 3D bounding box
  */
-void TableModeler::getMinMax3D(PointCloudPtr pCloud, int d, int confidence, Point& min, Point& max)
+void TableModeler::getMinMax3D(PointCloudPtr pCloud, int d, int confidence, PointT& min, PointT& max)
 {
     cv::Mat values (pCloud->size(), 3, cv::DataType<float>::type);
     for (int i = 0; i < pCloud->size(); i++)
@@ -398,67 +454,145 @@ void TableModeler::getMinMax3D(PointCloudPtr pCloud, int d, int confidence, Poin
  *  \param pCloud A cloud
  *  \return Includes the origin
  */
-bool TableModeler::isCloudIncludingOrigin(PointCloudPtr pPlane)
+bool TableModeler::isCloudIncludingOrigin(PointCloudPtr pPlane, float leafSize)
 {
 	for (int i = 0; i < pPlane->points.size(); i++)
 	{
 		// Is there any point in the camera viewpoint direction (or close to)?
 		// That is having x and y close to 0
-		const Point & p =  pPlane->points[i];
+		const PointT & p =  pPlane->points[i];
         float dist = sqrtf(powf(p.x,2)+powf(p.y,2)+powf(p.z,2));
         
-		if ( dist > 0 && dist < 2 * m_LeafSize)
+		if ( dist > 0 && dist < 2 * leafSize)
 			return true;
 	}
     
 	return false;
 }
 
-/** \brief Filter the points given a 3D bounding box.
+/** \brief Determines wheter or not a cloud includes the reference point
+ *  \param pCloud A cloud
+ *  \param reference A reference point
+ *  \return Whether or not includes the reference point
+ */
+bool TableModeler::isCloudIncludingReference(PointCloudPtr pPlane, float leafSize, PointT reference)
+{
+	for (int i = 0; i < pPlane->points.size(); i++)
+	{
+		// Is there any point in the camera viewpoint direction (or close to)?
+		// That is having x and y close to 0
+		const PointT & p =  pPlane->points[i];
+        float dist = sqrtf(powf(p.x - reference.x, 2) + powf(p.y - reference.y, 2) + powf(p.z - reference.z, 2));
+        
+		if ( dist > 0 && dist < 2 * leafSize)
+			return true;
+	}
+    
+	return false;
+}
+
+/** \brief Filter the points given a 3D bounding box
  *  \param pCloud A cloud to filter
  *  \param min The minimum of the box
  *  \param max The maximum of the box
  *  \param cloudFiltered Points of the cloud kept (insiders)
  *  \param cloudRemoved Points of the cloud removed (outsiders)
  */
-void TableModeler::filter(PointCloudPtr pCloud, Point min, Point max, PointCloud& cloudFiltered, PointCloud& cloudRemoved)
+void TableModeler::filter(PointCloudPtr pCloud, PointT min, PointT max, PointCloud& cloudFiltered, PointCloud& cloudRemoved)
 {
     // build the condition for "within tabletop region"
-    pcl::ConditionAnd<Point>::Ptr condition (new pcl::ConditionAnd<Point> ());
+    pcl::ConditionAnd<PointT>::Ptr condition (new pcl::ConditionAnd<PointT> ());
     
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::GT, min.x)));
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::LT, max.x)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, min.x)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, max.x)));
     
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::GT, min.y)));
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::LT, max.y)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, min.y)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, max.y)));
     
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::GT, min.z)));
-    condition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::LT, max.z)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::GT, min.z)));
+    condition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, max.z)));
     
     // build the filter
-    pcl::ConditionalRemoval<Point> removal (condition, true); // true = keep indices from filtered points
+    pcl::ConditionalRemoval<PointT> removal (condition, true); // true = keep indices from filtered points
     removal.setInputCloud (pCloud);
     removal.filter(cloudFiltered);
     
-    pcl::ExtractIndices<Point> extractor;
+    pcl::ExtractIndices<PointT> extractor;
     extractor.setInputCloud(pCloud);
     extractor.setIndices(removal.getRemovedIndices());
     extractor.filter(cloudRemoved);
 }
 
-void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr pTable, Eigen::Affine3f T, Point min, Point max)
+/** \brief Extract the contour of the potential table plane
+ *  \param pDepthFrame Frame in which the table plane is present
+ *  \param max closingLevel In case the table plane cloud is containing small holes
+ *  \param tableCloud The extracted table plane
+ *  \param tableCoefficients The four table cofficients, i.e. Ax + By + Cz + D = 0
+ *  \param tableContourCloud The organized cloud representing the table plane's contour line
+ */
+void TableModeler::extractTableContour(DepthFrame::Ptr pDepthFrame, int closingLevel, PointCloud& table, pcl::ModelCoefficients& tableCoefficients, PointCloud& contourCloud)
+{
+    PointCloudPtr pCloud (new PointCloud);
+    pDepthFrame->getPointCloud(*pCloud);
+    
+    PointT ref = pDepthFrame->getReferencePoint();
+    
+    PointCloudPtr pNonTable (new PointCloud); // not used
+    estimate(pCloud, 0.005, ref, table, *pNonTable, tableCoefficients);
+    
+    PointCloudPtr pTable (new PointCloud);
+    *pTable = table;
+    
+    cv::Mat tableMat;
+    PointCloudToMat(pTable, pDepthFrame->getResY(), pDepthFrame->getResX(), tableMat);
+    
+    cv::Mat tableOpenendMask, tableErodedMask;
+    cvx::close(tableMat > 0, closingLevel, tableOpenendMask);
+    cvx::erode(tableOpenendMask, 3, tableErodedMask); // hardcoded
+    
+    vector< vector<cv::Point> > contours;
+    cv::findContours(tableErodedMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    
+    cv::Mat contourMask (tableErodedMask.size(), CV_8UC1, cv::Scalar(0));
+    cv::drawContours(contourMask, contours, 0, cv::Scalar(255)); // 0-th should be the more external contour
+    
+    PointCloudPtr pContourCloud (new PointCloud);
+    pDepthFrame->getPointCloud(contourMask, contourCloud);
+}
+
+/** \brief Find the closest point of the countour to the reference point
+ *  \param pContourCloud The organized cloud representing a contour line
+ *  \param referencePoint Reference point
+ *  \param nearestContourPoint Point of contour cloud closest to the refrence
+ */
+void TableModeler::findClosestContourPointToReference(PointCloudPtr pContourCloud, PointT referencePoint, PointT& closestPoint)
+{
+    int minIdx;
+    float minDist = std::numeric_limits<float>::infinity();
+    for (int i = 0; i < pContourCloud->points.size(); i++)
+    {
+        if (pContourCloud->points[i].z > 0)
+        {
+            float dist = sqrt(pow(pContourCloud->points[i].x - referencePoint.x, 2) + pow(pContourCloud->points[i].y - referencePoint.y, 2) + pow(pContourCloud->points[i].z - referencePoint.z, 2));
+            
+            if (dist < minDist)
+            {
+                minDist = dist;
+                minIdx = i;
+            }
+        }
+    }
+    
+    closestPoint = pContourCloud->points[minIdx];
+}
+
+void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr pTable, PointCloudPtr pSceneTransformed, PointCloudPtr pTableTransformed, PointT min, PointT max)
 {
     pcl::visualization::PCLVisualizer pViz;
     pViz.addCoordinateSystem();
 
     pViz.addPointCloud(pScene, "scene");
     pViz.addPointCloud(pTable, "plane");
-    
-    PointCloudPtr pSceneTransformed(new PointCloud);
-    PointCloudPtr pTableTransformed(new PointCloud);
-    
-    pcl::transformPointCloud(*pScene, *pSceneTransformed, T);
-    pcl::transformPointCloud(*pTable, *pTableTransformed, T);
     
     PointCloudPtr pTableTransformedFiltered(new PointCloud);
     PointCloudPtr pTableTransformedRemoved(new PointCloud);
@@ -502,7 +636,7 @@ void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr 
 //}
 //
 //
-//void TableModeler::segmentTableTop(PointCloudPtr pCloud, Point min, Point max, float offset, Eigen::Affine3f yton, Eigen::Affine3f ytonInv, PointCloud& cloudObjs)
+//void TableModeler::segmentTableTop(PointCloudPtr pCloud, PointT min, PointT max, float offset, Eigen::Affine3f yton, Eigen::Affine3f ytonInv, PointCloud& cloudObjs)
 //{
 //	PointCloudPtr pCloudAux (new PointCloud());
 //	PointCloudPtr pCloudAuxF (new PointCloud());
@@ -511,18 +645,18 @@ void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr 
 //	pcl::transformPointCloud(*pCloud, *pCloudAux, yton);
 //	
 //    // build the condition
-//    pcl::ConditionAnd<Point>::Ptr inTableTopRegionCondition (new pcl::ConditionAnd<Point> ());
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::GT, min.x)));
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::LT, max.x)));
+//    pcl::ConditionAnd<PointT>::Ptr inTableTopRegionCondition (new pcl::ConditionAnd<PointT> ());
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, min.x)));
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, max.x)));
 //    
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::GT, max.y)));
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::LT, max.y + offset)));
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, max.y)));
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, max.y + offset)));
 //    
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::GT, min.z)));
-//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::LT, max.z)));
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::GT, min.z)));
+//    inTableTopRegionCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, max.z)));
 //    
 //    // build the filter
-//    pcl::ConditionalRemoval<Point> condrem (inTableTopRegionCondition);
+//    pcl::ConditionalRemoval<PointT> condrem (inTableTopRegionCondition);
 //    
 //    condrem.setInputCloud (pCloudAux);
 //    condrem.setKeepOrganized(true);
@@ -553,7 +687,7 @@ void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr 
 //
 //
 //void TableModeler::segmentInteractionRegion(PointCloudPtr pCloud,
-//                                            Point min, Point max,
+//                                            PointT min, PointT max,
 //                                            float offset, Eigen::Affine3f yton, Eigen::Affine3f ytonInv,
 //                                            PointCloud& cloudObjs)
 //{
@@ -572,18 +706,18 @@ void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr 
 ////                 max.y, max.y + 1.5,
 ////                 min.z - m_InteractionBorder, max.z + m_InteractionBorder, 1, 0, 0, "cube2");
 //    
-//    pcl::ConditionalRemoval<Point> condrem;
+//    pcl::ConditionalRemoval<PointT> condrem;
 //    
 //    // build the condition
-//    pcl::ConditionAnd<Point>::Ptr inInteractionRegionRangeCondition (new pcl::ConditionAnd<Point> ());
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::GT, min.x - m_InteractionBorder)));
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::LT, max.x + m_InteractionBorder)));
+//    pcl::ConditionAnd<PointT>::Ptr inInteractionRegionRangeCondition (new pcl::ConditionAnd<PointT> ());
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, min.x - m_InteractionBorder)));
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, max.x + m_InteractionBorder)));
 //    
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::GT, max.y)));
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::LT, max.y + offset + m_InteractionBorder)));
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, max.y)));
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, max.y + offset + m_InteractionBorder)));
 //    
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::GT, min.z - m_InteractionBorder)));
-//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::LT, max.z + m_InteractionBorder)));
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::GT, min.z - m_InteractionBorder)));
+//    inInteractionRegionRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, max.z + m_InteractionBorder)));
 //    
 //    condrem.setCondition(inInteractionRegionRangeCondition);
 //    
@@ -594,15 +728,15 @@ void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr 
 //    
 //    pCloudAuxF.swap(pCloudAux);
 //    
-//    pcl::ConditionOr<Point>::Ptr outTableTopRangeCondition (new pcl::ConditionOr<Point> ());
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::LT, min.x)));
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("x", pcl::ComparisonOps::GT, max.x)));
+//    pcl::ConditionOr<PointT>::Ptr outTableTopRangeCondition (new pcl::ConditionOr<PointT> ());
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, min.x)));
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, max.x)));
 //    
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::LT, max.y)));
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("y", pcl::ComparisonOps::GT, max.y + offset)));
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, max.y)));
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, max.y + offset)));
 //    
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::LT, min.z)));
-//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<Point>::ConstPtr (new pcl::FieldComparison<Point> ("z", pcl::ComparisonOps::GT, max.z)));
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, min.z)));
+//    outTableTopRangeCondition->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::GT, max.z)));
 //    
 //    condrem.setCondition(outTableTopRangeCondition);
 //    condrem.setInputCloud (pCloudAux);

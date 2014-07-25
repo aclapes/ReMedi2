@@ -29,6 +29,8 @@ using namespace boost::assign;
 #define READER_DELAY_1                  2
 #define READER_DELAY_2                  0
 
+#define DEFAULT_FRAME                   2
+
 // InteractiveRegisterer's constants
 #define IR_VIS_WND_HEIGHT               480
 #define IR_VIS_WND_WIDTH                640
@@ -36,8 +38,7 @@ using namespace boost::assign;
 #define IR_VIS_HP                       2
 #define IR_VIS_DIST                     -2 // -2 meters
 #define IR_VIS_MARKER_RADIUS            0.015
-#define IR_DEFAULT_FRAME                2
-#define IR_NUM_OF_POINTS                -1 // 5
+#define IR_NUM_OF_POINTS                -1
 
 // BackgroundSubtractor's constants
 #define BS_NUM_OF_SAMPLES               400
@@ -48,7 +49,7 @@ using namespace boost::assign;
 #define BS_OPENING                      2
 
 // TableModeler's constants
-#define TM_LEAF_SIZE                    0.02
+#define TM_LEAF_SIZE                    0.01
 #define TM_NORMAL_RADIUS                0.05
 #define TM_SAC_ITERS                    200
 #define TM_SAC_DIST_THRESH              0.03
@@ -127,9 +128,10 @@ int main()
     ReMedi sys;
     sys.setBackgroundSequence(pBgSeq);
     sys.setInputSequences(pSequences);
+    sys.setDefaultFrame(DEFAULT_FRAME);
     
-    sys.setRegistererParameters(IR_NUM_OF_POINTS, IR_DEFAULT_FRAME, IR_VIS_WND_HEIGHT, IR_VIS_WND_WIDTH, IR_VIS_VP, IR_VIS_HP, IR_VIS_DIST, IR_VIS_MARKER_RADIUS);
-    sys.setTableModelerParameters(IR_DEFAULT_FRAME, TM_LEAF_SIZE, TM_NORMAL_RADIUS, TM_SAC_ITERS, TM_SAC_DIST_THRESH, TM_TT_Y_OFFSET, TM_INTERACTIVE_BORDER_DIST, TM_CONF_LEVEL);
+    sys.setRegistererParameters(IR_NUM_OF_POINTS, IR_VIS_WND_HEIGHT, IR_VIS_WND_WIDTH, IR_VIS_VP, IR_VIS_HP, IR_VIS_DIST, IR_VIS_MARKER_RADIUS);
+    sys.setTableModelerParameters(TM_LEAF_SIZE, TM_NORMAL_RADIUS, TM_SAC_ITERS, TM_SAC_DIST_THRESH, TM_TT_Y_OFFSET, TM_INTERACTIVE_BORDER_DIST, TM_CONF_LEVEL);
     sys.setSubtractorParameters(BS_NUM_OF_SAMPLES, BS_MODALITY, BS_K, BS_LRATE, BS_BGRATIO, BS_OPENING);
     sys.setMonitorizerParameters(MO_LEAF_SIZE, MO_CLUSTERS_DIST_FACTOR);
     

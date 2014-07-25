@@ -425,19 +425,59 @@ void cvx::fillErrorsWithMedian(cv::InputArray src, int size, cv::OutputArray dst
     dst.getMatRef() = _dst;
 }
 
-void cvx::open(cv::InputArray src, int smoothSize, cv::OutputArray dst)
+void cvx::dilate(cv::InputArray src, int size, cv::OutputArray dst)
 {
     cv::Mat _src = src.getMat();
     cv::Mat& _dst = dst.getMatRef();
     
-    if (smoothSize == 0)
+    if (size == 0)
     {
         _src.copyTo(_dst);
     }
-    else if (smoothSize > 0)
+    else if (size > 0)
+    {
+        cv::Mat element = cv::getStructuringElement( cv::MORPH_DILATE, cv::Size( 2 * size + 1, 2 * size + 1 ), cv::Point( size, size ) );
+        
+        cv::Mat aux;
+        cv::dilate(_src, _dst, element);
+    }
+}
+
+void cvx::erode(cv::InputArray src, int size, cv::OutputArray dst)
+{
+    cv::Mat _src = src.getMat();
+    cv::Mat& _dst = dst.getMatRef();
+    
+    if (size == 0)
+    {
+        _src.copyTo(_dst);
+    }
+    else if (size > 0)
+    {
+        cv::Mat element = cv::getStructuringElement( cv::MORPH_ERODE, cv::Size( 2 * size + 1, 2 * size + 1 ), cv::Point( size, size ) );
+        
+        cv::Mat aux;
+        cv::erode(_src, _dst, element);
+    }
+}
+
+void cvx::open(cv::InputArray src, int size, cv::OutputArray dst)
+{
+//    cv::Mat aux;
+//    erode(src.getMat(), size, aux);
+//    dilate(aux, size, dst.getMatRef());
+    
+    cv::Mat _src = src.getMat();
+    cv::Mat& _dst = dst.getMatRef();
+    
+    if (size == 0)
+    {
+        _src.copyTo(_dst);
+    }
+    else if (size > 0)
     {
         int erosion_size, dilation_size;
-        erosion_size = dilation_size = smoothSize;
+        erosion_size = dilation_size = size;
         
         cv::Mat erode_element = cv::getStructuringElement( cv::MORPH_ERODE, cv::Size( 2 * erosion_size + 1, 2 * erosion_size + 1 ), cv::Point( erosion_size, erosion_size ) );
         cv::Mat dilate_element = cv::getStructuringElement( cv::MORPH_DILATE, cv::Size( 2 * dilation_size + 1, 2 * dilation_size + 1 ), cv::Point( dilation_size, dilation_size ) );
@@ -448,19 +488,23 @@ void cvx::open(cv::InputArray src, int smoothSize, cv::OutputArray dst)
     }
 }
 
-void cvx::close(cv::InputArray src, int smoothSize, cv::OutputArray dst)
+void cvx::close(cv::InputArray src, int size, cv::OutputArray dst)
 {
+//    cv::Mat aux;
+//    dilate(src.getMat(), size, aux);
+//    erode(aux, size, dst.getMatRef());
+
     cv::Mat _src = src.getMat();
     cv::Mat& _dst = dst.getMatRef();
     
-    if (smoothSize == 0)
+    if (size == 0)
     {
         _src.copyTo(_dst);
     }
-    else if (smoothSize > 0)
+    else if (size > 0)
     {
         int erosion_size, dilation_size;
-        erosion_size = dilation_size = smoothSize;
+        erosion_size = dilation_size = size;
         
         cv::Mat erode_element = cv::getStructuringElement( cv::MORPH_ERODE, cv::Size( 2 * erosion_size + 1, 2 * erosion_size + 1 ), cv::Point( erosion_size, erosion_size ) );
         cv::Mat dilate_element = cv::getStructuringElement( cv::MORPH_DILATE, cv::Size( 2 * dilation_size + 1, 2 * dilation_size + 1 ), cv::Point( dilation_size, dilation_size ) );

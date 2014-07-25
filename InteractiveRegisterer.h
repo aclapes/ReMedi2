@@ -4,6 +4,7 @@
 #include "DepthFrame.h"
 #include "ColorFrame.h"
 #include "ColorDepthFrame.h"
+#include "Sequence.h"
 
 #define MEASURE_FUNCTION_TIME
 #include <pcl/visualization/pcl_visualizer.h>
@@ -12,11 +13,7 @@
 #include <pcl/correspondence.h>
 #include <pcl/io/pcd_io.h>
 
-#include <pcl/registration/icp.h>
-#include <pcl/registration/icp_nl.h>
 #include <pcl/filters/voxel_grid.h>
-
-#include <pcl/visualization/common/common.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -45,8 +42,8 @@ static const float g_Colors[][3] = {
 
 class InteractiveRegisterer
 {
-    typedef pcl::PointXYZ PointT;
-    typedef pcl::PointXYZRGB ColorPointT;
+    typedef pcl::PointXYZ Point;
+    typedef pcl::PointXYZRGB ColorPoint;
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
     typedef pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloudPtr;
     typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
@@ -87,11 +84,22 @@ public:
      */
     void computeTransformations();
     
+    /** \brief Set the registration of the several views in the sequence
+     *  \param seq A sequence of Depth frames
+     */
+    void registrate(Sequence<DepthFrame>& regSeq);
+    
+    /** \brief Set the registration of the several views in the sequence
+     *  \param seq An sequence of ColorDepth frames
+     */
+    void registrate(Sequence<ColorDepthFrame>& regSeq);
+    
     /** \brief Registers all the frames to the 0-th frame and return the corresponding registered clouds
      *  \param pUnregFrames A list of unregistered clouds
      *  \param pRegClouds A list of registered clouds
      */
     void registrate(vector<ColorDepthFrame::Ptr> pUnregFrames, vector<PointCloudPtr>& pRegClouds);
+    
     /** \brief Registers all the clouds to the 0-th cloud and return the registered clouds
      *  \param pUnregClouds A list of unregistered clouds
      *  \param pRegClouds A list of registered clouds
@@ -116,12 +124,18 @@ private:
      */
     void setDefaultCamera(VisualizerPtr pViz, int vid);
     
+    /** \brief Get the set of first correspondences across the views
+     *  \return correspondences List containing the first correspondences
+     */
+    vector<pcl::PointXYZ> getFirstCorrespondences();
+    
     /** \brief Compute the orthogonal tranformation of a set of points to another (from src to target)
      * \param pSrcMarkersCloud Source set of markers to register to target
      * \param pTgtMarkersCloud Target set of markers
      * \param T The 4x4 orthogonal transformation matrix
      */
     void getTransformation(const PointCloudPtr pSrcMarkersCloud, const PointCloudPtr pTgtMarkersCloud, Eigen::Matrix4f& T);
+
     
     //
     // Members
@@ -144,6 +158,7 @@ private:
     int m_Viewport; // current viewport
 
     vector<ColorDepthFrame::Ptr> m_pFrames;
+    
     vector<ColorPointCloudPtr> m_pClouds;
     vector<PointCloudPtr> m_pMarkers;
 
