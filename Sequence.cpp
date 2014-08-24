@@ -7,6 +7,7 @@
 //
 
 #include "Sequence.h"
+#include "conversion.h"
 
 //
 // Sequence
@@ -59,7 +60,7 @@ SequenceBase<FrameT>& SequenceBase<FrameT>::operator=(const SequenceBase<FrameT>
 }
 
 template<typename FrameT>
-string SequenceBase<FrameT>::getPath()
+string SequenceBase<FrameT>::getPath() const
 {
     return m_Path;
 }
@@ -71,7 +72,7 @@ void SequenceBase<FrameT>::setPath(string path)
 }
 
 template<typename FrameT>
-string SequenceBase<FrameT>::getName()
+string SequenceBase<FrameT>::getName() const
 {
     return m_Name;
 }
@@ -83,7 +84,7 @@ void SequenceBase<FrameT>::setName(string name)
 }
 
 template<typename FrameT>
-int SequenceBase<FrameT>::getNumOfViews()
+int SequenceBase<FrameT>::getNumOfViews() const
 {
     return m_Paths.size();
 }
@@ -94,6 +95,12 @@ void SequenceBase<FrameT>::setNumOfViews(int n)
     m_Paths.resize(n);
     m_FrameCounter.resize(n);
     m_Delays.resize(n,0);
+}
+
+template<typename FrameT>
+vector<vector<string> > SequenceBase<FrameT>::getFramesPaths() const
+{
+    return m_Paths;
 }
 
 template<typename FrameT>
@@ -121,6 +128,12 @@ void SequenceBase<FrameT>::setStream(vector<typename FrameT::Ptr> stream, int vi
         m_Streams.push_back(vector<typename FrameT::Ptr>());
     
     m_Streams[view] = stream;
+}
+
+template<typename FrameT>
+vector<vector<typename FrameT::Ptr> > SequenceBase<FrameT>::getStreams() const
+{
+    return m_Streams;
 }
 
 template<typename FrameT>
@@ -249,6 +262,40 @@ vector<typename FrameT::Ptr> SequenceBase<FrameT>::getFrames(int i)
 }
 
 template<typename FrameT>
+vector<typename FrameT::Ptr> SequenceBase<FrameT>::getFrames(vector<string> filenames)
+{
+    vector<typename FrameT::Ptr> frames;
+    for (int v = 0; v < m_Paths.size(); v++)
+    {
+        int idx = searchByName(m_Paths[v], filenames[v]);
+        
+        typename FrameT::Ptr frame (new FrameT);
+        if (m_Streams[v].size() > 0)
+            frame = m_Streams[v][idx];
+        else
+            readFrame(m_Paths[v], idx, *frame);
+        
+        frames.push_back(frame);
+    }
+    
+    return frames;
+}
+
+// Get current frames filenames
+template<typename FrameT>
+vector<string> SequenceBase<FrameT>::getFramesFilenames()
+{
+    vector<string> filenames (m_Paths.size());
+    
+    for (int v = 0; v < filenames.size(); v++)
+    {
+        filenames[v] = getFilenameFromPath(m_Paths[v][m_FrameCounter[v] + m_Delays[v]]);
+    }
+    
+    return filenames;
+}
+
+template<typename FrameT>
 vector<int> SequenceBase<FrameT>::getNumOfFrames()
 {
     vector<int> numOfFrames;
@@ -287,6 +334,24 @@ vector<int> SequenceBase<FrameT>::at()
         frameDelayedCounter[i] = m_FrameCounter[i] + m_Delays[i];
     
     return frameDelayedCounter;
+}
+
+template<typename FrameT>
+vector<int> SequenceBase<FrameT>::getFrameCounters() const
+{
+    return m_FrameCounter;
+}
+
+template<typename FrameT>
+void SequenceBase<FrameT>::setFrameCounters(vector<int> counter)
+{
+    m_FrameCounter = counter;
+}
+
+template<typename FrameT>
+vector<int> SequenceBase<FrameT>::getDelays() const
+{
+    return m_Delays;
 }
 
 template<typename FrameT>
@@ -329,7 +394,116 @@ void SequenceBase<FrameT>::allocate()
     }
 }
 
+
+//
+// Sequence
+//
+
+template<typename FrameT>
+Sequence<FrameT>::Sequence()
+{
+}
+
+template<typename FrameT>
+Sequence<FrameT>::Sequence(int numOfViews)
+: SequenceBase<FrameT>(numOfViews)
+{
+}
+
+template<typename FrameT>
+Sequence<FrameT>::Sequence(vector< vector<string> > paths)
+: SequenceBase<FrameT>(paths)
+{
+}
+
+template<typename FrameT>
+Sequence<FrameT>::Sequence(const Sequence<FrameT>& rhs)
+: SequenceBase<FrameT>(rhs)
+{
+    *this = rhs;
+}
+
+template<typename FrameT>
+Sequence<FrameT>& Sequence<FrameT>::operator=(const Sequence<FrameT>& rhs)
+{
+    if (this != &rhs)
+    {
+        SequenceBase<FrameT>::operator=(rhs);
+    }
+    
+    return *this;
+}
+
+
+//
+// Sequence<ColorFrame>
+//
+
+Sequence<ColorFrame>::Sequence()
+{
+}
+
+Sequence<ColorFrame>::Sequence(int numOfViews)
+: SequenceBase<ColorFrame>(numOfViews)
+{
+}
+
+Sequence<ColorFrame>::Sequence(vector< vector<string> > paths)
+: SequenceBase<ColorFrame>(paths)
+{
+}
+
+Sequence<ColorFrame>::Sequence(const Sequence<ColorFrame>& rhs)
+: SequenceBase<ColorFrame>(rhs)
+{
+    *this = rhs;
+}
+
+Sequence<ColorFrame>& Sequence<ColorFrame>::operator=(const Sequence<ColorFrame>& rhs)
+{
+    if (this != &rhs)
+    {
+        SequenceBase<ColorFrame>::operator=(rhs);
+    }
+    
+    return *this;
+}
+
+Sequence<ColorFrame>::Sequence(const Sequence<ColorDepthFrame>& rhs)
+: SequenceBase<ColorFrame>()
+{
+    *this = rhs;
+}
+
+Sequence<ColorFrame>& Sequence<ColorFrame>::operator=(const Sequence<ColorDepthFrame>& rhs)
+{
+    m_Path = rhs.getPath();
+    m_Name = rhs.getName();
+    
+    // Paths copy
+    vector<vector< pair<string,string> > > paths = rhs.getFramesPaths();
+    m_Paths.resize(paths.size());
+    for (int v = 0; v < paths.size(); v++)
+        for (int f = 0; f < paths[v].size(); f++)
+            m_Paths[v].push_back(paths[v][f].first);
+    
+    // Streams copy
+    vector< vector<ColorDepthFrame::Ptr> > streams = rhs.getStreams();
+    m_Streams.resize(streams.size());
+    for (int v = 0; v < streams.size(); v++)
+        for (int f = 0; f < streams[v].size(); f++)
+            m_Streams[v].push_back(streams[v][f]);
+    
+    m_FrameCounter = rhs.getFrameCounters();
+    m_Delays = rhs.getDelays();
+    
+    return *this;
+}
+
+
+//
 // Sequence<DepthFrame>
+//
 
 Sequence<DepthFrame>::Sequence()
 {
@@ -345,8 +519,14 @@ Sequence<DepthFrame>::Sequence(vector< vector<string> > paths)
 {
 }
 
-Sequence<DepthFrame>::Sequence(const Sequence& rhs)
-: SequenceBase(rhs)
+Sequence<DepthFrame>::Sequence(const Sequence<DepthFrame>& rhs)
+: SequenceBase<DepthFrame>(rhs)
+{
+    *this = rhs;
+}
+
+Sequence<DepthFrame>::Sequence(const Sequence<ColorDepthFrame>& rhs)
+: SequenceBase<DepthFrame>()
 {
     *this = rhs;
 }
@@ -359,6 +539,34 @@ Sequence<DepthFrame>& Sequence<DepthFrame>::operator=(const Sequence<DepthFrame>
         m_ReferencePoints = rhs.m_ReferencePoints;
         m_Transformations = rhs.m_Transformations;
     }
+    
+    return *this;
+}
+
+Sequence<DepthFrame>& Sequence<DepthFrame>::operator=(const Sequence<ColorDepthFrame>& rhs)
+{
+    m_Path = rhs.getPath();
+    m_Name = rhs.getName();
+    
+    // Paths copy
+    vector<vector< pair<string,string> > > paths = rhs.getFramesPaths();
+    m_Paths.resize(paths.size());
+    for (int v = 0; v < paths.size(); v++)
+        for (int f = 0; f < paths[v].size(); f++)
+            m_Paths[v].push_back(paths[v][f].second);
+    
+    // Streams copy
+    vector< vector<ColorDepthFrame::Ptr> > streams = rhs.getStreams();
+    m_Streams.resize(streams.size());
+    for (int v = 0; v < streams.size(); v++)
+        for (int f = 0; f < streams[v].size(); f++)
+            m_Streams[v].push_back(streams[v][f]);
+    
+    m_FrameCounter = rhs.getFrameCounters();
+    m_Delays = rhs.getDelays();
+    
+    m_ReferencePoints = rhs.getReferencePoints();
+    m_Transformations = rhs.getRegistrationTransformations();
     
     return *this;
 }
@@ -426,7 +634,7 @@ Sequence<ColorDepthFrame>& Sequence<ColorDepthFrame>::operator=(const Sequence<C
     return *this;
 }
 
-string Sequence<ColorDepthFrame>::getPath()
+string Sequence<ColorDepthFrame>::getPath() const
 {
     return m_Path;
 }
@@ -436,7 +644,7 @@ void Sequence<ColorDepthFrame>::setPath(string path)
     m_Path = path;
 }
 
-string Sequence<ColorDepthFrame>::getName()
+string Sequence<ColorDepthFrame>::getName() const
 {
     return m_Name;
 }
@@ -446,7 +654,7 @@ void Sequence<ColorDepthFrame>::setName(string name)
     m_Name = name;
 }
 
-int Sequence<ColorDepthFrame>::getNumOfViews()
+int Sequence<ColorDepthFrame>::getNumOfViews() const
 {
     return m_Paths.size();
 }
@@ -464,6 +672,11 @@ void Sequence<ColorDepthFrame>::setFramesPaths(vector<vector< pair<string,string
     
     m_FrameCounter.resize(m_Paths.size(), -1);
     m_Delays.resize(m_Paths.size(), 0);
+}
+
+vector<vector< pair<string,string> > > Sequence<ColorDepthFrame>::getFramesPaths() const
+{
+    return m_Paths;
 }
 
 void Sequence<ColorDepthFrame>::addStream(vector<ColorDepthFrame::Ptr> stream)
@@ -488,6 +701,11 @@ void Sequence<ColorDepthFrame>::setStreams(vector<vector<ColorDepthFrame::Ptr> >
     
     m_FrameCounter.resize(m_Streams.size(), -1);
     m_Delays.resize(m_Streams.size(), 0);
+}
+
+vector<vector<ColorDepthFrame::Ptr> > Sequence<ColorDepthFrame>::getStreams() const
+{
+    return m_Streams;
 }
 
 void Sequence<ColorDepthFrame>::addFramesFilePath(string colorPath, string depthPath, int view)
@@ -615,6 +833,44 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(int i)
     return frames;
 }
 
+vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(vector<string> filenames)
+{
+    vector<ColorDepthFrame::Ptr> frames;
+    for (int v = 0; v < m_Paths.size(); v++)
+    {
+        int idx = searchByName(m_Paths[v], filenames[v]);
+        
+        ColorDepthFrame::Ptr frame (new ColorDepthFrame);
+        if (m_Streams[v].size() > 0)
+            frame = m_Streams[v][idx];
+        else
+            readFrame(m_Paths[v], idx, *frame);
+        
+        if (v < m_Transformations.size())
+        {
+            frame->setReferencePoint(m_ReferencePoints[v]);
+            frame->setRegistrationTransformation(m_Transformations[v]);
+        }
+        
+        frames.push_back(frame);
+    }
+    
+    return frames;
+}
+
+// Get current frames filenames
+vector<string> Sequence<ColorDepthFrame>::getFramesFilenames()
+{
+    vector<string> filenames (m_Paths.size());
+    
+    for (int v = 0; v < filenames.size(); v++)
+    {
+        filenames[v] = getFilenameFromPath(m_Paths[v][m_FrameCounter[v] + m_Delays[v]].first);
+    }
+    
+    return filenames;
+}
+
 vector<int> Sequence<ColorDepthFrame>::getNumOfFrames()
 {
     vector<int> numOfFrames;
@@ -657,14 +913,34 @@ void Sequence<ColorDepthFrame>::setDelays(vector<int> delays)
     m_Delays = delays;
 }
 
+vector<int> Sequence<ColorDepthFrame>::getDelays() const
+{
+    return m_Delays;
+}
+
+void Sequence<ColorDepthFrame>::setFrameCounters(vector<int> counters)
+{
+    m_FrameCounter = counters;
+}
+
+vector<int> Sequence<ColorDepthFrame>::getFrameCounters() const
+{
+    return m_FrameCounter;
+}
+
 void Sequence<ColorDepthFrame>::setReferencePoints(vector<pcl::PointXYZ> points)
 {
     m_ReferencePoints = points;
 }
 
-vector<pcl::PointXYZ> Sequence<ColorDepthFrame>::getReferencePoints()
+vector<pcl::PointXYZ> Sequence<ColorDepthFrame>::getReferencePoints() const
 {
     return m_ReferencePoints;
+}
+
+vector<Eigen::Matrix4f> Sequence<ColorDepthFrame>::getRegistrationTransformations() const
+{
+    return m_Transformations;
 }
 
 void Sequence<ColorDepthFrame>::setRegistrationTransformations(vector<Eigen::Matrix4f> transformations)
@@ -710,6 +986,17 @@ void Sequence<ColorDepthFrame>::readFrame(vector< pair<string,string> > paths, i
 template class SequenceBase<Frame>;
 template class SequenceBase<ColorFrame>;
 template class SequenceBase<DepthFrame>;
+//template class SequenceBase<ColorDepthFrame>;
 
-template class Sequence<DepthFrame>;
+
+template class Sequence<Frame>;
+template class Sequence<ColorFrame>;
+//template class Sequence<DepthFrame>;
+//template class Sequence<ColorDepthFrame>;
+
+//template SequenceBase<DepthFrame>::SequenceBase(const SequenceBase<ColorDepthFrame>& rhs);
+//template SequenceBase<DepthFrame>& SequenceBase<DepthFrame>::operator=(const SequenceBase<ColorDepthFrame>& rhs);
+//
+//template Sequence<DepthFrame>::Sequence(const Sequence<ColorDepthFrame>& rhs);
+//template Sequence<DepthFrame>& Sequence<DepthFrame>::operator=(const Sequence<ColorDepthFrame>& rhs);
 // ------------------------------------------------------

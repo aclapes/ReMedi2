@@ -26,9 +26,10 @@ public:
     
     void setPreallocation(bool prealloc = true);
     
-    void read(vector< pair<string,string> > paths, Sequence<ColorFrame>& seq);
-    void read(vector< pair<string,string> > paths, Sequence<DepthFrame>& seq);
-    void read(vector< pair<string,string> > paths, Sequence<ColorDepthFrame>& seq);
+    void read(vector<string> dirsPaths, Sequence<Frame>& seq);
+//    void read(vector<string> dirsPaths, Sequence<ColorFrame>& seq);
+//    void read(vector<string> dirsPaths, Sequence<DepthFrame>& seq);
+    void read(vector<string> colorDirsPaths, vector<string> depthDirsPaths, Sequence<ColorDepthFrame>& seq);
     
 private:
     void loadFilePaths(string dir, const char* filetype, vector<string>& filePaths);

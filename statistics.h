@@ -92,5 +92,6 @@ void computeConfidenceInterval(cv::Mat values, float* mean, float* confidence, f
 
 float computeF1Score(int tp, int fp, int fn);
 
+void writeParametersToFile(string file, vector<string> names, vector<vector<double> > values, bool append = false);
 
 #endif /* defined(__remedi2__statistics__) */

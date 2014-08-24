@@ -29,17 +29,17 @@ public:
 	DepthFrame& operator=(const DepthFrame& other);
 
 	// Methods
+    void set(cv::Mat mat);
+    void set(cv::Mat mat, cv::Mat mask);
+    
 	void getPointCloud(pcl::PointCloud<pcl::PointXYZ>& cloud);
     void getPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZ>& cloud);
     
-    void setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals);
-    void getNormals(pcl::PointCloud<pcl::Normal>& normals);
-    
     void setReferencePoint(pcl::PointXYZ reference);
-    pcl::PointXYZ getReferencePoint();
+    pcl::PointXYZ getReferencePoint() const;
     
     void setRegistrationTransformation(Eigen::Matrix4f T);
-    Eigen::Matrix4f getRegistrationTransformation();
+    Eigen::Matrix4f getRegistrationTransformation() const;
     
     pcl::PointXYZ getRegisteredReferencePoint();
     
@@ -56,8 +56,5 @@ protected:
 
 private:
 	cv::Mat m_UIDMat;		// Here the player indices
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr m_pCloud;
-    pcl::PointCloud<pcl::Normal>::Ptr m_pNormals;
 };
 

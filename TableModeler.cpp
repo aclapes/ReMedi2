@@ -140,16 +140,57 @@ void TableModeler::model()
     PointCloudPtr pCloudTransformed (new PointCloud);
     pcl::transformPointCloud(*pCloud, *pCloudTransformed, m_Transformation);
     
-    visualizePlaneEstimation(pCloud, pTable, pCloudTransformed, pTableTransformed, m_Min, m_Max);
+    //visualizePlaneEstimation(pCloud, pTable, pCloudTransformed, pTableTransformed, m_Min, m_Max);
 }
 
-void TableModeler::segmentTop(DepthFrame::Ptr pFrame, cv::Mat& top)
+void TableModeler::maskTabletop(vector<DepthFrame::Ptr>& frames)
+{
+    for (int v = 0; v < frames.size(); v++)
+    {
+        cv::Mat tabletopMask;
+        getTabletopMask(frames[v], tabletopMask);
+        frames[v]->setMask(tabletopMask);
+    }
+}
+
+void TableModeler::getTabletopMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& tops)
+{
+    tops.resize(frames.size());
+    for (int v = 0; v < frames.size(); v++)
+        getTabletopMask(frames[v], tops[v]);
+}
+
+void TableModeler::getTabletopMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& tops)
+{
+    tops.resize(frames.size());
+    for (int v = 0; v < frames.size(); v++)
+        getTabletopMask(frames[v], tops[v]);
+}
+
+int getLongestContourIdx(vector<vector<cv::Point> > contours)
+{
+    int longitude = 0;
+    int longestIdx;
+    
+    for (int i = 0; i < contours.size(); i++)
+    {
+        if (contours[i].size() > longitude)
+        {
+            longitude = contours[i].size();
+            longestIdx = i;
+        }
+    }
+    
+    return longestIdx;
+}
+
+void TableModeler::getTabletopMask(DepthFrame::Ptr pFrame, cv::Mat& top)
 {
     PointCloudPtr pRegisteredCloud (new PointCloud);
     pFrame->getRegisteredPointCloud(*pRegisteredCloud);
     
     PointCloudPtr pTopRegisteredCloud (new PointCloud);
-    segmentTop(pRegisteredCloud, *pTopRegisteredCloud);
+    segmentTabletopCloud(pRegisteredCloud, *pTopRegisteredCloud);
     
     PointCloudPtr pTopCloud (new PointCloud);
     pFrame->getDeregisteredPointCloud(pTopRegisteredCloud, *pTopCloud);
@@ -157,22 +198,79 @@ void TableModeler::segmentTop(DepthFrame::Ptr pFrame, cv::Mat& top)
     cv::Mat aux;
     PointCloudToMat(pTopCloud, pFrame->getResY(), pFrame->getResX(), aux);
     
-    cvx::close(aux, 1, top);
+    // The re-projectionc causes holes
+    cvx::close(aux > 0, 1, top);
+    
+    // The idea is to have an external contour of all the segmented blob (and have it filled)
+    cv::Mat topCanny;
+    cv::Canny(top, topCanny, 50, 150);
+    cvx::dilate(topCanny, 1, topCanny); // important, cause findcontours uses an structural element of 3x3 (size 1)
+    
+    vector< vector<cv::Point> > contours;
+    cv::findContours(topCanny, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    
+    cv::Mat topContourMask (top.size(), CV_8UC1, cv::Scalar(0));
+    for (int c = 0; c < contours.size(); c++) // keep all the blobs (filled)
+        cv::drawContours(topContourMask, contours, c, cv::Scalar(255), CV_FILLED);
+    
+    top = topContourMask;
 }
 
-void TableModeler::segmentTop(PointCloudPtr pCloud, PointCloud& top)
+void TableModeler::segmentTabletopCloud(PointCloudPtr pCloud, PointCloud& top)
 {
-    PointCloudPtr pCloudTransformed (new PointCloud);
-    pcl::transformPointCloud(*pCloud, *pCloudTransformed, m_Transformation);
-    
-    PointT min (m_Min.x, m_Min.y - 0.05, m_Min.z); // 5 mm
+    PointT min (m_Min.x, m_Min.y - 0.02, m_Min.z); // 5 mm
     PointT max (m_Max.x, m_Max.y + m_YOffset, m_Max.z);
     
-    PointCloudPtr pTopTransformed (new PointCloud);
-    PointCloudPtr pAux (new PointCloud); // top's complementary points
-    filter(pCloudTransformed, min, max, *pTopTransformed, *pAux);
+    minMaxSegmentation(pCloud, min, max, top);
+}
+
+void TableModeler::maskInteraction(vector<DepthFrame::Ptr>& frames)
+{
+    for (int v = 0; v < frames.size(); v++)
+    {
+        cv::Mat tabletopMask;
+        getTabletopMask(frames[v], tabletopMask);
+        frames[v]->setMask(tabletopMask);
+    }
+}
+
+void TableModeler::getInteractionMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& interactions)
+{
+    interactions.resize(frames.size());
+    for (int v = 0; v < frames.size(); v++)
+        getInteractionMask(frames[v], interactions[v]);
+}
+
+void TableModeler::getInteractionMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& interactions)
+{
+    interactions.resize(frames.size());
+    for (int v = 0; v < frames.size(); v++)
+        getInteractionMask(frames[v], interactions[v]);
+}
+
+void TableModeler::getInteractionMask(DepthFrame::Ptr pFrame, cv::Mat& interaction)
+{
+    PointCloudPtr pRegisteredCloud (new PointCloud);
+    pFrame->getRegisteredPointCloud(*pRegisteredCloud);
     
-    pcl::transformPointCloud(*pTopTransformed, top, m_Transformation.inverse());
+    PointCloudPtr pTopRegisteredCloud (new PointCloud);
+    segmentInteractionCloud(pRegisteredCloud, *pTopRegisteredCloud);
+    
+    PointCloudPtr pTopCloud (new PointCloud);
+    pFrame->getDeregisteredPointCloud(pTopRegisteredCloud, *pTopCloud);
+    
+    cv::Mat aux;
+    PointCloudToMat(pTopCloud, pFrame->getResY(), pFrame->getResX(), aux);
+    
+    cvx::close(aux > 0, 1, interaction);
+}
+
+void TableModeler::segmentInteractionCloud(PointCloudPtr pCloud, PointCloud& interaction)
+{
+    PointT min (m_Min.x - m_InteractionBorder, m_Min.y, m_Min.z - m_InteractionBorder); // 5 mm
+    PointT max (m_Max.x + m_InteractionBorder, m_Max.y + m_YOffset, m_Max.z + m_InteractionBorder);
+    
+    minMaxSegmentation(pCloud, min, max, interaction);
 }
 
 //void TableModeler::transform(PointCloudPtr pPlane, Eigen::Affine3f transformation, PointCloud planeTransformed)
@@ -555,7 +653,7 @@ void TableModeler::extractTableContour(DepthFrame::Ptr pDepthFrame, int closingL
     
     cv::Mat contourMask (tableErodedMask.size(), CV_8UC1, cv::Scalar(0));
     cv::drawContours(contourMask, contours, 0, cv::Scalar(255)); // 0-th should be the more external contour
-    
+
     PointCloudPtr pContourCloud (new PointCloud);
     pDepthFrame->getPointCloud(contourMask, contourCloud);
 }
@@ -584,6 +682,26 @@ void TableModeler::findClosestContourPointToReference(PointCloudPtr pContourClou
     }
     
     closestPoint = pContourCloud->points[minIdx];
+}
+
+/** \brief Segments the cloud region contained in a 3D bounding box bounded by (min, max)
+ *  \param pCloud The cloud to segment
+ *  \param min The min 3D point
+ *  \param max The max 3D point
+ *  \param top The segmented part
+ */
+void TableModeler::minMaxSegmentation(PointCloudPtr pCloud, PointT min, PointT max, PointCloud& segmentedCloud)
+{
+    // Transform to TableModeler reference coordinate frame
+    PointCloudPtr pCloudTransformed (new PointCloud);
+    pcl::transformPointCloud(*pCloud, *pCloudTransformed, m_Transformation);
+    
+    PointCloudPtr pInnerCloudTransformed (new PointCloud);
+    PointCloudPtr pAux (new PointCloud); // top's complementary points. not used here
+    filter(pCloudTransformed, min, max, *pInnerCloudTransformed, *pAux);
+    
+    // Detransform
+    pcl::transformPointCloud(*pInnerCloudTransformed, segmentedCloud, m_Transformation.inverse());
 }
 
 void TableModeler::visualizePlaneEstimation(PointCloudPtr pScene, PointCloudPtr pTable, PointCloudPtr pSceneTransformed, PointCloudPtr pTableTransformed, PointT min, PointT max)

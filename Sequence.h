@@ -26,23 +26,26 @@ public:
     SequenceBase(int numOfViews);
     SequenceBase(vector<vector<string> > paths);
     SequenceBase(vector<vector<typename FrameT::Ptr> > stream);
+    
     SequenceBase(const SequenceBase<FrameT>& rhs);
-
     SequenceBase<FrameT>& operator=(const SequenceBase<FrameT>& rhs);
     
-    string getPath();
+    string getPath() const;
     void setPath(string path);
 
-    string getName();
+    string getName() const;
     void setName(string name);
     
-    int getNumOfViews();
+    int getNumOfViews() const;
     void setNumOfViews(int n);
     
+    vector<vector<string> > getFramesPaths() const;
     void setFramesPaths(vector<vector<string> > paths);
     
     void addStream(vector<typename FrameT::Ptr> stream);
     void setStream(vector<typename FrameT::Ptr> stream, int view);
+    
+    vector<vector<typename FrameT::Ptr> > getStreams() const;
     void setStreams(vector<vector<typename FrameT::Ptr> > streams);
     
     void addFrameFilePath(string framePath, int view);
@@ -58,11 +61,18 @@ public:
     vector<typename FrameT::Ptr> previousFrames(int step = 1);
     vector<typename FrameT::Ptr> getFrames(int i);
     
+    vector<typename FrameT::Ptr> getFrames(vector<string> filenames);
+    vector<string> getFramesFilenames();
+    
     vector<int> getNumOfFrames();
     vector<int> getCurrentFramesID();
     vector<float> getProgress();
     vector<int> at();
     
+    vector<int> getFrameCounters() const;
+    void setFrameCounters(vector<int> counters);
+    
+    vector<int> getDelays() const;
     void setDelays(vector<int> delays);
     
     void restart();
@@ -73,7 +83,8 @@ public:
     
 private:
     void readFrame(vector<string> paths, int i, FrameT& frame);
-    
+   
+protected:
     //
     // Attributes
     //
@@ -92,8 +103,35 @@ private:
 template<typename FrameT>
 class Sequence : public SequenceBase<FrameT>
 {
+public:
+    Sequence();
+    Sequence(int numOfViews);
+    Sequence(vector<vector<string> > paths);
+    Sequence(vector<vector<typename FrameT::Ptr> > stream);
+
+    Sequence(const Sequence<FrameT>& rhs);
+    Sequence<FrameT>& operator=(const Sequence<FrameT>& rhs);
+    
+    typedef boost::shared_ptr<Sequence<Frame> > Ptr;
 };
 
+template<>
+class Sequence<ColorFrame> : public SequenceBase<ColorFrame>
+{
+public:
+    Sequence();
+    Sequence(int numOfViews);
+    Sequence(vector< vector<string> > paths);
+    Sequence(vector<vector<ColorFrame::Ptr> > stream);
+    
+    Sequence(const Sequence<ColorFrame>& rhs);
+    Sequence<ColorFrame>& operator=(const Sequence<ColorFrame>& rhs);
+    
+    Sequence(const Sequence<ColorDepthFrame>& rhs);
+    Sequence<ColorFrame>& operator=(const Sequence<ColorDepthFrame>& rhs);
+    
+    typedef boost::shared_ptr<Sequence<ColorFrame> > Ptr;
+};
 
 template<>
 class Sequence<DepthFrame> : public SequenceBase<DepthFrame>
@@ -103,9 +141,12 @@ public:
     Sequence(int numOfViews);
     Sequence(vector< vector<string> > paths);
     Sequence(vector<vector<DepthFrame::Ptr> > stream);
-    Sequence(const Sequence<DepthFrame>& rhs);
     
+    Sequence(const Sequence<DepthFrame>& rhs);
     Sequence<DepthFrame>& operator=(const Sequence<DepthFrame>& rhs);
+    
+    Sequence(const Sequence<ColorDepthFrame>& rhs);
+    Sequence<DepthFrame>& operator=(const Sequence<ColorDepthFrame>& rhs);
     
     void setReferencePoints(vector<pcl::PointXYZ> points);
     vector<pcl::PointXYZ> getReferencePoints();
@@ -128,24 +169,26 @@ public:
     Sequence(int numOfViews);
     Sequence(vector< vector< pair<string,string> > > paths);
     Sequence(vector<vector<ColorDepthFrame::Ptr> > stream);
+    
     Sequence(const Sequence<ColorDepthFrame>& rhs);
-
     Sequence<ColorDepthFrame>& operator=(const Sequence<ColorDepthFrame>& rhs);
     
-    string getPath();
+    string getPath() const;
     void setPath(string path);
     
-    string getName();
+    string getName() const;
     void setName(string name);
     
-    int getNumOfViews();
+    int getNumOfViews() const;
     void setNumOfViews(int n);
     
+    vector< vector< pair<string,string> > > getFramesPaths() const;
     void setFramesPaths(vector< vector< pair<string,string> > > paths);
     
     void addStream(vector<ColorDepthFrame::Ptr> stream);
     void setStream(vector<ColorDepthFrame::Ptr> stream, int view);
     void setStreams(vector<vector<ColorDepthFrame::Ptr> > streams);
+    vector<vector<ColorDepthFrame::Ptr> > getStreams() const;
     
     void addFramesFilePath(string colorPath, string depthPath, int view);
     void addFrameFilePath(vector< pair<string,string> > framePaths);
@@ -159,17 +202,25 @@ public:
     vector<ColorDepthFrame::Ptr> nextFrames(int step = 1);
     vector<ColorDepthFrame::Ptr> previousFrames(int step = 1);
     vector<ColorDepthFrame::Ptr> getFrames(int i);
+        
+    vector<ColorDepthFrame::Ptr> getFrames(vector<string> filenames);
+    vector<string> getFramesFilenames();
     
     vector<int> getNumOfFrames();
     vector<int> getCurrentFramesID();
     vector<float> getProgress();
     vector<int> at();
     
+    vector<int> getDelays() const;
     void setDelays(vector<int> delays);
     
-    void setReferencePoints(vector<pcl::PointXYZ> points);
-    vector<pcl::PointXYZ> getReferencePoints();
+    vector<int> getFrameCounters() const;
+    void setFrameCounters(vector<int> delays);
     
+    void setReferencePoints(vector<pcl::PointXYZ> points);
+    vector<pcl::PointXYZ> getReferencePoints() const;
+    
+    vector<Eigen::Matrix4f> getRegistrationTransformations() const;
     void setRegistrationTransformations(vector<Eigen::Matrix4f> transformations);
     
     void restart();

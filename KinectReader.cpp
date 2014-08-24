@@ -11,9 +11,10 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-KinectReader::KinectReader() {}
+KinectReader::KinectReader() : m_bPreallocation(false)
+{}
 
-KinectReader::KinectReader(const KinectReader& rhs)
+KinectReader::KinectReader(const KinectReader& rhs) : m_bPreallocation(false)
 {
     *this = rhs;
 }
@@ -33,51 +34,69 @@ void KinectReader::setPreallocation(bool prealloc)
     m_bPreallocation = prealloc;
 }
 
-void KinectReader::read(vector< pair<string,string> > paths, Sequence<ColorFrame>& seq)
+void KinectReader::read(vector<string> dirsPaths, Sequence<Frame>& seq)
 {
-    for (int v = 0; v < paths.size(); v++)
+    for (int v = 0; v < dirsPaths.size(); v++)
     {
-        vector<string> colorDirs;
-        loadFilePaths(paths[v].first, "png", colorDirs);
+        vector<string> framesPaths;
+        loadFilePaths(dirsPaths[v], "png", framesPaths);
         
-        for (int f = 0; f < colorDirs.size(); f++)
+        for (int f = 0; f < framesPaths.size(); f++)
         {
-            seq.addFrameFilePath(colorDirs[f], v);
+            seq.addFrameFilePath(framesPaths[f], v);
         }
     }
     
     if (m_bPreallocation) seq.allocate();
 }
 
-void KinectReader::read(vector< pair<string,string> > paths, Sequence<DepthFrame>& seq)
-{
-    for (int v = 0; v < paths.size(); v++)
-    {
-        vector<string> depthDirs;
-        loadFilePaths(paths[v].first, "png", depthDirs);
-        
-        for (int f = 0; f < depthDirs.size(); f++)
-        {
-            seq.addFrameFilePath(depthDirs[f], v);
-        }
-    }
-    
-    if (m_bPreallocation) seq.allocate();
-}
+//void KinectReader::read(vector< pair<string,string> > dirsPaths, Sequence<ColorFrame>& seq)
+//{
+//    for (int v = 0; v < dirsPaths.size(); v++)
+//    {
+//        vector<string> framesPaths;
+//        loadFilePaths(paths[v].first, "png", framesPaths);
+//        
+//        for (int f = 0; f < colorDirs.size(); f++)
+//        {
+//            seq.addFrameFilePath(colorDirs[f], v);
+//        }
+//    }
+//    
+//    if (m_bPreallocation) seq.allocate();
+//}
+//
+//void KinectReader::read(vector< pair<string,string> > dirsPaths, Sequence<DepthFrame>& seq)
+//{
+//    for (int v = 0; v < dirsPaths.size(); v++)
+//    {
+//        vector<string> framesPaths;
+//        loadFilePaths(paths[v].first, "png", framesPaths);
+//        
+//        for (int f = 0; f < depthDirs.size(); f++)
+//        {
+//            seq.addFrameFilePath(depthDirs[f], v);
+//        }
+//    }
+//    
+//    if (m_bPreallocation) seq.allocate();
+//}
 
-void KinectReader::read(vector< pair<string,string> > paths, Sequence<ColorDepthFrame>& seq)
+void KinectReader::read(vector<string> colorDirsPaths, vector<string> depthDirsPaths, Sequence<ColorDepthFrame>& seq)
 {
-    for (int v = 0; v < paths.size(); v++)
+    assert( colorDirsPaths.size() == depthDirsPaths.size() );
+    
+    for (int v = 0; v < colorDirsPaths.size(); v++)
     {
-        vector<string> colorDirs, depthDirs;
-        loadFilePaths(paths[v].first, "png", colorDirs);
-        loadFilePaths(paths[v].second, "png", depthDirs);
+        vector<string> colorFramesPaths, depthFramesPaths;
+        loadFilePaths(colorDirsPaths[v], "png", colorFramesPaths);
+        loadFilePaths(depthDirsPaths[v], "png", depthFramesPaths);
         
-        assert ( colorDirs.size() == depthDirs.size() );
+        assert ( colorFramesPaths.size() == depthFramesPaths.size() );
         
-        for (int f = 0; f < colorDirs.size(); f++)
+        for (int f = 0; f < colorFramesPaths.size(); f++)
         {
-            seq.addFramesFilePath(colorDirs[f], depthDirs[f], v);
+            seq.addFramesFilePath(colorFramesPaths[f], depthFramesPaths[f], v);
         }
     }
     

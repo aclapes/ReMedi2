@@ -47,8 +47,19 @@ void biggestEuclideanCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float cl
 float euclideanDistance(Eigen::Vector4f, Eigen::Vector4f);
 
 cv::Mat bgr2hs(cv::Mat bgrMat);
+cv::Mat bgr2hsv(cv::Mat bgrMat);
+cv::Mat bgr2hs0(cv::Mat bgrMat);
 cv::Mat bgrd2hsd(cv::Mat bgrMat, cv::Mat depthMat);
 cv::Mat bgrdn2hsdn(cv::Mat bgrMat, cv::Mat depthMat, cv::Mat normalsMat);
 
 void translate(const pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud, pcl::PointXYZ t, pcl::PointCloud<pcl::PointXYZ>& cloudCentered);
 void translate(const pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud, Eigen::Vector4f t, pcl::PointCloud<pcl::PointXYZ>& cloudCentered);
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 6);
+
+std::string getFilenameFromPath(std::string path);
+
+int searchByName(std::vector<std::string> paths, std::string filename);
+int searchByName(std::vector<std::pair<std::string,std::string> > paths, std::string filename);
+

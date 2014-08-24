@@ -84,6 +84,16 @@ public:
      */
     void computeTransformations();
     
+    /** \brief Registrate the member frames
+     *  \param frames A vector of V depth frames
+     */
+    void registrate(vector<DepthFrame::Ptr>& frames);
+    
+    /** \brief Registrate the member frames
+     *  \param frames A vector of V colordepth frames
+     */
+    void registrate(vector<ColorDepthFrame::Ptr>& frames);
+    
     /** \brief Set the registration of the several views in the sequence
      *  \param seq A sequence of Depth frames
      */

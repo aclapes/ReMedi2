@@ -80,6 +80,18 @@ namespace cvx
     cv::Mat replicate(cv::Mat src, int times);
     void mean(cv::InputArray acc, cv::InputArray count, cv::OutputArray mean);
     void stddev(cv::InputArray sqdiffsacc, cv::InputArray count, cv::InputArray err, cv::OutputArray stddev);
+    
+    template<typename T>
+    int match(cv::Mat m, cv::Mat query, bool debug = false);
+    
+    void sortIdx(cv::InputArray src, cv::OutputArray indices, int flags, cv::OutputArray dst = cv::noArray());
+    
+    void harmonicMean(cv::InputArray src, cv::OutputArray dst, int dim);
+    
+    template<typename T>
+    void convert(cv::Mat mat, std::vector<std::vector<T> >& vv);
+    template<typename T>
+    void convert(std::vector<std::vector<T> > vv, cv::Mat& mat);
 }
 
 

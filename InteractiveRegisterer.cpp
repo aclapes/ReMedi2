@@ -45,29 +45,6 @@ void InteractiveRegisterer::setNumPoints(int numOfPoints)
 void InteractiveRegisterer::setInputFrames(vector<ColorDepthFrame::Ptr> pFrames)
 {
     m_pFrames = pFrames;
-    
-    // Init some cloud structures with empty clouds
-    
-    for (int v = 0; v < m_pFrames.size(); v++)
-    {
-        // Original untransformed clouds
-        ColorPointCloudPtr pColorCloud (new ColorPointCloud);
-        m_pFrames[v]->getColoredPointCloud(*pColorCloud);
-        m_pClouds.push_back(pColorCloud);
-        
-        // Marker positions in the views
-        PointCloudPtr pMakers (new PointCloud);
-        pMakers->width = 0; // we will increment in width
-        pMakers->height = 1;
-        pMakers->resize(0);
-        m_pMarkers.push_back(pMakers);
-    }
-    
-    m_Pendents = pFrames.size();
-    
-    // Transformation
-    m_Transformations.resize( pFrames.size() );
-    m_ITransformations.resize( pFrames.size() );
 }
 
 /** \brief Set the distribution of the viewports in the visualizer
@@ -92,6 +69,31 @@ void InteractiveRegisterer::setVisualizerParameters(int wndHeight, int wndWidth,
  */
 void InteractiveRegisterer::setCorrespondencesManually()
 {
+    // Init some cloud structures with empty clouds
+    
+    m_pClouds.resize(m_pFrames.size());
+    m_pMarkers.resize(m_pFrames.size());
+    for (int v = 0; v < m_pFrames.size(); v++)
+    {
+        // Original untransformed clouds
+        ColorPointCloudPtr pColorCloud (new ColorPointCloud);
+        m_pFrames[v]->getColoredPointCloud(*pColorCloud);
+        m_pClouds[v] = pColorCloud;
+        
+        // Marker positions in the views
+        PointCloudPtr pMakers (new PointCloud);
+        pMakers->width = 0; // we will increment in width
+        pMakers->height = 1;
+        pMakers->resize(0);
+        m_pMarkers[v] = pMakers;
+    }
+    
+    m_Pendents = m_pFrames.size();
+    
+    // Transformation
+    m_Transformations.resize( m_pFrames.size() );
+    m_ITransformations.resize( m_pFrames.size() );
+    
     // Manual interaction with visualizer
     
     m_pViz = VisualizerPtr(new Visualizer);
@@ -142,6 +144,9 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
         reader.read(filename + "-" + to_string(v) + "." + extension, *pMarkers);
         m_pMarkers[v] = pMarkers;
     }
+    
+    m_Transformations.resize( m_pFrames.size() );
+    m_ITransformations.resize( m_pFrames.size() );
 }
 
 /** \brief Estimate the orthogonal transformations in the n-1 views respect to the 0-th view
@@ -156,6 +161,44 @@ void InteractiveRegisterer::computeTransformations()
         getTransformation(m_pMarkers[v], m_pMarkers[0], m_Transformations[v]); // v (src) to 0 (tgt)
         
         m_ITransformations[v] = m_Transformations[v].inverse();
+    }
+}
+
+/** \brief Registrate the member frames
+ *  \param frames A vector of V depth frames
+ */
+void InteractiveRegisterer::registrate(vector<DepthFrame::Ptr>& frames)
+{
+    frames.clear();
+    
+    for (int v = 0; v < frames.size(); v++)
+    {
+        DepthFrame::Ptr pFrame (new DepthFrame);
+        *pFrame = *(m_pFrames[v]);
+        
+        pFrame->setReferencePoint( m_pMarkers[v]->points[0] );
+        pFrame->setRegistrationTransformation(m_Transformations[v]);
+        
+        frames.push_back(pFrame);
+    }
+}
+
+/** \brief Registrate the member frames
+ *  \param frames A vector of V colordepth frames
+ */
+void InteractiveRegisterer::registrate(vector<ColorDepthFrame::Ptr>& frames)
+{
+    frames.clear();
+    
+    for (int v = 0; v < m_pFrames.size(); v++)
+    {
+        ColorDepthFrame::Ptr pFrame (new ColorDepthFrame);
+        *pFrame = *(m_pFrames[v]);
+        
+        pFrame->setReferencePoint( m_pMarkers[v]->points[0] );
+        pFrame->setRegistrationTransformation(m_Transformations[v]);
+        
+        frames.push_back(pFrame);
     }
 }
 

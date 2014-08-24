@@ -430,6 +430,34 @@ cv::Mat bgr2hs(cv::Mat bgrMat)
     return hsMat;
 }
 
+cv::Mat bgr2hs0(cv::Mat bgrMat)
+{
+    cv::Mat hsvMat, hsMat;
+    std::vector<cv::Mat> hsvChannels;
+    
+    cv::cvtColor(bgrMat, hsvMat, CV_BGR2HSV);
+    cv::split(hsvMat, hsvChannels);
+    
+    cv::Mat nullMat (hsvMat.size(), cv::DataType<float>::type, cv::Scalar(0));
+    hsvChannels.pop_back();
+    hsvChannels.push_back(nullMat);
+    
+    hsvChannels[0].convertTo(hsvChannels[0], cv::DataType<float>::type);
+    hsvChannels[1].convertTo(hsvChannels[1], cv::DataType<float>::type);
+    cv::merge(hsvChannels.data(), 3, hsMat);
+    
+    return hsMat;
+}
+
+cv::Mat bgr2hsv(cv::Mat bgrMat)
+{
+    cv::Mat hsvMat;
+    
+    cv::cvtColor(bgrMat, hsvMat, CV_BGR2HSV);
+
+    return hsvMat;
+}
+
 cv::Mat bgrd2hsd(cv::Mat bgrMat, cv::Mat depthMat)
 {
     // BGR to HSV
@@ -519,3 +547,49 @@ void translate(const pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud, Eigen::Vector4f
         cloudCentered.points[i].z = pCloud->points[i].z - t.z();
     }
 }
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n)
+{
+    std::ostringstream out;
+    out << std::setprecision(n) << a_value;
+    return out.str();
+}
+
+std::string getFilenameFromPath(std::string path)
+{
+    const size_t last_slash_idx = path.find_last_of("\\/");
+    if (std::string::npos != last_slash_idx)
+        path.erase(0, last_slash_idx + 1);
+
+    const size_t period_idx = path.rfind('.');
+    if (std::string::npos != period_idx)
+        path.erase(period_idx);
+
+    return path;
+}
+
+int searchByName(std::vector<std::string> paths, std::string filename)
+{
+    for (int i = 0; i < paths.size(); i++)
+    {
+        if (filename == getFilenameFromPath(paths[i]))
+            return i;
+    }
+    
+    return -1;
+}
+
+int searchByName(std::vector<std::pair<std::string,std::string> > paths, std::string filename)
+{
+    for (int i = 0; i < paths.size(); i++)
+    {
+        if (filename == getFilenameFromPath(paths[i].first) || filename == getFilenameFromPath(paths[i].second))
+            return i;
+    }
+    
+    return -1;
+}
+
+template std::string to_string_with_precision<float>(const float a_value, const int n);
+template std::string to_string_with_precision<double>(const double a_value, const int n);

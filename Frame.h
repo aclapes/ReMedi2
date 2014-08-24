@@ -3,6 +3,10 @@
 #include <opencv2/opencv.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <string>
+
+using namespace std;
+
 class Frame
 {
 public:
@@ -32,7 +36,12 @@ public:
     
     cv::Mat getMasked();
     void getMasked(cv::Mat& masked);
+    
+    void setPath(string path);
+    string getPath();
 
+    string getFilename();
+    
     typedef boost::shared_ptr<Frame> Ptr;
     
 protected:

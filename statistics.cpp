@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 
 #include <math.h>
+#include <fstream>
 #include <set>
 
 // Instantiation of template member functions
@@ -711,4 +712,33 @@ void computeConfidenceInterval(cv::Mat values, float* mean, float* confidence, f
 float computeF1Score(int tp, int fp, int fn)
 {
     return (2.f * tp) / (2.f * tp + fp + fn);
+}
+
+void writeParametersToFile(string file, vector<string> names, vector<vector<double> > values, bool append)
+{
+    assert (names.size() == values.size());
+    
+    std::ofstream ofs;
+    
+    if (!append)
+        ofs.open(file, std::ofstream::out);
+    else
+    {
+        ofs.open(file, std::ofstream::app);
+        ofs << endl;
+    }
+        
+    for (int i = 0; i < names.size(); i++)
+    {
+        ofs << names[i] << " : [";
+        for (int j = 0; j < values[i].size(); j++)
+        {
+            if (j > 0) ofs << ",";
+            ofs << values[i][j];
+        }
+        
+        ofs << "]" << endl;
+    }
+    
+    ofs.close();
 }

@@ -14,17 +14,17 @@ ColorDepthFrame::ColorDepthFrame()
 }
 
 ColorDepthFrame::ColorDepthFrame(cv::Mat colorMat, cv::Mat depthMat)
-: ColorFrame(colorMat), DepthFrame(depthMat), m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
+: ColorFrame(colorMat), DepthFrame(depthMat)//, m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
 {
     // Create a point cloud
-    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
+//    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
 }
 
 ColorDepthFrame::ColorDepthFrame(cv::Mat colorMat, cv::Mat depthMat, cv::Mat colorMask, cv::Mat depthMask)
-: ColorFrame(colorMat, colorMask), DepthFrame(depthMat, depthMask), m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
+: ColorFrame(colorMat, colorMask), DepthFrame(depthMat, depthMask)//, m_pColoredCloud(new pcl::PointCloud<pcl::PointXYZRGB>)
 {
     // Create a point cloud
-    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
+//    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), *m_pColoredCloud);
 }
 
 ColorDepthFrame::ColorDepthFrame(const ColorDepthFrame& rhs)
@@ -40,7 +40,7 @@ ColorDepthFrame& ColorDepthFrame::operator=(const ColorDepthFrame& rhs)
         ColorFrame::operator=(rhs);
         DepthFrame::operator=(rhs);
         
-        m_pColoredCloud = rhs.m_pColoredCloud;
+        m_Mask = rhs.m_Mask;
     }
     
     return *this;
@@ -48,8 +48,8 @@ ColorDepthFrame& ColorDepthFrame::operator=(const ColorDepthFrame& rhs)
 
 void ColorDepthFrame::set(cv::Mat color, cv::Mat depth)
 {
-    ColorFrame::set(color);
-    DepthFrame::set(depth);
+    setColor(color);
+    setDepth(depth);
 }
 
 void ColorDepthFrame::setColor(cv::Mat color)
@@ -70,6 +70,11 @@ void ColorDepthFrame::setColor(cv::Mat color, cv::Mat mask)
 void ColorDepthFrame::setDepth(cv::Mat depth, cv::Mat mask)
 {
     DepthFrame::set(depth, mask);
+}
+
+void ColorDepthFrame::setMask(cv::Mat mask)
+{
+    m_Mask = mask;
 }
 
 void ColorDepthFrame::setColorMask(cv::Mat mask)
@@ -108,6 +113,11 @@ void ColorDepthFrame::getDepth(cv::Mat& depth)
     DepthFrame::get(depth);
 }
 
+cv::Mat ColorDepthFrame::getMask()
+{
+    return m_Mask;
+}
+
 cv::Mat ColorDepthFrame::getColorMask()
 {
     return ColorFrame::getMask();
@@ -130,17 +140,23 @@ void ColorDepthFrame::getDepthMask(cv::Mat& depthMask)
 
 void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
 {
-    coloredCloud = *m_pColoredCloud;
+    if (m_Mask.empty())
+        MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), coloredCloud);
+    else
+        MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), m_Mask, coloredCloud);
 }
 
-void ColorDepthFrame::setNormals(pcl::PointCloud<pcl::Normal>::Ptr pNormals)
+void ColorDepthFrame::getColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
 {
-    DepthFrame::setNormals(pNormals);
+    MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), mask, coloredCloud);
 }
 
 void ColorDepthFrame::getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
 {
-    pcl::transformPointCloud(*m_pColoredCloud, coloredCloud, m_T);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredPointCloudTmp (new pcl::PointCloud<pcl::PointXYZRGB>);
+    getColoredPointCloud(*pColoredPointCloudTmp);
+
+    pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, m_T);
 }
 
 void ColorDepthFrame::getRegisteredAndReferencedColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
@@ -153,5 +169,8 @@ void ColorDepthFrame::getRegisteredAndReferencedColoredPointCloud(pcl::PointClou
     E.col(3) = regReferencePoint.getVector4fMap(); // set translation column
     
     // Apply registration first and then referenciation (right to left order in matrix product)
-    pcl::transformPointCloud(*m_pColoredCloud, coloredCloud, E.inverse() * m_T);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredPointCloudTmp (new pcl::PointCloud<pcl::PointXYZRGB>);
+    getColoredPointCloud(*pColoredPointCloudTmp);
+    
+    pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, E.inverse() * m_T);
 }

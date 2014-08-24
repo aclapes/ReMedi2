@@ -51,8 +51,17 @@ public:
     
 	void model();
     
-    void segmentTop(DepthFrame::Ptr pFrame, cv::Mat& top);
-    void segmentTop(PointCloudPtr pScene, PointCloud& top);
+    void maskTabletop(vector<DepthFrame::Ptr>& frames);
+    void getTabletopMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& tops);
+    void getTabletopMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& tops);
+    void getTabletopMask(DepthFrame::Ptr pFrame, cv::Mat& top);
+    void segmentTabletopCloud(PointCloudPtr pCloud, PointCloud& top);
+    
+    void maskInteraction(vector<DepthFrame::Ptr>& frames);
+    void getInteractionMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& interactions);
+    void getInteractionMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& interactions);
+    void getInteractionMask(DepthFrame::Ptr pFrame, cv::Mat& interaction);
+    void segmentInteractionCloud(PointCloudPtr pCloud, PointCloud& interaction);
 //
 //    void setInverseSegmentation();
 //    
@@ -124,6 +133,13 @@ private:
      */
     void findClosestContourPointToReference(PointCloudPtr pContourCloud, PointT referencePoint, PointT& closestPoint);
     
+    /** \brief Segments the cloud region contained in a 3D bounding box bounded by (min, max)
+     *  \param pCloud The cloud to segment
+     *  \param min The min 3D point
+     *  \param max The max 3D point
+     *  \param segmentedCloud The segmented part
+     */
+    void minMaxSegmentation(PointCloudPtr pCloud, PointT min, PointT max, PointCloud& segmentedCloud);
     
 ////    void transform(pcl::PointCloud<pcl::PointXYZ>::Ptr pPlane, Eigen::Affine3f transformation, pcl::PointCloud<pcl::PointXYZ> planeTransformed);
 //

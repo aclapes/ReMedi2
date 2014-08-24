@@ -506,8 +506,8 @@ void cvx::close(cv::InputArray src, int size, cv::OutputArray dst)
         int erosion_size, dilation_size;
         erosion_size = dilation_size = size;
         
-        cv::Mat erode_element = cv::getStructuringElement( cv::MORPH_ERODE, cv::Size( 2 * erosion_size + 1, 2 * erosion_size + 1 ), cv::Point( erosion_size, erosion_size ) );
-        cv::Mat dilate_element = cv::getStructuringElement( cv::MORPH_DILATE, cv::Size( 2 * dilation_size + 1, 2 * dilation_size + 1 ), cv::Point( dilation_size, dilation_size ) );
+        cv::Mat erode_element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * erosion_size + 1, 2 * erosion_size + 1 ), cv::Point( erosion_size, erosion_size ) );
+        cv::Mat dilate_element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * dilation_size + 1, 2 * dilation_size + 1 ), cv::Point( dilation_size, dilation_size ) );
         
         cv::Mat aux;
         cv::dilate(_src, aux, erode_element);
@@ -574,6 +574,129 @@ void cvx::stddev(cv::InputArray sqdiffsacc, cv::InputArray count, cv::InputArray
     cv::multiply(replicate(multiplier, nchannels), sqdiffsacc_32F, aux);
     cv::sqrt(aux, stddev);
 }
+
+template<typename T>
+int cvx::match(cv::Mat m, cv::Mat query, bool debug)
+{
+    assert (m.cols == query.cols || m.rows == query.rows);
+    
+    bool colwise = (m.cols == query.cols);
+    
+    if (debug) std::cout << query << std::endl;
+    
+    bool bFound = false;
+    int match = -1;
+    for (int i = 0; (colwise ? (i < m.rows) : (i < m.cols)) && !bFound; i++)
+    {
+        if (debug) std::cout << m.row(i) << std::endl;
+        
+        bFound = true;
+        for (int p = 0; (colwise ? (p < m.cols) : (p < m.rows)) && bFound; p++)
+        {
+            T t1 = colwise ? m.at<T>(i,p) : m.at<T>(p,i);
+            T t2 = colwise ? query.at<T>(0,p) : query.at<T>(p,0);
+            
+            if (debug) std::cout << t1 << " " << t2 << std::endl;
+            
+            bFound &= (t1 == t2);
+            if (debug) std::cout << bFound << std::endl;
+        }
+        
+        if (bFound) match = i;
+    }
+    
+    return match;
+}
+
+void cvx::sortIdx(cv::InputArray src, cv::OutputArray ind, int flags, cv::OutputArray dst)
+{
+    cv::Mat _src = src.getMat();
+    cv::Mat _ind;
+    
+    cv::sortIdx(_src, _ind, flags);
+    
+    if (dst.kind() > 0)
+    {
+        cv::Mat _dst (_src.rows, _src.cols, _src.type(), cv::Scalar(0));
+        
+        bool colwise = (flags & CV_SORT_EVERY_COLUMN) > 0;
+        for (int j = 0; j < (colwise ? _ind.cols : _ind.rows); j++)
+        {
+            for (int i = 0; i < (colwise ? _ind.rows : _ind.cols); i++)
+            {
+                int idx = (colwise ? _ind.at<int>(i,j) : _ind.at<int>(j,i));
+                
+                if (colwise) _src.col(j).row(idx).copyTo(_dst.col(j).row(i));
+                else _dst.row(j).col(i) = _src.row(j).col(idx);
+            }
+        }
+        
+        dst.getMatRef() = _dst;
+    }
+    
+    ind.getMatRef() = _ind;
+}
+
+void cvx::harmonicMean(cv::InputArray src, cv::OutputArray dst, int dim)
+{
+    cv::Mat _src = src.getMat();
+    cv::Mat _dst (dim > 0 ? _src.rows : 1,
+                  dim > 0 ? 1 : _src.cols,
+                  src.type());
+    
+    for (int i = 0; i < (dim > 0 ? _src.rows : _src.cols); i++) // colwise mean ?
+    {
+        cv::Mat invacc;
+        cv::reduce(1.f / (dim > 0 ? _src.row(i) : _src.col(i)), invacc, dim, CV_REDUCE_SUM);
+        
+        double card = dim > 0 ? _src.cols : _src.rows;
+        cv::Mat hm = card / invacc;
+        hm.copyTo(_dst.row(i));
+    }
+    
+    dst.getMatRef() = _dst;
+}
+
+template<typename T>
+void cvx::convert(cv::Mat mat, std::vector<std::vector<T> >& vv)
+{
+    vv.resize(mat.rows);
+    for (int i = 0; i < mat.rows; i++)
+    {
+        vv[i].resize(mat.cols);
+        
+        for (int j = 0; j < mat.cols; j++)
+            vv[i][j] = mat.at<double>(i,j);
+    }
+}
+
+template<typename T>
+void cvx::convert(std::vector<std::vector<T> > vv, cv::Mat& mat)
+{
+    mat.create(vv.size(), vv[0].size(), cv::DataType<T>::type);
+    for (int i = 0; i < mat.rows; i++)
+    {
+        assert( vv[i].size() == mat.cols );
+        for (int j = 0; j < mat.cols; j++)
+            mat.at<double>(i,j) = vv[i][j];
+    }
+}
+
+template void cvx::convert(cv::Mat mat, std::vector<std::vector<uchar> >& vv);
+template void cvx::convert(cv::Mat mat, std::vector<std::vector<ushort> >& vv);
+template void cvx::convert(cv::Mat mat, std::vector<std::vector<int> >& vv);
+template void cvx::convert(cv::Mat mat, std::vector<std::vector<float> >& vv);
+template void cvx::convert(cv::Mat mat, std::vector<std::vector<double> >& vv);
+
+template void cvx::convert(std::vector<std::vector<uchar> > vv, cv::Mat& mat);
+template void cvx::convert(std::vector<std::vector<ushort> > vv, cv::Mat& mat);
+template void cvx::convert(std::vector<std::vector<int> > vv, cv::Mat& mat);
+template void cvx::convert(std::vector<std::vector<float> > vv, cv::Mat& mat);
+template void cvx::convert(std::vector<std::vector<double> > vv, cv::Mat& mat);
+
+template int cvx::match<int>(cv::Mat m, cv::Mat query, bool debug);
+template int cvx::match<float>(cv::Mat m, cv::Mat query, bool debug);
+template int cvx::match<double>(cv::Mat m, cv::Mat query, bool debug);
 
 //template cv::Mat cvx::matlabread<int>(std::string file);
 //template cv::Mat cvx::matlabread<float>(std::string file);
