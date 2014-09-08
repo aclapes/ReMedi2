@@ -15,11 +15,11 @@
 #include "InteractiveRegisterer.h"
 #include "TableModeler.h"
 #include "BackgroundSubtractor.h"
+#include "DetectionOutput.h"
+#include "Monitorizer.h"
 
 // TODO adapt these:
 //#include "Monitorizer.h"
-
-#define BS_USE_MOG2
 
 using namespace std;
 
@@ -40,11 +40,18 @@ public:
     
     ReMedi& operator=(const ReMedi& rhs);
     
+    InteractiveRegisterer::Ptr getRegisterer();
+    TableModeler::Ptr getTableModeler();
+    BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr getBackgroundSubtractor();
+    Monitorizer::Ptr getMonitorizer();
+    
     /** \brief Set the sequences of frames used to learn the background model, for its further subtraction
      *  \param pBgSeq Background sequence
      */
     void setBackgroundSequence(Sequence<ColorDepthFrame>::Ptr pBgSeq);
+    Sequence<ColorDepthFrame>::Ptr getBackgroundSequence();
     
+
     /** \brief Set the list of sequences to be processed
      *  \param pSequences Input sequences
      */
@@ -104,24 +111,38 @@ public:
      *  \param t The decision threshold based on the variance criterion
      *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setSubtractorParameters(int n, int m, int k, float lrate, float q, float t, int level);
+    void setSubtractorParameters(int n, int m, int f, float lrate, float q, float t, int level);
 #endif
     
     // Set the parameters of the monitorizer
     void setMonitorizerParameters(float leafsz, float clusterDist);
     
-    // Initialization (common factor from normal run and validation procedures)
     void initialize();
     
     // Normal functioning of the system
     void run();
     
-    // Validation of the modules
-    void validateBS(vector< vector<double> > parameters, vector<Sequence<Frame>::Ptr> fgMasksSequences);
-    void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string filePath);
-    void getBsParametersPerformance(string filePath, vector<vector<double> >& combinations);
+//    // Validation of the modules
+//    
+//    void validateBS(vector< vector<double> > parameters, vector<Sequence<Frame>::Ptr> fgMasksSequences);
+//    void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string filePath);
+////    void getBsParametersPerformance(string filePath, cv::Mat& combinations, cv::Mat& overlaps);
+//    
+//    void readBsValidationFile(string filePath, cv::Mat& combinations, cv::Mat& overlaps);
+//    void getBsParametersPerformance(cv::Mat overlaps, cv::Mat& means, cv::Mat& stddevs);
+//    void rankParametersCombinations(cv::Mat means, cv::Mat& R);
+//    
+//    void validateMonitorizerClustering(vector<Sequence<Frame>::Ptr> fgMasksSequences,
+//                                       cv::Mat bsCombinations,
+//                                       vector<vector<double> > monitorizerParameters,
+//                                       vector<DetectionOutput> detectionGroundtruths);
+//    void readMonitorizerValidationFile(string filePath, cv::Mat& combinations, vector<cv::Mat>& errors);
+//    void getMonitorizerFScorePerformances(cv::Mat combinations, vector<cv::Mat> errors, cv::Mat& meanScores, cv::Mat& sdScores);
+//    void showMonitorizerValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
     
-    void validateMonitorizerClustering(vector<Sequence<Frame>::Ptr> fgMasksSequences, vector<vector<double> > bsCombinations);
+    static void loadSequences(string parent, vector<string>& names);
+    static void loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths);
+    static void loadDelaysFile(string parent, string filename, vector<vector<int> >& delays);
     
     enum { COLOR = 0, DEPTH = 1, COLOR_WITH_SHADOWS = 2, COLORDEPTH = 3 };
     
@@ -138,15 +159,10 @@ private:
     
     TableModeler::Ptr m_pTableModeler;
     
-#ifdef BS_USE_MOG2
     BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr m_pBackgroundSubtractor;
-#else
-    BackgroundSubtractor<cv::BackgroundSubtractorGMG, ColorDepthFrame>::Ptr m_pBackgroundSubtractor;
-#endif // BS_USE_MOG2
+//    BackgroundSubtractor<cv::BackgroundSubtractorGMG, ColorDepthFrame>::Ptr m_pBackgroundSubtractor;
     
-//    // TODO adapt these:
-//    Monitorizer:Ptr m_pMonitorizer;
+    Monitorizer::Ptr m_pMonitorizer;
 };
-
 
 #endif

@@ -608,6 +608,25 @@ int cvx::match(cv::Mat m, cv::Mat query, bool debug)
     return match;
 }
 
+void cvx::match(cv::Mat src, cv::Mat queries, cv::Mat& matched, cv::Mat& pending)
+{
+    std::vector<cv::Mat> matchedRows;
+    std::vector<cv::Mat> pendingRows;
+    
+    for (int i = 0; i < queries.rows; i++)
+    {
+        bool bMatch = false;
+        for (int j = 0; j < src.rows && !bMatch; j++)
+        {
+            bMatch = cv::sum(queries.row(j) == queries.row(i)).val[0] > 0;
+            bMatch ? matchedRows.push_back(src.row(j)) : pendingRows.push_back(src.row(j));
+        }
+    }
+    
+    cvx::vconcat(matchedRows, matched);
+    cvx::vconcat(pendingRows, pending);
+}
+
 void cvx::sortIdx(cv::InputArray src, cv::OutputArray ind, int flags, cv::OutputArray dst)
 {
     cv::Mat _src = src.getMat();
@@ -666,21 +685,131 @@ void cvx::convert(cv::Mat mat, std::vector<std::vector<T> >& vv)
         vv[i].resize(mat.cols);
         
         for (int j = 0; j < mat.cols; j++)
-            vv[i][j] = mat.at<double>(i,j);
+            vv[i][j] = mat.at<T>(i,j);
     }
 }
 
 template<typename T>
 void cvx::convert(std::vector<std::vector<T> > vv, cv::Mat& mat)
 {
+    if (vv.size() == 0 || vv[0].size() == 0)
+        return;
+    
     mat.create(vv.size(), vv[0].size(), cv::DataType<T>::type);
     for (int i = 0; i < mat.rows; i++)
     {
         assert( vv[i].size() == mat.cols );
         for (int j = 0; j < mat.cols; j++)
-            mat.at<double>(i,j) = vv[i][j];
+            mat.at<T>(i,j) = vv[i][j];
     }
 }
+
+void cvx::vconcat(std::vector<cv::Mat> array, cv::Mat& mat)
+{
+    if (array.size() > 0)
+    {
+        int length = 0;
+        for (int i = 0; i < array.size(); i++)
+            length += array[i].cols;
+        
+        mat.create(length, array[0].cols, array[0].type());
+        
+        int ptr = 0;
+        for (int i = 0; i < array.size(); i++)
+        {
+            assert(array[i].cols == array[0].cols);
+            assert(array[i].type() == array[0].type());
+            
+            cv::Mat roi (mat, cv::Rect(0, ptr, array[i].cols, array[i].rows));
+            array[i].copyTo(roi);
+            
+            ptr += array[i].rows;
+        }
+    }
+}
+
+void cvx::hconcat(std::vector<cv::Mat> array, cv::Mat& mat)
+{
+    if (array.size())
+    {
+        int length = 0;
+        for (int i = 0; i < array.size(); i++)
+             length += array[i].cols;
+        
+        mat.create(array[0].rows, length, array[0].type());
+        
+        int ptr = 0;
+        for (int i = 0; i < array.size(); i++)
+        {
+            assert(array[i].rows == array[0].rows);
+            assert(array[i].type() == array[0].type());
+            
+            cv::Mat roi (mat, cv::Rect(ptr, 0, array[i].cols, array[i].rows));
+            array[i].copyTo(roi);
+            
+            ptr += array[i].cols;
+        }
+    }
+}
+
+cv::Point cvx::diffIdx(cv::Mat src1, cv::Mat src2)
+{
+    assert (src1.rows == src2.rows && src1.cols == src2.cols && src1.channels() == src2.channels());
+    
+    for (int i = 0; i < src1.rows; i++) for (int j = 0; j < src1.cols; j++)
+    {
+        cv::Mat inequality = ( src1.row(i).col(j) != src2.row(i).col(j) );
+        if (inequality.at<uchar>(0,0))
+            return cv::Point(j,i);
+    }
+    
+    return cv::Point(-1,-1);
+}
+
+void cvx::unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I)
+{
+    vector<cv::Mat> elements;
+    vector<int> indices;
+    for (int i = 0; i < ((dim == 0) ? M.rows : M.cols); i++)
+    {
+        cv::Mat e = ((dim == 0) ? M.row(i) : M.col(i));
+        
+        if (i == 0)
+        {
+            elements.push_back(e);
+            indices.push_back(elements.size() - 1);
+        }
+        else
+        {
+            int matchIdx = -1;
+            for (int j = 0; j < elements.size() && matchIdx < 0; j++)
+            {
+                if ( cv::sum(elements[j] - e).val[0] == 0 )
+                    matchIdx = j;
+            }
+            
+            if (matchIdx < 0)
+            {
+                // New unique
+                elements.push_back(e);
+                indices.push_back(elements.size() - 1); // set new idx to the new element
+            }
+            else
+            {
+                indices.push_back(matchIdx); // set match idx
+            }
+        }
+    }
+    
+    U.create(((dim == 0) ? elements.size() : M.rows), ((dim == 0) ? M.cols : elements.size()), M.type());
+    I.create(((dim == 0) ? indices.size() : 1), ((dim == 0) ? 1 : elements.size()), cv::DataType<int>::type);
+    
+    for (int i = 0; i < elements.size(); i++)
+        elements[i].copyTo( ((dim == 0) ? U.row(i) : U.col(i)) );
+    for (int i = 0; i < indices.size(); i++)
+        I.at<int>((dim == 0) ? 0 : i, (dim == 0) ? i : 0) = indices[i];
+}
+
 
 template void cvx::convert(cv::Mat mat, std::vector<std::vector<uchar> >& vv);
 template void cvx::convert(cv::Mat mat, std::vector<std::vector<ushort> >& vv);

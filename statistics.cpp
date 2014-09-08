@@ -515,7 +515,6 @@ void selectParameterCombination(vector<vector<T> > expandedParams, int hp, int w
 //    }
 //}
 
-
 float accuracy(cv::Mat actuals, cv::Mat predictions)
 {
     actuals.convertTo(actuals, cv::DataType<int>::type);
@@ -528,10 +527,10 @@ float accuracy(cv::Mat actuals, cv::Mat predictions)
     int nobj = cv::sum(objects).val[0];
     int nsbj = cv::sum(subjects).val[0];
     
-    int objHits = cv::sum(objects & hits).val[0];
-    int sbjHits = cv::sum(subjects & hits).val[0];
+    float objAcc = (nobj > 0) ? (cv::sum(objects & hits).val[0] / nobj) : 0;
+    float sbjAcc = (nsbj > 0) ? (cv::sum(subjects & hits).val[0] / nsbj) : 0;
     
-    return (float(objHits)/nobj + float(sbjHits)/nsbj) / 2;
+    return (objAcc + sbjAcc) / 2.0;
 }
 
 //void accuracy(GridMat actuals, GridMat predictions, cv::Mat& accuracies)
@@ -594,8 +593,7 @@ void accuracy(cv::Mat actuals, cv::Mat predictions, cv::Mat partitions, cv::Mat&
     accuracies.create(labels.size(), 1, cv::DataType<float>::type);
     for (int k = 0; k < labels.size(); k++)
     {
-        accuracies.at<float>(k,0) = accuracy(cvx::indexMat(actuals, partitions == k),
-                                             cvx::indexMat(predictions, partitions == k));
+        accuracies.at<float>(k,0) = accuracy(cvx::indexMat(actuals, partitions == k), cvx::indexMat(predictions, partitions == k));
     }
 }
 
@@ -709,9 +707,19 @@ void computeConfidenceInterval(cv::Mat values, float* mean, float* confidence, f
 //    }
 //}
 
-float computeF1Score(int tp, int fp, int fn)
+float computeF1Score(int tp, int fn, int fp)
 {
     return (2.f * tp) / (2.f * tp + fp + fn);
+}
+
+void computeF1Score(cv::Mat tp, cv::Mat fn, cv::Mat fp, cv::Mat& fscore)
+{
+    cv::Mat tpF, fnF, fpF;
+    tp.convertTo(tpF, cv::DataType<float>::type);
+    fn.convertTo(fnF, cv::DataType<float>::type);
+    fp.convertTo(fpF, cv::DataType<float>::type);
+
+    fscore = (2.f * tpF) / ((2.f * tpF) + fpF + fnF);
 }
 
 void writeParametersToFile(string file, vector<string> names, vector<vector<double> > values, bool append)

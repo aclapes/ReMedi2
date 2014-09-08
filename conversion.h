@@ -58,6 +58,11 @@ void translate(const pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud, Eigen::Vector4f
 template <typename T>
 std::string to_string_with_precision(const T a_value, const int n = 6);
 
+template<typename T>
+std::string to_string(cv::Mat values, std::string separator);
+template<typename T>
+std::string to_string_with_precision(cv::Mat values, std::string separator, const int n = 6);
+
 std::string getFilenameFromPath(std::string path);
 
 int searchByName(std::vector<std::string> paths, std::string filename);

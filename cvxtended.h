@@ -81,6 +81,7 @@ namespace cvx
     void mean(cv::InputArray acc, cv::InputArray count, cv::OutputArray mean);
     void stddev(cv::InputArray sqdiffsacc, cv::InputArray count, cv::InputArray err, cv::OutputArray stddev);
     
+    void match(cv::Mat src, cv::Mat queries, cv::Mat& matched, cv::Mat& pending);
     template<typename T>
     int match(cv::Mat m, cv::Mat query, bool debug = false);
     
@@ -92,6 +93,12 @@ namespace cvx
     void convert(cv::Mat mat, std::vector<std::vector<T> >& vv);
     template<typename T>
     void convert(std::vector<std::vector<T> > vv, cv::Mat& mat);
+    
+    void vconcat(std::vector<cv::Mat> array, cv::Mat& mat);
+    void hconcat(std::vector<cv::Mat> array, cv::Mat& mat);
+    
+    cv::Point diffIdx(cv::Mat src1, cv::Mat src2);
+    void unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I);
 }
 
 

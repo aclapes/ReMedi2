@@ -62,18 +62,23 @@ public:
     vector<typename FrameT::Ptr> getFrames(int i);
     
     vector<typename FrameT::Ptr> getFrames(vector<string> filenames);
+    vector<typename FrameT::Ptr> getFrames(vector<string> filenames, vector<int>& indices);
     vector<string> getFramesFilenames();
     
-    vector<int> getNumOfFrames();
+    int getMinNumOfFrames();
+    void getNumOfFramesOfViews(vector<int>& numOfFrames);
+    int getTotalNumOfFrames();
     vector<int> getCurrentFramesID();
     vector<float> getProgress();
     vector<int> at();
     
-    vector<int> getFrameCounters() const;
-    void setFrameCounters(vector<int> counters);
+    vector<int> getFrameIndices() const;
+    void setFrameIndices(vector<int> indices);
     
     vector<int> getDelays() const;
     void setDelays(vector<int> delays);
+    
+    vector<int> getFrameCounters() const;
     
     void restart();
     
@@ -95,7 +100,7 @@ protected:
     vector< vector<string> > m_Paths;
     vector< vector<typename FrameT::Ptr> > m_Streams;
     
-    vector<int> m_FrameCounter;
+    vector<int> m_FrameIndices;
     vector<int> m_Delays;
 };
 
@@ -204,9 +209,11 @@ public:
     vector<ColorDepthFrame::Ptr> getFrames(int i);
         
     vector<ColorDepthFrame::Ptr> getFrames(vector<string> filenames);
+    vector<ColorDepthFrame::Ptr> getFrames(vector<string> filenames, vector<int>& indices);
     vector<string> getFramesFilenames();
     
-    vector<int> getNumOfFrames();
+    int getMinNumOfFrames();
+    void getNumOfFramesOfViews(vector<int>& numOfFrames);
     vector<int> getCurrentFramesID();
     vector<float> getProgress();
     vector<int> at();
@@ -214,8 +221,10 @@ public:
     vector<int> getDelays() const;
     void setDelays(vector<int> delays);
     
+    vector<int> getFrameIndices() const;
+    void setFrameIndices(vector<int> indices);
+    
     vector<int> getFrameCounters() const;
-    void setFrameCounters(vector<int> delays);
     
     void setReferencePoints(vector<pcl::PointXYZ> points);
     vector<pcl::PointXYZ> getReferencePoints() const;
@@ -242,7 +251,7 @@ private:
     vector< vector< pair<string,string> > > m_Paths;
     vector< vector<ColorDepthFrame::Ptr> > m_Streams;
     
-    vector<int> m_FrameCounter;
+    vector<int> m_FrameIndices;
     vector<int> m_Delays;
     
     vector<pcl::PointXYZ> m_ReferencePoints;
