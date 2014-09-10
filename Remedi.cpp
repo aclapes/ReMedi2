@@ -153,9 +153,8 @@ void ReMedi::setTableModelerParameters(float leafsz, float normrad, int sacIters
  *  \param lrate The learning rate for the adaptive background model
  *  \param bgratio The background ratio
  *  \param vargen The variance threshold to consider generation of new mixture components
- *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
  */
-void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen, int level)
+void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen)
 {
     m_pBackgroundSubtractor->setFramesResolution(m_XRes, m_YRes);
     
@@ -167,7 +166,6 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
     m_pBackgroundSubtractor->setLearningRate(lrate);
     m_pBackgroundSubtractor->setBackgroundRatio(bgratio);
     m_pBackgroundSubtractor->setVarThresholdGen(vargen);
-    m_pBackgroundSubtractor->setOpeningSize(level);
 }
 
 ///** \brief Set the parameters of the background subtractor
@@ -177,9 +175,8 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
 // *  \param lrate The learning rate for the adaptive background model
 // *  \param q The background ratio
 // *  \param t The decision threshold based on the variance criterion
-// *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
 // */
-//void ReMedi::setSubtractorParameters(int n, int m, int f, float lrate, float q, float t, int level)
+//void ReMedi::setSubtractorParameters(int n, int m, int f, float lrate, float q, float t)
 //{
 //    m_pBackgroundSubtractor->setFramesResolution(m_XRes, m_YRes);
 //    
@@ -191,15 +188,20 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
 //    m_pBackgroundSubtractor->setLearningRate(lrate);
 //    m_pBackgroundSubtractor->setQuantizationLevels(q);
 //    m_pBackgroundSubtractor->setDecisionThreshold(t);
-//    m_pBackgroundSubtractor->setOpeningSize(level);
 //}
 
-// Set the parameters of the monitorizer
-//    leafsz : leaf size in the voxel grid downsampling (speeds up further processes)
-//    clusterDist : distance threshold in spatial clustering of 3-D blobs
-void ReMedi::setMonitorizerParameters(float leafsz, float clusterDist)
+/** \brief Set the parameters of the monitorizer
+ * \param morphSize : kernel size of the mathematical morphology operation
+ * \param leafSize : leaf size in the voxel grid downsampling (speeds up further processes)
+ * \param clusterDist : distance threshold in spatial clustering of 3-D blobs
+ * \param minClusterSize : minimum number of points a cluster hast to have to be considered
+ */
+void ReMedi::setMonitorizerParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize)
 {
-    
+    m_pMonitorizer->setMorhologyLevel(morphSize);
+    m_pMonitorizer->setDownsamplingSize(leafSize);
+    m_pMonitorizer->setClusteringIntradistanceFactor(clusterDist);
+    m_pMonitorizer->setMinClusterSize(minClusterSize);
 }
 
 void ReMedi::initialize()

@@ -13,10 +13,11 @@
 
 #include "cvxtended.h"
 #include "conversion.h"
-#include <boost/assign/std/vector.hpp>
-#include <boost/timer.hpp>
 
+#include <boost/assign/std/vector.hpp>
 using namespace boost::assign;
+
+#include <boost/timer.hpp>
 
 // Declarations
 
@@ -34,7 +35,7 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
 void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::Mat mntrCombinations, vector<vector<vector<cv::Mat> > > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), cv::Mat& combinations, cv::Mat& meanScores, cv::Mat& sdScores);
 
 // Monitorizer recognition performance
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinationsBsCols, cv::Mat combinationsMntrCols, vector<DetectionOutput> groundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation = false);
 
 // General functions
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
@@ -585,7 +586,7 @@ void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::M
 }
 
 // Faster version
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinationsBsCols, cv::Mat combinationsMntrCols, cv::Mat mntrCombinations, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
     sys.initialize();
     
@@ -598,10 +599,8 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
         assert (numOfViews == sequences[s]->getNumOfViews());
     // -------------------------------------------------
     
-    assert (combinationsBsCols.rows == combinationsMntrCols.rows);
-    
     cv::Mat bsCombinations, bsIndices;
-    cvx::unique(combinationsBsCols, 0, bsCombinations, bsIndices);
+    cvx::unique(combinations.colRange(0,6), 0, bsCombinations, bsIndices);
     
     vector<BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr> pSubtractors (bsCombinations.rows);
     
@@ -610,12 +609,12 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
         BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBs (new BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>);
         *pBs = *(sys.getBackgroundSubtractor());
         
-        pBs->setModality(combinationsBsCols.at<double>(i,0));
-        pBs->setNumOfMixtureComponents(combinationsBsCols.at<double>(i,1));
-        pBs->setLearningRate(combinationsBsCols.at<double>(i,2));
-        pBs->setBackgroundRatio(combinationsBsCols.at<double>(i,3));
-        pBs->setVarThresholdGen(combinationsBsCols.at<double>(i,4));
-        pBs->setOpeningSize(combinationsBsCols.at<double>(i,5));
+        pBs->setModality(bsCombinations.at<double>(i,0));
+        pBs->setNumOfMixtureComponents(bsCombinations.at<double>(i,1));
+        pBs->setLearningRate(bsCombinations.at<double>(i,2));
+        pBs->setBackgroundRatio(bsCombinations.at<double>(i,3));
+        pBs->setVarThresholdGen(bsCombinations.at<double>(i,4));
+        pBs->setOpeningSize(bsCombinations.at<double>(i,5));
         
         pBs->model();
     
@@ -629,20 +628,16 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
     if (!bQualitativeEvaluation)
     {
         // Data structures
-        
-        errors.resize(bsCombinations.rows);
-        for (int i = 0; i < bsCombinations.rows; i++)
+        errors.resize(combinations.rows);
+        for (int i = 0; i < combinations.rows; i++)
         {
-            errors[i].resize(mntrCombinations.rows);
-            for (int j = 0; j < mntrCombinations.rows; j++)
+            errors[i].resize(sequences.size());
+            for (int s = 0; s < sequences.size(); s++)
             {
-                errors[i][j].resize(sequences.size());
-                for (int s = 0; s < sequences.size(); s++)
-                {
-                    errors[i][j][s].create(sequences[s]->getNumOfViews(), sequences[s]->getMinNumOfFrames(), CV_32SC3);
-                }
+                errors[i][s].create(sequences[s]->getNumOfViews(), sequences[s]->getMinNumOfFrames(), CV_32SC3);
             }
         }
+    
     }
     
     // Calculate the errors
@@ -660,17 +655,17 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
             vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
             
             // Variables can be shared in some combinations (throughout those only the detection tolerance varies), do not need to recalculate
-            cv::Mat aux (mntrCombinations.row(0).size(), mntrCombinations.type()); // previous combination
-            vector<vector<pcl::PointXYZ> > detections; // previous detections
+            cv::Mat aux (combinations.row(0).size(), combinations.type()); // previous combination
+            vector<vector<vector<pcl::PointXYZ> > > recognitions; // previous recognitions
             
-            for (int i = 0; i < bsCombinations.rows; i++) for (int j = 0; j < mntrCombinations.rows; j++)
+            for (int i = 0; i < combinations.rows; i++)
             {
                 // special case: only changed the tolerance parameter on detections,
-                // no need to re-compute anything except errors (5th index, i.e. col or x == 4)
-                cv::Point p = cvx::diffIdx(mntrCombinations.row(j), aux);
-                if (p.x < 4)
+                // no need to re-compute anything except errors
+                cv::Point p = cvx::diffIdx(combinations.row(i), aux);
+                if (p.x < combinations.cols - 1)
                 {
-                    aux = mntrCombinations.row(j);
+                    aux = combinations.row(i);
                     
                     sys.getRegisterer()->setInputFrames(frames);
                     sys.getRegisterer()->registrate(frames);
@@ -685,26 +680,26 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
                     for (int v = 0; v < pSeq->getNumOfViews(); v++)
                         frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
                     
-                    pMonitorizer->setMorhologyLevel(mntrCombinations.at<double>(j,0));
-                    pMonitorizer->setDownsamplingSize(mntrCombinations.at<double>(j,1));
-                    pMonitorizer->setClusteringIntradistanceFactor(mntrCombinations.at<double>(j,2));
-                    pMonitorizer->setMinClusterSize(mntrCombinations.at<double>(j,3));
+                    pMonitorizer->setMorhologyLevel(combinations.at<double>(i, bsCombinations.cols + 0));
+                    pMonitorizer->setDownsamplingSize(combinations.at<double>(i, bsCombinations.cols + 1));
+                    pMonitorizer->setClusteringIntradistanceFactor(combinations.at<double>(i, bsCombinations.cols + 2));
+                    pMonitorizer->setMinClusterSize(combinations.at<double>(i, bsCombinations.cols + 3));
                     
                     pMonitorizer->setInputFrames(frames);
-                    pMonitorizer->detect(detections);
+                    pMonitorizer->recognize(recognitions);
                 }
                 
-                detectionGroundtruths[s].setTolerance(mntrCombinations.at<double>(j,4));
+                detectionGroundtruths[s].setTolerance(combinations.at<double>(i, bsCombinations.cols + 4));
                 
                 vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >correspondences, rejections;
                 cv::Mat frameErrors;
                 
-                detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detections, correspondences, rejections, frameErrors);
-                
-                if (bQualitativeEvaluation)
-                    visualizeDetections(frames, correspondences, rejections, 0.02);
-                else
-                    frameErrors.copyTo(errors[i][j][s].col(f));
+//                detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, correspondences, rejections, frameErrors);
+//                
+//                if (bQualitativeEvaluation)
+//                    visualizeDetections(frames, correspondences, rejections, 0.02);
+//                else
+//                    frameErrors.copyTo(errors[i][s].col(f));
             }
             
             f++;
@@ -716,12 +711,12 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
     {
         cv::FileStorage fs;
         fs.open(path + filename, cv::FileStorage::APPEND);
-        for (int i = 0; i < bsCombinations.rows; i++) for (int j = 0; j < mntrCombinations.rows; j++)
+        for (int i = 0; i < combinations.rows; i++)
         {
             for (int s = 0; s < sequences.size(); s++)
             {
-                string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s);
-                fs << id << errors[i][j][s];
+                string id = "combination_" + to_string(i) + "-" + to_string(s);
+                fs << id << errors[i][s];
             }
         }
         fs.release();
@@ -966,7 +961,7 @@ int validation()
     
     cv::Mat bestCombinations = combinations.rowRange(0, 0.10 * combinations.rows);
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-    validateMonitorizationRecognition(sys, sequences, bestCombinations.colRange(0, bsParameters.size() - 1), bestCombinations.colRange(bsParameters.size(), bsParameters.size() + mntrParameters.size() - 1), detectionGroundtruths, "mntr_results/", "mntr_performance.yml", mntrRcgnErrors);
+//    validateMonitorizationRecognition(sys, sequences, bestCombinations, detectionGroundtruths, "mntr_results/", "mntr_performance.yml", mntrRcgnErrors);
     
     return 0;
 }

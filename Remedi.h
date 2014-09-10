@@ -100,7 +100,7 @@ public:
      *  \param vargen The variance threshold to consider generation of new mixture components
      *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen, int level);
+    void setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen);
 #else
     /** \brief Set the parameters of the background subtractor
      *  \param n The number of samples used for modelling
@@ -109,13 +109,14 @@ public:
      *  \param lrate The learning rate for the adaptive background model
      *  \param q The background ratio
      *  \param t The decision threshold based on the variance criterion
-     *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setSubtractorParameters(int n, int m, int f, float lrate, float q, float t, int level);
+    void setSubtractorParameters(int n, int m, int f, float lrate, float q, float t);
 #endif
     
-    // Set the parameters of the monitorizer
-    void setMonitorizerParameters(float leafsz, float clusterDist);
+    /** \brief Set the parameters of the background subtractor
+     *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
+     */
+    void setMonitorizerParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize);
     
     void initialize();
     

@@ -46,7 +46,6 @@
 #define BS_NUM_OF_SAMPLES               400
 #define BS_MODALITY                     3
 #define BS_LRATE                        -1
-#define BS_OPENING                      2
 
 #define BS_K                            30
 #define BS_BGRATIO                      0.99999
@@ -65,6 +64,7 @@
 #define TM_CONF_LEVEL                   99
 
 // Monitorizer's constants
+#define MO_MORPHOLOGY                   2
 #define MO_LEAF_SIZE                    0.005
 #define MO_CLUSTERS_DIST_FACTOR         5
 #define MO_MINIMUM_CLUSTER_SIZE         50

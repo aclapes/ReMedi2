@@ -768,8 +768,8 @@ cv::Point cvx::diffIdx(cv::Mat src1, cv::Mat src2)
 
 void cvx::unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I)
 {
-    vector<cv::Mat> elements;
-    vector<int> indices;
+    std::vector<cv::Mat> elements;
+    std::vector<int> indices;
     for (int i = 0; i < ((dim == 0) ? M.rows : M.cols); i++)
     {
         cv::Mat e = ((dim == 0) ? M.row(i) : M.col(i));
@@ -808,6 +808,26 @@ void cvx::unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I)
         elements[i].copyTo( ((dim == 0) ? U.row(i) : U.col(i)) );
     for (int i = 0; i < indices.size(); i++)
         I.at<int>((dim == 0) ? 0 : i, (dim == 0) ? i : 0) = indices[i];
+}
+
+void cvx::findRowsToColsAssignation(cv::Mat scores, cv::Mat& matches)
+{
+    cv::Mat M (scores.size(), CV_8U, cv::Scalar(0)); // matches
+    cv::Mat A = M.clone(); // assignations
+    
+    for (int i = 0; i < scores.rows && i < scores.cols; i++)
+    {
+        double minVal, maxVal;
+        cv::Point minIdx, maxIdx;
+        cv::minMaxLoc(scores, &minVal, &maxVal, &minIdx, &maxIdx, ~A);
+
+        M.at<uchar>(minIdx.y, minIdx.x) = 255;
+        A.col(minIdx.x) = 255;
+        A.row(minIdx.y) = 255;
+    }
+    
+    // Get the matches indices
+    cv::findNonZero(M, matches);
 }
 
 

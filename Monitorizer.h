@@ -10,6 +10,7 @@
 #define __remedi2__Monitorizer__
 
 #include "ColorDepthFrame.h"
+#include "Cloudject.hpp"
 
 #include <iostream>
 #include <vector>
@@ -31,6 +32,8 @@ class Monitorizer
     typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr ColorPointCloudPtr;
     typedef pcl::visualization::PCLVisualizer Visualizer;
     typedef pcl::visualization::PCLVisualizer::Ptr VisualizerPtr;
+    typedef LFCloudject<PointT, pcl::FPFHSignature33> Cloudject;
+    typedef LFCloudject<PointT, pcl::FPFHSignature33>::Ptr CloudjectPtr;
     
 public:
     Monitorizer();
@@ -40,14 +43,23 @@ public:
     void setDownsamplingSize(float leafSize);
     void setClusteringIntradistanceFactor(float factor);
     void setMinClusterSize(int minSize);
+    void setInterviewCorrepondenceDistance(float d);
     
+    void detect(vector<vector<PointCloudPtr> >& detections);
     void detect(vector<vector<PointT> >& positions);
+    void getDetectionsPositions(vector<vector<PointCloudPtr> > detections, vector<vector<PointT> >& positions);
+    
+    void recognize(vector<vector<vector<PointT> > >& recognitions);
     
     typedef boost::shared_ptr<Monitorizer> Ptr;
     
 private:
     void clusterize(PointCloudPtr pCloud, float leafSize, float intraDistFactor, int minSize, vector<PointCloudPtr>& clusters);
     void downsample(PointCloudPtr pCloud, float leafSize, PointCloud& cloudFiltered);
+    void cloudjectify(vector<vector<PointCloudPtr> > detections, vector<CloudjectPtr>& cloudjects);
+    void findCorrespondences(vector<vector<PointCloudPtr> > detections, float tol, vector<vector<pair<int,PointCloudPtr> > >& correspondences);
+    void findNextCorrespondence(vector<vector<PointT> >& detections, vector<vector<bool> >& assignations, int v, float tol, vector<pair<pair<int,int>,PointT> >& chain);
+
     
     //
     // Attributes
@@ -59,6 +71,7 @@ private:
     float m_LeafSize;
     float m_ClusterIdF; // Cluster intradistance factor
     float m_MinClusterSize;
+    float m_CorrespenceDist;
 };
 
 #endif /* defined(__remedi2__Monitorizer__) */

@@ -27,14 +27,16 @@ public:
         
         m_OriginalViews.resize(views.size());
         m_Views.resize(views.size());
+        m_ViewIDs.resize(views.size());
         m_Positions.resize(views.size());
         m_MedianDists.resize(views.size());
         for (int i = 0; i < views.size(); i++)
         {
+            m_ViewIDs[i] = i;
+            
             m_OriginalViews[i] = PointCloudPtr(new PointCloud);
             m_Views[i] = PointCloudPtr(new PointCloud);
-            
-            init(views[i], *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
+            init(views[i].second, *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
         }
 	}
     
@@ -45,14 +47,36 @@ public:
         
         m_OriginalViews.resize(viewsFilepaths.size());
         m_Views.resize(viewsFilepaths.size());
+        m_ViewIDs.resize(viewsFilepaths.size());
         m_Positions.resize(viewsFilepaths.size());
         m_MedianDists.resize(viewsFilepaths.size());
         for (int i = 0; i < viewsFilepaths.size(); i++)
         {
+            m_ViewIDs[i] = i;
+
             m_OriginalViews[i] = PointCloudPtr(new PointCloud);
             m_Views[i] = PointCloudPtr(new PointCloud);
-            
             init(viewsFilepaths[i], *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
+        }
+	}
+    
+    CloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
+	{
+		m_ID = 0;
+        m_LeafSize = leafSize;
+        
+        m_OriginalViews.resize(views.size());
+        m_Views.resize(views.size());
+        m_ViewIDs.resize(views.size());
+        m_Positions.resize(views.size());
+        m_MedianDists.resize(views.size());
+        for (int i = 0; i < views.size(); i++)
+        {
+            m_ViewIDs[i] = views[i].first;
+
+            m_OriginalViews[i] = PointCloudPtr(new PointCloud);
+            m_Views[i] = PointCloudPtr(new PointCloud);
+            init(views[i].second, *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
         }
 	}
 
@@ -70,7 +94,8 @@ public:
             m_ID	= cloudject.m_ID;
             m_Name = cloudject.m_Name;
             m_OriginalViews = cloudject.m_OriginalViews;
-            m_View = cloudject.m_Views;
+            m_Views = cloudject.m_Views;
+            m_ViewIDs = cloudject.m_ViewIDs;
             m_Positions	= cloudject.m_Positions;
             m_MedianDists = cloudject.m_MedianDists;
         }
@@ -83,7 +108,7 @@ public:
         originalView = *view;
         
 		if (m_LeafSize == 0.f)
-            *transfView = *originalView;
+            transfView = originalView;
         else
 			downsample(originalView, m_LeafSize, transfView);
         
@@ -250,6 +275,7 @@ protected:
 
 	vector<PointCloudPtr> m_OriginalViews;
 	vector<PointCloudPtr> m_Views;
+    vector<int> m_ViewIDs;
 	vector<PointT> m_Positions;
 	vector<float> m_MedianDists;
 };
@@ -271,7 +297,10 @@ public:
 		: CloudjectBase<PointT,SignatureT>(views, leafSize)
     {}
 	LFCloudjectBase(vector<string> viewsFilePaths, float leafSize = 0.0)
-		: CloudjectBase<PointT,SignatureT>(viewPathsPaths, leafSize)
+		: CloudjectBase<PointT,SignatureT>(viewsFilePaths, leafSize)
+    {}
+    LFCloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
+    : CloudjectBase<PointT,SignatureT>(views, leafSize)
     {}
 
 	LFCloudjectBase(const LFCloudjectBase<PointT,SignatureT>& rhs)
@@ -328,7 +357,7 @@ public:
 	}
     
 protected:
-	DescriptionPtr m_Descriptions;
+	vector<DescriptionPtr> m_Descriptions;
 };
 
 
@@ -354,6 +383,9 @@ public:
 
 	LFCloudject(vector<string> viewFilePaths, float leafSize = 0.f)
         : LFCloudjectBase<PointT,pcl::FPFHSignature33>(viewFilePaths, leafSize) { }
+    
+	LFCloudject(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.f)
+    : LFCloudjectBase<PointT,pcl::FPFHSignature33>(views, leafSize) { }
 
 	LFCloudject(const LFCloudject<PointT,pcl::FPFHSignature33>& rhs)
 		: LFCloudjectBase<PointT,pcl::FPFHSignature33>(rhs)
@@ -384,7 +416,7 @@ public:
     
 	int getNumOfPointsInView(int i) { return LFCloudjectBase<PointT,pcl::FPFHSignature33>::getNumOfPointsInView(i); }
 
-	float medianDistToCentroidInView(int i) { return LFCloudjectBase<PointT,pcl::FPFHSignature33>::medianDistToCentroidInView(int i); }
+	float medianDistToCentroidInView(int i) { return LFCloudjectBase<PointT,pcl::FPFHSignature33>::medianDistToCentroidInView(i); }
 
     int getNumOfViews() const { return LFCloudjectBase<PointT,pcl::FPFHSignature33>::getNumOfViews(); }
     
@@ -413,8 +445,8 @@ public:
         {
             if (!getView(i)->empty())
             {
-                m_Descriptions[i] = pcl::PointCloud<pcl::FPFHSignature33>::Ptr (new pcl::PointCloud<pcl::FPFHSignature33>);
-                describeView( getView(i), normalRadius, fpfhRadius, *(m_Descriptions[i]) );
+                LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i] = pcl::PointCloud<pcl::FPFHSignature33>::Ptr (new pcl::PointCloud<pcl::FPFHSignature33>);
+                describeView( getView(i), normalRadius, fpfhRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]) );
             }
         }
 	}
@@ -470,6 +502,8 @@ public:
 		fpfh.compute (descriptor);
 	}
     
+    typedef boost::shared_ptr<LFCloudject<PointT,pcl::FPFHSignature33> > Ptr;
+    
 private:
 	void downsample(PointCloud& cloud, float leafSize, PointCloud& filteredCloud)
 	{ LFCloudjectBase<PointT,pcl::FPFHSignature33>::downsample(cloud, leafSize, filteredCloud); }
@@ -493,7 +527,10 @@ public:
     
     LFCloudject(vector<string> viewsFilePaths, float leafSize = 0.0)
     : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(viewsFilePaths, leafSize) { }
-
+    
+	LFCloudject(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
+    : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(views, leafSize) { }
+    
 	LFCloudject(const LFCloudject<PointT,pcl::PFHRGBSignature250>& cloudject) 
 		: LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(cloudject) { }
 
@@ -538,12 +575,12 @@ public:
 
 	void describe(float normalRadius, float pfhrgbRadius)
 	{
-        for (int i = 0; i < getNumOfViews(); i++)
+        for (int i = 0; i < LFCloudjectBase<PointT,pcl::FPFHSignature33>::getNumOfViews(); i++)
         {
             if (!getView(i)->empty())
             {
-                m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
-                describeView(getView(i), normalRadius, pfhrgbRadius, *(m_Descriptions[i]));
+                LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
+                describeView(getView(i), normalRadius, pfhrgbRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]));
             }
         }
 	}
@@ -599,6 +636,8 @@ public:
 		pfhrgb.compute (descriptor);
 	}
 
+    typedef boost::shared_ptr<LFCloudject<PointT,pcl::PFHRGBSignature250> > Ptr;
+    
 private:
 	void downsample(PointCloud& cloud, float leafSize, PointCloud& filteredCloud)
 	{

@@ -99,7 +99,8 @@ namespace cvx
     
     cv::Point diffIdx(cv::Mat src1, cv::Mat src2);
     void unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I);
+    
+    void findRowsToColsAssignation(cv::Mat scores, cv::Mat& matches);
 }
-
 
 #endif /* defined(__remedi2__cvxtended__) */
