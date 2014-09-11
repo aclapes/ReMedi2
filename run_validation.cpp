@@ -552,8 +552,8 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
 void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::Mat mntrCombinations, vector<vector<vector<cv::Mat> > > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), cv::Mat& combinations, cv::Mat& meanScores, cv::Mat& sdScores)
 {
     combinations.create(bsCombinations.rows * mntrCombinations.rows, bsCombinations.cols + mntrCombinations.cols, cv::DataType<double>::type);
-    meanScores.create(bsCombinations.rows * mntrCombinations.rows, errors[0][0].size(), cv::DataType<float>::type);
-    sdScores.create(bsCombinations.rows * mntrCombinations.rows, errors[0][0].size(), cv::DataType<float>::type);
+    meanScores.create(bsCombinations.rows * mntrCombinations.rows, errors[0][0][0].rows, cv::DataType<float>::type);
+    sdScores.create(bsCombinations.rows * mntrCombinations.rows, errors[0][0][0].rows, cv::DataType<float>::type);
     
     for (int i = 0; i < bsCombinations.rows; i++)
     {
@@ -857,6 +857,8 @@ int validation()
     // | Validation of BackgroundSubtractor |
     // *------------------------------------*
     
+    cout << "Validation of BackgroundSubtractor" << endl;
+    
     // Define a set of parameters to validate
     
     vector<vector<double> > bsParameters;
@@ -925,6 +927,8 @@ int validation()
     // | Validation of Monitorizer (detection)  |
     // *----------------------------------------*
     
+    cout << "Validation of Monitorizer (detection)" << endl;
+    
     vector<DetectionOutput> detectionGroundtruths;
     for (int s = 1; s < sequencesNames.size(); s++)
     {
@@ -959,7 +963,7 @@ int validation()
     // | Final validation |
     // *------------------*
     
-    cv::Mat bestCombinations = combinations.rowRange(0, 0.10 * combinations.rows);
+    cv::Mat bestCombinations = combinations.rowRange(0, 0.5 * combinations.rows);
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
 //    validateMonitorizationRecognition(sys, sequences, bestCombinations, detectionGroundtruths, "mntr_results/", "mntr_performance.yml", mntrRcgnErrors);
     
