@@ -168,7 +168,11 @@ void Monitorizer::recognize(vector<vector<vector<PointT> > >& recognitions)
     
     for (int i = 0; i < cloudjects.size(); i++)
     {
-        
+        // match cloudject to models
+        for (int j = 0; j < m_CloudjectModels.size(); j++)
+        {
+            
+        }
     }
 }
 

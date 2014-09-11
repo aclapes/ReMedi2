@@ -11,6 +11,7 @@
 
 #include "ColorDepthFrame.h"
 #include "Cloudject.hpp"
+#include "CloudjectModel.hpp"
 
 #include <iostream>
 #include <vector>
@@ -34,6 +35,8 @@ class Monitorizer
     typedef pcl::visualization::PCLVisualizer::Ptr VisualizerPtr;
     typedef LFCloudject<PointT, pcl::FPFHSignature33> Cloudject;
     typedef LFCloudject<PointT, pcl::FPFHSignature33>::Ptr CloudjectPtr;
+    typedef LFCloudjectModel<PointT, pcl::FPFHSignature33> CloudjectModel;
+    typedef LFCloudjectModel<PointT, pcl::FPFHSignature33>::Ptr CloudjectModelPtr;
     
 public:
     Monitorizer();
@@ -72,6 +75,8 @@ private:
     float m_ClusterIdF; // Cluster intradistance factor
     float m_MinClusterSize;
     float m_CorrespenceDist;
+    
+    vector<CloudjectModel> m_CloudjectModels;
 };
 
 #endif /* defined(__remedi2__Monitorizer__) */

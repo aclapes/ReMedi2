@@ -78,12 +78,12 @@ public:
         // Add a the cloud's pre-computed centroid position
         
 		Eigen::Vector4f centroid;
-		pcl::compute3DCentroid(*pView), centroid);
+		pcl::compute3DCentroid(*pView, centroid);
 		m_ViewCentroids.push_back( PointT(centroid.x(), centroid.y(), centroid.z()) );
 
         // Add a the cloud's pre-computed median distance to centroid
         
-		float medianDist = medianDistanceToCentroid(pView, c);
+		float medianDist = medianDistanceToCentroid(pView, m_ViewCentroids.back());
 		m_MedianDistsToViewCentroids.push_back(medianDist);
 	}
     
@@ -216,7 +216,7 @@ protected:
 
     float match(LFCloudject<PointT,SignatureT> c)
     {
-        float penalizedScores = 0.f;
+        float penalizedScoresAcc = 0.f;
         
         for (int i = 0; i < c.getNumOfViews(); i++)
         {
@@ -237,10 +237,10 @@ protected:
 				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
 			}
             
-            penalizedScore += (score * penalty);
+            penalizedScoresAcc += (score * penalty);
         }
         
-        return penalizedScore / c.getNumOfViews();
+        return penalizedScoresAcc / c.getNumOfViews();
     }
 
 //	// Returns the score of matching a cloudject against the model
@@ -528,9 +528,6 @@ public:
 
 	float match(LFCloudject c)
 	{
-        // DEBUG
-        if (c.getDescriptionA()->empty() && c.getDescriptionB()->empty())
-            cout << "null" << endl;
         return LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::match(c);
     }
 
@@ -550,6 +547,8 @@ public:
 		}
 	}
 
+    typedef boost::shared_ptr<LFCloudjectModel<PointT,pcl::FPFHSignature33> > Ptr;
+    
 private:
 	float matchView(DescriptorPtr pDescriptor)
 	{ return LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::matchView(pDescriptor); }
@@ -635,6 +634,165 @@ private:
 	}
 };
 
+// Partially specialized template
+template<>
+class LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFCloudjectModelBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>
+{
+    
+    typedef pcl::PointXYZRGB PointT;
+	typedef pcl::PointCloud<pcl::PFHRGBSignature250> Descriptor;
+	typedef pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr DescriptorPtr;
+	typedef pcl::PointCloud<PointT> PointCloud;
+	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<PointT> KdTree;
+    typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
+    
+	typedef LFCloudject<PointT,pcl::PFHRGBSignature250> LFCloudject;
+    
+public:
+    
+	LFCloudjectModel(int ID, string name, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
+    : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(ID, name, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
+	{}
+    
+    LFCloudjectModel(const LFCloudjectModel& rhs)
+    : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(rhs)
+    {
+        *this = rhs;
+    }
+    
+    //	virtual ~LFCloudjectModel() {}
+    
+    LFCloudjectModel& operator=(const LFCloudjectModel& rhs)
+    {
+        return *this;
+    }
+    
+	int getID() { return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getID(); }
+    string getName() { return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getName(); }
+	
+    int getNumOfViews() { return CloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getNumOfViews(); }
+	void addView(PointCloudPtr pCloud) { LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::addView(pCloud); }
+    PointCloudPtr getView(int i) { return CloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getView(i); }
+    
+    void addViewDescriptor(DescriptorPtr pDescriptor)
+    { LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::addViewDescriptor(pDescriptor); }
+    DescriptorPtr getViewDescriptor(int i) { return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getViewDescriptor(i); }
+    
+	float euclideanDistance(PointT p1, PointT p2) { return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::euclideanDistance(p1,p2); }
+	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::medianDistanceToCentroid(pCloud, centroid); }
+	
+	float averageNumOfPointsInModels()
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::averageNumOfPointsInModels(); }
+	float averageMedianDistanceToCentroids()
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::averageMedianDistanceToCentroids(); }
+    
+	float match(LFCloudject c)
+	{
+        return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::match(c);
+    }
+    
+	int getPenalty()
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::getPenalty(); }
+    
+    
+	// Describe all the model views
+	void describe(float normalRadius, float pfhrgbRadius)
+	{
+		for (int i = 0; i < getNumOfViews(); i++)
+		{
+			DescriptorPtr pDescriptor (new Descriptor);
+            PointCloudPtr view = getView(i);
+			describeView(view, normalRadius, pfhrgbRadius, *pDescriptor);
+			addViewDescriptor(pDescriptor);
+		}
+	}
+    
+    typedef boost::shared_ptr<LFCloudjectModel<PointT,pcl::PFHRGBSignature250> > Ptr;
+    
+private:
+	float matchView(DescriptorPtr pDescriptor)
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::matchView(pDescriptor); }
+    
+	float battacharyyaDistanceSignatures(pcl::PFHRGBSignature250 s1, pcl::PFHRGBSignature250 s2)
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::battacharyyaDistanceSignatures(s1, s2); }
+    
+	float euclideanDistanceSignatures(pcl::PFHRGBSignature250 s1, pcl::PFHRGBSignature250 s2)
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::euclideanDistanceSignatures(s1, s2); }
+    
+	float euclideanDistanceSignatures(pcl::PFHRGBSignature250 s1, pcl::PFHRGBSignature250 s2, float thresh)
+	{ return LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>::euclideanDistanceSignatures(s1, s2, thresh); }
+    
+    
+	// Compute the description of a view, performing
+	// a prior downsampling to speed up the process
+	void describeView(PointCloudPtr pView, float leafSize, float normalRadius, float pfhrgbRadius, Descriptor& descriptor)
+	{
+		PointCloudPtr pViewF (new PointCloud);
+        
+		pcl::ApproximateVoxelGrid<PointT> avg;
+		avg.setInputCloud(pView);
+		avg.setLeafSize(leafSize, leafSize, leafSize);
+		avg.filter(*pViewF);
+        
+		pViewF.swap(pView);
+        
+		describeView(pView, normalRadius, pfhrgbRadius, descriptor);
+	}
+    
+    
+	// Compute the description of a view, actually
+	void describeView(PointCloudPtr pView,
+					  float normalRadius, float pfhrgbRadius,
+					  Descriptor& descriptor)
+	{
+		//
+		// Normals preprocess
+		//
+        
+		// Create the normal estimation class, and pass the input dataset to it
+		pcl::NormalEstimation<PointT, pcl::Normal> ne;
+		ne.setInputCloud (pView);
+        
+		// Create an empty kdtree representation, and pass it to the normal estimation object.
+		// Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
+		KdTreePtr tree (new KdTree);
+		ne.setSearchMethod (tree);
+        
+		// Output datasets
+		pcl::PointCloud<pcl::Normal>::Ptr pNormals (new pcl::PointCloud<pcl::Normal>);
+        
+		// Use all neighbors in a sphere of radius 3cm
+		ne.setRadiusSearch (normalRadius);
+        
+		// Compute the features
+		ne.compute (*pNormals);
+        
+		//
+		// FPFH description extraction
+		//
+        
+        pcl::PFHRGBEstimation<PointT,pcl::Normal,pcl::PFHRGBSignature250> pfhrgb;
+		pfhrgb.setInputCloud (pView);
+		pfhrgb.setInputNormals (pNormals);
+        
+		// Create an empty kdtree representation, and pass it to the PFHRGB estimation object.
+		// Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
+		tree = KdTreePtr(new KdTree);
+		pfhrgb.setSearchMethod (tree);
+        
+		// Output datasets
+		// * initialize outside
+        
+		// Use all neighbors in a sphere of radius 5cm
+		// IMPORTANT: the radius used here has to be larger than the radius used to estimate the surface normals!!!
+		pfhrgb.setRadiusSearch (pfhrgbRadius);
+        
+		// Compute the features
+		pfhrgb.compute (descriptor);
+	}
+};
 
 //// Partially specialized template
 //template<typename PointT>
@@ -651,8 +809,7 @@ private:
 //
 //public:
 //
-//	LFCloudjectModel(int ID, int nViewpoints = 3, float leafSize = 0.0, float pointRejectionThresh = 1.0, 
-//		float ratioRejectionThresh = 1.0, int penalty = 1, float sigmaPenaltyThresh = 0.1)
+//	LFCloudjectModel(int ID, int nViewpoints = 3, float leafSize = 0.0, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, int penalty = 1, float sigmaPenaltyThresh = 0.1)
 //		: LFCloudjectModelBase<PointT, pcl::PFHRGBSignature250>(ID, nViewpoints, leafSize,
 //		  pointRejectionThresh, ratioRejectionThresh, penalty, sigmaPenaltyThresh)
 //	{}
@@ -783,16 +940,16 @@ private:
 
 // Explicit template instantation
 template class CloudjectModelBase<pcl::PointXYZ,pcl::FPFHSignature33>;
-//template class CloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
+template class CloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class CloudjectModelBase<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-//template class CloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+template class CloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 
 template class LFCloudjectModelBase<pcl::PointXYZ,pcl::FPFHSignature33>;
-//template class LFCloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
+template class LFCloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-//template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 
 template class LFCloudjectModel<pcl::PointXYZ,pcl::FPFHSignature33>;
-//template class LFCloudjectModel<pcl::PointXYZ,pcl::PFHRGBSignature250>;
+template class LFCloudjectModel<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModel<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-//template class LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+template class LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
