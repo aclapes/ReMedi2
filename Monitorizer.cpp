@@ -19,7 +19,7 @@
 using namespace boost::assign;
 
 Monitorizer::Monitorizer()
-: m_MorphLevel(0), m_LeafSize(0.02), m_ClusterIdF(0.04)
+: m_MorphLevel(1), m_LeafSize(0.01), m_ClusterIdF(2)
 {
     
 }
