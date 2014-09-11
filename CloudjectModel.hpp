@@ -709,7 +709,7 @@ public:
 		}
 	}
     
-    typedef boost::shared_ptr<LFCloudjectModel<PointT,pcl::PFHRGBSignature250> > Ptr;
+    typedef boost::shared_ptr<LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250> > Ptr;
     
 private:
 	float matchView(DescriptorPtr pDescriptor)

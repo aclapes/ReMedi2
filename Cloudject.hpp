@@ -36,7 +36,7 @@ public:
             
             m_OriginalViews[i] = PointCloudPtr(new PointCloud);
             m_Views[i] = PointCloudPtr(new PointCloud);
-            init(views[i].second, *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
+            init(views[i], *(m_OriginalViews[i]), *(m_Views[i]), m_Positions[i], m_MedianDists[i], m_LeafSize);
         }
 	}
     
@@ -116,17 +116,19 @@ public:
 		pcl::compute3DCentroid(transfView, centroid);
 		pos = PointT(centroid.x(), centroid.y(), centroid.z());
         
-		medianDist = medianDistanceToCentroid(transfView, pos);
+        PointCloudPtr pTransfView;
+        // TODO
+		medianDist = medianDistanceToCentroid(pTransfView, pos);
     }
 
-    void init(const char* viewPath, PointCloud& originalView, PointCloud& transfView, PointT& pos, float& medianDist, float leafSize = 0.f)
+    void init(string viewPath, PointCloud& originalView, PointCloud& transfView, PointT& pos, float& medianDist, float leafSize = 0.f)
     {
-        PointCloud view;
+        PointCloudPtr pView;
         
 		pcl::PCDReader reader;
-		reader.read(viewPath, view);
+		reader.read(viewPath, *pView);
         
-		init(view, originalView, transfView, pos, medianDist, leafSize);
+		init(pView, originalView, transfView, pos, medianDist, leafSize);
     }
     
 	int getID() { return m_ID; }
@@ -170,15 +172,15 @@ public:
 		return sqrt(powf(p1.x - p2.x, 2) + powf(p1.y - p2.y, 2) + powf(p1.z - p2.z, 2));
 	}
     
-	float medianDistanceToCentroid(PointCloud& cloud, PointT centroid)
+	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
 	{
 		std::vector<float> distances;
 
-		distances.push_back(euclideanDistance(centroid, cloud.points[0]));
+		distances.push_back(euclideanDistance(centroid, pCloud->points[0]));
 
-		for (int i = 1; i < cloud.points.size(); i++)
+		for (int i = 1; i < pCloud->points.size(); i++)
 		{
-			float dist = euclideanDistance(centroid, cloud.points[i]);
+			float dist = euclideanDistance(centroid, pCloud->points[i]);
 			bool inserted = false;
 			for (int j = 0; j < distances.size() && !inserted; j++)
 			{
@@ -340,8 +342,8 @@ public:
 	PointCloudPtr getView(int i) const { return CloudjectBase<PointT,SignatureT>::getView(i); }
 
 	float euclideanDistance(PointT p1, PointT p2) { return CloudjectBase<PointT,SignatureT>::euclideanDistance(p1,p2); }
-	float medianDistanceToCentroid(PointCloud& pCloud, PointT centroid)
-	{ return CloudjectBase<PointT,SignatureT>::euclideanDistance(pCloud, centroid); }
+	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
+	{ return CloudjectBase<PointT,SignatureT>::medianDistanceToCentroid(pCloud, centroid); }
 
 //    void distanceTo(const CloudjectBase<PointT,SignatureT>& tgt, float* dist1, float* dist2)
 //    { CloudjectBase<PointT,SignatureT>::distanceTo(tgt, dist1, dist2); }
@@ -424,8 +426,8 @@ public:
 
 	float euclideanDistance(PointT p1, PointT p2) { return LFCloudjectBase<PointT,pcl::FPFHSignature33>::euclideanDistance(p1,p2); }
     
-	float medianDistanceToCentroid(PointCloud& pCloud, PointT centroid)
-	{ return LFCloudjectBase<PointT,pcl::FPFHSignature33>::euclideanDistance(pCloud, centroid); }
+	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
+	{ return LFCloudjectBase<PointT,pcl::FPFHSignature33>::medianDistanceToCentroid(pCloud, centroid); }
 
 	void setDescription(vector<pcl::PointCloud<pcl::FPFHSignature33>::Ptr> descriptions)
 	{
@@ -510,10 +512,11 @@ private:
 };
 
 
-template<typename PointT>
-class LFCloudject<PointT, pcl::PFHRGBSignature250> : public LFCloudjectBase<PointT, pcl::PFHRGBSignature250>
+template<>
+class LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFCloudjectBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>
 {
-    typedef typename pcl::PointCloud<PointT> PointCloud;
+    typedef pcl::PointXYZRGB PointT;
+    typedef pcl::PointCloud<PointT> PointCloud;
 	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     typedef pcl::search::KdTree<PointT> KdTree;
 	typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
@@ -544,8 +547,14 @@ public:
 	int getID() { return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getID(); }
 	void setID(int ID) { LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::setID(ID); }
     
-    int getName() { return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getName(); }
-	void setName(string name) { LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::setName(name); }
+    string getName()
+    {
+        return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getName();
+    }
+	void setName(string name)
+    {
+        LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::setName(name);
+    }
 
 	PointT getPosition(int i) const { return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getPosition(i); }
 
@@ -557,14 +566,14 @@ public:
 	PointCloudPtr getView(int i) const { return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getView(i); }
 
 	float euclideanDistance(PointT p1, PointT p2) { return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::euclideanDistance(p1,p2); }
-	float medianDistanceToCentroid(PointCloud& pCloud, PointT centroid)
-	{ return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::euclideanDistance(pCloud, centroid); }
+	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
+	{ return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::medianDistanceToCentroid(pCloud, centroid); }
 
-	void setDescriptions(vector<pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr> descriptions)
-	{
-        LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::describe(descriptions);
-    }
     
+	void setDescription(vector<pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr> descriptions)
+	{
+        LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::setDescriptions(descriptions);
+    }
 	pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr getDescription(int i)
 	{
         return LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getDescription(i);
@@ -575,12 +584,12 @@ public:
 
 	void describe(float normalRadius, float pfhrgbRadius)
 	{
-        for (int i = 0; i < LFCloudjectBase<PointT,pcl::FPFHSignature33>::getNumOfViews(); i++)
+        for (int i = 0; i < LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getNumOfViews(); i++)
         {
             if (!getView(i)->empty())
             {
-                LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
-                describeView(getView(i), normalRadius, pfhrgbRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]));
+                LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
+                describeView(getView(i), normalRadius, pfhrgbRadius, *(LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::m_Descriptions[i]));
             }
         }
 	}
@@ -636,7 +645,7 @@ public:
 		pfhrgb.compute (descriptor);
 	}
 
-    typedef boost::shared_ptr<LFCloudject<PointT,pcl::PFHRGBSignature250> > Ptr;
+    typedef boost::shared_ptr<LFCloudject<pcl::PointXYZRGB,pcl::PFHRGBSignature250> > Ptr;
     
 private:
 	void downsample(PointCloud& cloud, float leafSize, PointCloud& filteredCloud)
