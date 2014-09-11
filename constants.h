@@ -64,6 +64,8 @@
 #define TM_CONF_LEVEL                   99
 
 // Monitorizer's constants
+#define MO_NUM_OF_OBJECTS               5
+
 #define MO_MORPHOLOGY                   2
 #define MO_LEAF_SIZE                    0.005
 #define MO_CLUSTERS_DIST_FACTOR         5

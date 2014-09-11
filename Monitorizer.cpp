@@ -158,7 +158,7 @@ void Monitorizer::downsample(PointCloudPtr pCloud, float leafSize, PointCloud& c
     }
 }
 
-void Monitorizer::recognize(vector<vector<vector<PointT> > >& recognitions)
+void Monitorizer::recognize(vector<CloudjectPtr>& recognitions)
 {
     vector<vector<PointCloudPtr> > detections;
     detect(detections);
@@ -169,10 +169,44 @@ void Monitorizer::recognize(vector<vector<vector<PointT> > >& recognitions)
     for (int i = 0; i < cloudjects.size(); i++)
     {
         // match cloudject to models
+        int maxScoreIdx;
+        float maxScore = 0;
+        
         for (int j = 0; j < m_CloudjectModels.size(); j++)
         {
-            
+            float score = m_CloudjectModels[j]->getScore(cloudjects[i]);
+            if (score >= maxScore)
+            {
+                maxScoreIdx = j;
+                maxScore    = score;
+            }
         }
+        
+        cloudjects[i]->setID(m_CloudjectModels[maxScoreIdx]->getID());
+        cloudjects[i]->setName(m_CloudjectModels[maxScoreIdx]->getName());
+    }
+}
+
+void Monitorizer::recognize(vector<vector<vector<pcl::PointXYZ> > >& positions)
+{
+    vector<CloudjectPtr> cloudjects;
+    recognize(cloudjects);
+    
+    positions.resize(m_InputFrames.size());
+    for (int v = 0; v < positions.size(); v++)
+        positions[v].resize(MO_NUM_OF_OBJECTS);
+    
+    for (int i = 0; i < cloudjects.size(); i++)
+    {
+        int cljId = cloudjects[i]->getID();
+        vector<int> cljViewIDs = cloudjects[i]->getViewIDs();
+        vector<pcl::PointXYZ> cljPositions = cloudjects[i]->getPositions();
+        
+        // Num of views in cloudject are the same as number of input frames
+        assert (cloudjects[i]->getViewIDs().size() == m_InputFrames.size());
+        
+        for (int v = 0; v < cljViewIDs.size(); v++)
+            positions[v][cljId].push_back(cljPositions[v]);
     }
 }
 

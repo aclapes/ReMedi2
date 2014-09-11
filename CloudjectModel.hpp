@@ -164,7 +164,7 @@ class LFCloudjectModelBase : public CloudjectModelBase<PointT,SignatureT>
 	typedef typename pcl::PointCloud<SignatureT> Descriptor;
 	typedef typename pcl::PointCloud<SignatureT>::Ptr DescriptorPtr;
 
-protected:
+public:
 	LFCloudjectModelBase(void) 
 		: CloudjectModelBase<PointT,SignatureT>() {}
 
@@ -215,19 +215,19 @@ protected:
     { m_ViewsDescriptors.push_back(pDescriptor); }
     DescriptorPtr getViewDescriptor(int i) { return m_ViewsDescriptors[i]; }
 
-    float match(LFCloudject<PointT,SignatureT> c)
+    float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject)
     {
         float penalizedScoresAcc = 0.f;
         
-        for (int i = 0; i < c.getNumOfViews(); i++)
+        for (int i = 0; i < pCloudject->getNumOfViews(); i++)
         {
-            float score = matchView(c.getDescription(i));
+            float score = matchView(pCloudject->getDescription(i));
             
             float penalty = 1.f;
 			if (getPenalty() == 0)
 			{
                 float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
-				float ratio = c.getNumOfPointsInView(i) / avg;
+				float ratio = pCloudject->getNumOfPointsInView(i) / avg;
 				float x = (ratio <= 1) ? ratio : 1 + (1 - (1 / ratio));
                 
 				penalty *= (1.0 / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf((x-1)/m_SigmaPenaltyThresh, 2));
@@ -235,7 +235,7 @@ protected:
 			else if (getPenalty() == 1)
 			{
                 float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
-				float diff = (c.medianDistToCentroidInView(i) - avg);
+				float diff = (pCloudject->medianDistToCentroidInView(i) - avg);
 
 				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
 			}
@@ -243,9 +243,10 @@ protected:
             penalizedScoresAcc += (score * penalty);
         }
         
-        return penalizedScoresAcc / c.getNumOfViews();
+        return penalizedScoresAcc / pCloudject->getNumOfViews();
     }
 
+protected:
 	// Returns the score of matching a description of a certain cloudject's view against the model views' descriptions
 	float matchView(DescriptorPtr descriptor)
 	{
@@ -396,11 +397,14 @@ protected:
 //
 
 // Generic template
+
 template<typename PointT, typename SignatureT>
 class LFCloudjectModel : public LFCloudjectModelBase<PointT,SignatureT>
 {};
 
+
 // Partially specialized template
+
 template<typename PointT>
 class LFCloudjectModel<PointT, pcl::FPFHSignature33> : public LFCloudjectModelBase<PointT, pcl::FPFHSignature33>
 {

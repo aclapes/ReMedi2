@@ -52,7 +52,8 @@ public:
     void detect(vector<vector<PointT> >& positions);
     void getDetectionsPositions(vector<vector<PointCloudPtr> > detections, vector<vector<PointT> >& positions);
     
-    void recognize(vector<vector<vector<PointT> > >& recognitions);
+    void recognize(vector<CloudjectPtr>& recognitions);
+    void recognize(vector<vector<vector<pcl::PointXYZ> > >& positions);
     
     typedef boost::shared_ptr<Monitorizer> Ptr;
     
@@ -76,7 +77,7 @@ private:
     float m_MinClusterSize;
     float m_CorrespenceDist;
     
-    vector<CloudjectModel> m_CloudjectModels;
+    vector<CloudjectModelPtr> m_CloudjectModels;
 };
 
 #endif /* defined(__remedi2__Monitorizer__) */
