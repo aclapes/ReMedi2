@@ -25,7 +25,6 @@ using namespace boost::assign;
 int loadBackgroundSubtractionValidationFile(string filePath, cv::Mat& combinations, vector<cv::Mat>& overlaps);
 void validateBackgroundSubtraction(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr > sequences, vector< vector<double> > parameters, vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename, cv::Mat& combinations, cv::Mat& overlaps);
 void summarizeBackgroundSubtractionValidation(cv::Mat combinations, vector<cv::Mat> overlaps, cv::Mat& means, cv::Mat& stddevs);
-
 //void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename);
 //void getBsParametersPerformance(cv::Mat overlaps, cv::Mat& means, cv::Mat& stddevs);
 
@@ -347,7 +346,7 @@ void loadMonitorizationSegmentationValidationFile(string filePath, cv::Mat& bsCo
     fs.release();
 }
 
-void visualizeDetections(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > correspondences, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius)
+void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > correspondences, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius)
 {
     // Create visualizer
     pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
@@ -380,7 +379,7 @@ void visualizeDetections(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair
             q = correspondences[v][i].second;
             
             pVis->addSphere(p, markersRadius, 0, 1, 0, "correspondences_prediction_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addSphere(q, markersRadius, 1, 1, 0, "correspondences_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(q, markersRadius, 1, 1, 1, "correspondences_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
             pVis->addLine(p, q, 0, 1, 0, "correspondences_line_" + to_string(v) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
@@ -390,7 +389,7 @@ void visualizeDetections(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair
             q = rejections[v][i].second;
             
             pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addSphere(q, markersRadius, 1, 1, 0, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(q, markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
             pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) +to_string(i), viewports[v]);
         }
     }
@@ -523,7 +522,7 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
                 detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detections, correspondences, rejections, frameErrors);
                 
                 if (bQualitativeEvaluation)
-                    visualizeDetections(frames, correspondences, rejections, 0.02);
+                    visualizeSegmentations(frames, correspondences, rejections, 0.02);
                 else
                     frameErrors.copyTo(errors[i][j][s].col(f));
             }
@@ -583,6 +582,57 @@ void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::M
             }
         }
     }
+}
+
+void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > correspondences, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius)
+{
+    // Create visualizer
+    pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
+    
+    // Create viewports (horizontally)
+    vector<int> viewports (frames.size());
+    for (int v = 0; v < viewports.size(); v++)
+    {
+        pVis->createViewPort(v * (1.f/viewports.size()), 0, (v+1) * (1.f/viewports.size()), 1, viewports[v]);
+        pVis->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_string(v), viewports[v]);
+    }
+    
+    // Draw clouds, correspondences, and rejections
+    
+    for (int v = 0; v < frames.size(); v++)
+    {
+        // Annotations are not registered, so get the unregistered point clouds
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredCloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+        frames[v]->getColoredPointCloud( *pColoredCloud ); // unregistered
+        
+        pVis->addPointCloud(pColoredCloud, "cloud_" + to_string(v), viewports[v]);
+        
+        pcl::PointXYZ p, q;
+        
+        // Groundtruth annotations represented as yellow spheres
+        // Correspondences are in green linked with green line to groundtruth
+        for (int i = 0; i < correspondences[v].size(); i++) for (int o = 0; o < correspondences[v][i].size(); o++)
+        {
+            p = correspondences[v][i][o].first;
+            q = correspondences[v][i][o].second;
+            
+            pVis->addSphere(p, markersRadius, 0, 1, 0, "correspondences_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "correspondences_groundtruth_"  + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addLine(p, q, 0, 1, 0, "correspondences_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+        }
+        // Rejections are in red linked with red line to groundtruth
+        for (int i = 0; i < rejections[v].size(); i++)  for (int o = 0; o < rejections[v][i].size(); o++)
+        {
+            p = rejections[v][i][o].first;
+            q = rejections[v][i][o].second;
+            
+            pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "rejections_groundtruth_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+        }
+    }
+    
+    pVis->spin();
 }
 
 // Faster version
@@ -691,15 +741,15 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
                 
                 detectionGroundtruths[s].setTolerance(combinations.at<double>(i, bsCombinations.cols + 4));
                 
-                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >correspondences, rejections;
+                vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > correspondences, rejections;
                 cv::Mat frameErrors;
                 
-//                detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, correspondences, rejections, frameErrors);
-//                
-//                if (bQualitativeEvaluation)
-//                    visualizeDetections(frames, correspondences, rejections, 0.02);
-//                else
-//                    frameErrors.copyTo(errors[i][s].col(f));
+                detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, correspondences, rejections, frameErrors);
+
+                if (bQualitativeEvaluation)
+                    visualizeRecognitions(frames, correspondences, rejections, 0.02);
+                else
+                    frameErrors.copyTo(errors[i][s].col(f));
             }
             
             f++;

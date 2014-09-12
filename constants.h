@@ -71,4 +71,23 @@
 #define MO_CLUSTERS_DIST_FACTOR         5
 #define MO_MINIMUM_CLUSTER_SIZE         50
 
+// Marker colors (as many as objects at least)
+static float g_Colors[][3] = {
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, 0, 1},
+    {1, 1, 0},
+    {1, 0, 1},
+    {0, 1, 1},
+    {1, 1, 1},
+    {0, 0, 0},
+    {1, .5, 0},
+    {1, 0, .5},
+    {.5, 1, 0},
+    {0, 1, .5},
+    {.5, 0, 1},
+    {0, .5, 1},
+    {.5, 1, 0}
+};
+
 #endif

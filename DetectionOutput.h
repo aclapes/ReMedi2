@@ -55,17 +55,26 @@ public:
     void getSegmentationResults(DetectionOutput groundtruth, int& tp, int& fn, int& fp);
     void getRecognitionResults(DetectionOutput groundtruth, int& tp, int& fn, int& fp);
 
-    // this is groundtruth
+    // in case this instance is a groundtruth instance
+    // segmentation
     void getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, cv::Mat& errors);
     void getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& correspondences, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& rejections, cv::Mat& errors);
     
-    void getFrameSegmentationResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<pcl::PointXYZ> predictions, int& tp, int& fn, int& fp);
+//    void getFrameSegmentationResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<pcl::PointXYZ> predictions, int& tp, int& fn, int& fp);
     void getFrameSegmentationResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<pcl::PointXYZ> predictions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& correspondences, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp);
+    
+    // recognition
+    void getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > > recognitions, cv::Mat& errors); // recognitions in each view, each kind of object, and each instance of object
+    void getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > > recognitions, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& correspondences, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& rejections, cv::Mat& errors);
+    
+//    void getFrameRecognitionResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
+    void getFrameObjectRecognitionResults(vector<pcl::PointXYZ> groundtruth, vector<pcl::PointXYZ> recognitions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& correspondences, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp);
     
 private:
     float distance(pcl::PointXYZ p1, pcl::PointXYZ p2);
-    void getSegmentationFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
-    void getRecognitionFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
+    
+//    void getSegmentationFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
+//    void getRecognitionFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
 
     // view, frame, model, model_instances_positions, (x,y,z) "real world" position
     vector< vector< vector< vector<pcl::PointXYZ> > > > m_Positions;
