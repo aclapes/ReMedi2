@@ -150,6 +150,10 @@ void ObjectDetector::_getDetectionPositions(vector<vector<ColorPointCloudPtr> > 
                 viewPositions[i].getVector4fMap() = centroid;
             else
                 viewPositions[i].getVector4fMap() = m_InputFrames[v]->registratePoint(centroid);
+            
+//            viewPositions[i].getVector4fMap() = centroid;
+//            if (bRegistrate)
+//                viewPositions[i] = m_InputFrames[v]->registratePoint(viewPositions[i]);
         }
         
         positions[v] = viewPositions;

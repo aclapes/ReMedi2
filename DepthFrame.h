@@ -48,6 +48,7 @@ public:
     
     void getDeregisteredPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pRegisteredCloud, pcl::PointCloud<pcl::PointXYZ>& cloud);
     
+    pcl::PointXYZ registratePoint(pcl::PointXYZ src);
     Eigen::Vector4f registratePoint(Eigen::Vector4f src);
     
     typedef boost::shared_ptr<DepthFrame> Ptr;

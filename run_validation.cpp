@@ -380,7 +380,7 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             q = matches[v][i].second;
             
             pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addSphere(q, markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
             pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
@@ -390,7 +390,7 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             q = rejections[v][i].second;
             
             pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addSphere(q, markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
             pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) +to_string(i), viewports[v]);
         }
     }
@@ -610,25 +610,30 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
         
         // Groundtruth annotations represented as yellow spheres
         // matches are in green linked with green line to groundtruth
-        for (int i = 0; i < matches[v].size(); i++) for (int o = 0; o < matches[v][i].size(); o++)
+        vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > objects = matches[v];
+        for (int o = 0; o < matches[v].size(); o++) for (int i = 0; i < matches[v][o].size(); i++)
         {
-            p = matches[v][i][o].first;
-            q = matches[v][i][o].second;
+            p = matches[v][o][i].first;
+            q = matches[v][o][i].second;
             
-            pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "matches_groundtruth_"  + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addSphere(p, markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "matches_prediction_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "matches_groundtruth_"  + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            
+            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "matches_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
-        for (int i = 0; i < rejections[v].size(); i++)  for (int o = 0; o < rejections[v][i].size(); o++)
+        for (int o = 0; o < rejections[v].size(); o++)  for (int i = 0; i < rejections[v][o].size(); i++)
         {
-            p = rejections[v][i][o].first;
-            q = rejections[v][i][o].second;
+            p = rejections[v][o][i].first;
+            q = rejections[v][o][i].second;
             
-            pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "rejections_groundtruth_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-        }
+            pVis->addSphere(p, markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "rejections_prediction_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "rejections_groundtruth_"  + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            
+            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "rejections_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+       }
     }
     
     pVis->spin();
