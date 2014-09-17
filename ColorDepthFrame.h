@@ -51,9 +51,13 @@ public:
     
     void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     void getColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
-    
     void getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    void getRegisteredColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    // Referenced means "ColoredPointCloud includes the origin (0,0,0)"
     void getRegisteredAndReferencedColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    void getRegisteredAndReferencedColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    
+    void registerColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZRGB>& regColoredCloud);
     
     typedef boost::shared_ptr<ColorDepthFrame> Ptr;
     

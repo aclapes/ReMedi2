@@ -26,6 +26,12 @@ public:
 	{
 	}
     
+    CloudjectModelBase(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0)
+    : m_ID(ID), m_Name(name), m_LeafSize(leafSize)
+	{
+        setViews(views);
+	}
+    
     CloudjectModelBase(const CloudjectModelBase& rhs)
 	{
         *this = rhs;
@@ -79,13 +85,24 @@ public:
         
 		Eigen::Vector4f centroid;
 		pcl::compute3DCentroid(*pView, centroid);
-		m_ViewCentroids.push_back( PointT(centroid.x(), centroid.y(), centroid.z()) );
+
+        PointT p;
+        p.getVector4fMap() = centroid;
+		m_ViewCentroids.push_back( p );
 
         // Add a the cloud's pre-computed median distance to centroid
         
 		float medianDist = medianDistanceToCentroid(pView, m_ViewCentroids.back());
 		m_MedianDistsToViewCentroids.push_back(medianDist);
 	}
+    
+    void setViews(vector<PointCloudPtr> views)
+    {
+        for (int v = 0; v < views.size(); v++)
+        {
+            addView(views[v]);
+        }
+    }
     
     PointCloudPtr getView(int i) { return m_ViewClouds[i]; }
     
@@ -169,8 +186,11 @@ public:
 		: CloudjectModelBase<PointT,SignatureT>() {}
 
 	LFCloudjectModelBase(int ID, string name, float leafSize = 0.0, int penalty = 2, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
-		: CloudjectModelBase<PointT,SignatureT>(ID, name, leafSize),
-		  m_Penalty(penalty), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
+		: CloudjectModelBase<PointT,SignatureT>(ID, name, leafSize), m_Penalty(penalty), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
+	{}
+    
+    LFCloudjectModelBase(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0, int penalty = 2, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
+    : CloudjectModelBase<PointT,SignatureT>(ID, name, views, leafSize), m_Penalty(penalty), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
 	{}
     
     LFCloudjectModelBase(const LFCloudjectModelBase& rhs)
@@ -423,6 +443,10 @@ public:
 		: LFCloudjectModelBase<PointT,pcl::FPFHSignature33>(ID, name, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
 	{}
     
+    LFCloudjectModel(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
+    : LFCloudjectModelBase<PointT,pcl::FPFHSignature33>(ID, name, views, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
+	{}
+    
     LFCloudjectModel(const LFCloudjectModel& rhs)
         : LFCloudjectModelBase<PointT,pcl::FPFHSignature33>(rhs)
     {
@@ -541,6 +565,10 @@ public:
     
 	LFCloudjectModel(int ID, string name, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
     : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(ID, name, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
+	{}
+    
+    LFCloudjectModel(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
+    : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(ID, name, views, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
 	{}
     
     LFCloudjectModel(const LFCloudjectModel& rhs)

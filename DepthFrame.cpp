@@ -129,3 +129,8 @@ void DepthFrame::getDeregisteredPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr p
     Eigen::Matrix4f iT = m_T.inverse();
     pcl::transformPointCloud(*pRegisteredCloud, cloud, iT);
 }
+
+Eigen::Vector4f DepthFrame::registratePoint(Eigen::Vector4f src)
+{
+    return m_T * src;
+}

@@ -16,7 +16,11 @@
 #include "TableModeler.h"
 #include "BackgroundSubtractor.h"
 #include "DetectionOutput.h"
-#include "Monitorizer.h"
+#include "ObjectDetector.h"
+#include "ObjectModel.hpp"
+#include "ObjectRecognizer.h"
+
+#include <boost/variant.hpp>
 
 // TODO adapt these:
 //#include "Monitorizer.h"
@@ -25,6 +29,7 @@ using namespace std;
 
 class ReMedi
 {
+    
     typedef pcl::PointXYZ PointT;
     typedef pcl::PointXYZRGB ColorPointT;
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -33,6 +38,14 @@ class ReMedi
     typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr ColorPointCloudPtr;
     typedef pcl::visualization::PCLVisualizer Visualizer;
     typedef pcl::visualization::PCLVisualizer::Ptr VisualizerPtr;
+    typedef pcl::FPFHSignature33 FPFHSignature;
+    typedef pcl::PFHRGBSignature250 PFHRGBSignature;
+    typedef pcl::PointCloud<FPFHSignature> FPFHDescription;
+    typedef pcl::PointCloud<FPFHSignature>::Ptr FPFHDescriptionPtr;
+    typedef pcl::PointCloud<PFHRGBSignature> PFHRGBDescription;
+    typedef pcl::PointCloud<PFHRGBSignature>::Ptr PFHRGBDescriptionPtr;
+//    typedef LFCloudjectModel<ColorPointT,FPFHSignature> CloudjectModel;
+//    typedef LFCloudjectModel<ColorPointT,FPFHSignature>::Ptr CloudjectModelPtr;
     
 public:
     ReMedi();
@@ -43,7 +56,8 @@ public:
     InteractiveRegisterer::Ptr getRegisterer();
     TableModeler::Ptr getTableModeler();
     BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr getBackgroundSubtractor();
-    Monitorizer::Ptr getMonitorizer();
+    ObjectDetector::Ptr getObjectDetector();
+    void* getObjectRecognizer();
     
     /** \brief Set the sequences of frames used to learn the background model, for its further subtraction
      *  \param pBgSeq Background sequence
@@ -116,8 +130,11 @@ public:
     /** \brief Set the parameters of the background subtractor
      *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setMonitorizerParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize);
-    
+    void setObjectDetectorParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize);
+
+    void setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, int descriptionType, int recognitionStrategy);
+    void setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel);
+
     void initialize();
     
     // Normal functioning of the system
@@ -144,9 +161,7 @@ public:
     static void loadSequences(string parent, vector<string>& names);
     static void loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths);
     static void loadDelaysFile(string parent, string filename, vector<vector<int> >& delays);
-    
-    enum { COLOR = 0, DEPTH = 1, COLOR_WITH_SHADOWS = 2, COLORDEPTH = 3 };
-    
+    static void loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews);
     
 private:
     Sequence<ColorDepthFrame>::Ptr m_pBgSeq;
@@ -163,7 +178,10 @@ private:
     BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr m_pBackgroundSubtractor;
 //    BackgroundSubtractor<cv::BackgroundSubtractorGMG, ColorDepthFrame>::Ptr m_pBackgroundSubtractor;
     
-    Monitorizer::Ptr m_pMonitorizer;
+    ObjectDetector::Ptr m_pObjectDetector;
+    
+    int                 m_DescriptionType;
+    void*               m_pObjectRecognizer;
 };
 
 #endif

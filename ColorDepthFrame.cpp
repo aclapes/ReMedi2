@@ -155,7 +155,15 @@ void ColorDepthFrame::getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointX
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredPointCloudTmp (new pcl::PointCloud<pcl::PointXYZRGB>);
     getColoredPointCloud(*pColoredPointCloudTmp);
+    
+    pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, m_T);
+}
 
+void ColorDepthFrame::getRegisteredColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredPointCloudTmp (new pcl::PointCloud<pcl::PointXYZRGB>);
+    getColoredPointCloud(mask, *pColoredPointCloudTmp);
+    
     pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, m_T);
 }
 
@@ -173,4 +181,25 @@ void ColorDepthFrame::getRegisteredAndReferencedColoredPointCloud(pcl::PointClou
     getColoredPointCloud(*pColoredPointCloudTmp);
     
     pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, E.inverse() * m_T);
+}
+
+void ColorDepthFrame::getRegisteredAndReferencedColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
+{
+    // Register the reference point
+    pcl::PointXYZ regReferencePoint = getRegisteredReferencePoint();
+    
+    // Build a translation matrix to the registered reference the cloud after its own registration
+    Eigen::Matrix4f E = Eigen::Matrix4f::Identity();
+    E.col(3) = regReferencePoint.getVector4fMap(); // set translation column
+    
+    // Apply registration first and then referenciation (right to left order in matrix product)
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredPointCloudTmp (new pcl::PointCloud<pcl::PointXYZRGB>);
+    getColoredPointCloud(mask, *pColoredPointCloudTmp);
+    
+    pcl::transformPointCloud(*pColoredPointCloudTmp, coloredCloud, E.inverse() * m_T);
+}
+
+void ColorDepthFrame::registerColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZRGB>& regColoredCloud)
+{
+    pcl::transformPointCloud(*coloredCloud, regColoredCloud, m_T);
 }

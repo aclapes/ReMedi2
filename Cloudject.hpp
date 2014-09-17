@@ -2,7 +2,7 @@
 
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <pcl/filters/approximate_voxel_grid.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/centroid.h>
 #include <pcl/features/fpfh.h>
@@ -94,6 +94,7 @@ public:
             m_ID	= cloudject.m_ID;
             m_Name = cloudject.m_Name;
             m_OriginalViews = cloudject.m_OriginalViews;
+            m_LeafSize = cloudject.m_LeafSize;
             m_Views = cloudject.m_Views;
             m_ViewIDs = cloudject.m_ViewIDs;
             m_Positions	= cloudject.m_Positions;
@@ -211,10 +212,17 @@ protected:
 
 	void downsample(PointCloudPtr pCloud, float leafSize, PointCloud& filteredCloud)
 	{
-		pcl::ApproximateVoxelGrid<PointT> avg;
-		avg.setInputCloud(pCloud);
-		avg.setLeafSize(leafSize, leafSize, leafSize);
-		avg.filter(filteredCloud);
+        if (leafSize == 0.f)
+        {
+            filteredCloud = *pCloud;
+        }
+        else
+        {
+            pcl::VoxelGrid<PointT> avg;
+            avg.setInputCloud(pCloud);
+            avg.setLeafSize(leafSize, leafSize, leafSize);
+            avg.filter(filteredCloud);
+        }
 	}
 
 	// Members
@@ -245,13 +253,21 @@ public:
 
 	LFCloudjectBase(vector<PointCloudPtr> views, float leafSize = 0.0)
 		: CloudjectBase<PointT,SignatureT>(views, leafSize)
-    {}
+    {
+        m_Descriptions.resize(views.size());
+    }
+    
 	LFCloudjectBase(vector<string> viewsFilePaths, float leafSize = 0.0)
 		: CloudjectBase<PointT,SignatureT>(viewsFilePaths, leafSize)
-    {}
+    {
+        m_Descriptions.resize(viewsFilePaths.size());
+    }
+    
     LFCloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
     : CloudjectBase<PointT,SignatureT>(views, leafSize)
-    {}
+    {
+        m_Descriptions.resize(views.size());
+    }
 
 	LFCloudjectBase(const LFCloudjectBase<PointT,SignatureT>& rhs)
 		: CloudjectBase<PointT,SignatureT>(rhs)
@@ -335,22 +351,31 @@ public:
         return *this;
     }
   
-	void describe(float normalRadius, float fpfhRadius)
+	void describe(float normalRadius, float fpfhRadius, float leafSize = 0.f)
 	{
         for (int i = 0; i < LFCloudjectBase<PointT, pcl::FPFHSignature33>::getNumOfViews(); i++)
         {
-            if (!LFCloudjectBase<PointT, pcl::FPFHSignature33>::getView(i)->empty())
+            PointCloudPtr pView = LFCloudjectBase<PointT, pcl::FPFHSignature33>::getView(i);
+            if (!pView->empty())
             {
                 LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i] = pcl::PointCloud<pcl::FPFHSignature33>::Ptr (new pcl::PointCloud<pcl::FPFHSignature33>);
-                describeView( LFCloudjectBase<PointT, pcl::FPFHSignature33>::getView(i), normalRadius, fpfhRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]) );
+                describeView( pView, normalRadius, fpfhRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]), (leafSize > LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_LeafSize) ? leafSize : 0.f);
             }
         }
 	}
 
 	void describeView(PointCloudPtr pView, 
 					  float normalRadius, float fpfhRadius,
-					  pcl::PointCloud<pcl::FPFHSignature33>& descriptor)
+					  pcl::PointCloud<pcl::FPFHSignature33>& descriptor, float leafSize = 0.f)
 	{
+        //
+        // Downsample
+        //
+        
+        PointCloudPtr pViewFiltered (new PointCloud);
+        LFCloudjectBase<PointT, pcl::FPFHSignature33>::downsample(pView, leafSize, *pViewFiltered);
+        pViewFiltered.swap(pView);
+        
 		//
 		// Normals preprocess
 		//
@@ -438,22 +463,31 @@ public:
 	// Methods
 	//
 
-	void describe(float normalRadius, float pfhrgbRadius)
+	void describe(float normalRadius, float pfhrgbRadius, float leafSize = 0.f)
 	{
         for (int i = 0; i < LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getNumOfViews(); i++)
         {
-            if (!getView(i)->empty())
+            PointCloudPtr pView = getView(i);
+            if (!pView->empty())
             {
-                LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
-                describeView(getView(i), normalRadius, pfhrgbRadius, *(LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::m_Descriptions[i]));
+                m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
+                describeView(pView, normalRadius, pfhrgbRadius, *(m_Descriptions[i]), (leafSize > m_LeafSize) ? leafSize : 0.f);
             }
         }
 	}
 
 	void describeView(PointCloudPtr pView, 
 					  float normalRadius, float pfhrgbRadius,
-					  pcl::PointCloud<pcl::PFHRGBSignature250>& descriptor)
+					  pcl::PointCloud<pcl::PFHRGBSignature250>& descriptor, float leafSize = 0.f)
 	{
+        //
+        // Downsample
+        //
+        
+        PointCloudPtr pViewFiltered (new PointCloud);
+        LFCloudjectBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::downsample(pView, leafSize, *pViewFiltered);
+        pViewFiltered.swap(pView);
+        
         //
 		// Normals preprocess
 		//

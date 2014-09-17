@@ -10,6 +10,7 @@
 #include "constants.h"
 #include "statistics.h"
 #include "KinectReader.h"
+#include "ObjectModel.hpp"
 
 #include "cvxtended.h"
 #include "conversion.h"
@@ -28,13 +29,13 @@ void summarizeBackgroundSubtractionValidation(cv::Mat combinations, vector<cv::M
 //void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename);
 //void getBsParametersPerformance(cv::Mat overlaps, cv::Mat& means, cv::Mat& stddevs);
 
-// Monitorizer segmentation validation and performance
+// ObjectDetector segmentation validation and performance
 void loadMonitorizationSegmentationValidationFile(string filePath, cv::Mat& bsCombinations, cv::Mat& mntrCombinations, vector<vector<vector<cv::Mat> > >& errors);
 void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
 void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::Mat mntrCombinations, vector<vector<vector<cv::Mat> > > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), cv::Mat& combinations, cv::Mat& meanScores, cv::Mat& sdScores);
 
-// Monitorizer recognition performance
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation = false);
+// ObjectDetector recognition performance
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<float> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
 
 // General functions
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
@@ -346,7 +347,7 @@ void loadMonitorizationSegmentationValidationFile(string filePath, cv::Mat& bsCo
     fs.release();
 }
 
-void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > correspondences, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius)
+void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius)
 {
     // Create visualizer
     pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
@@ -359,7 +360,7 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
         pVis->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_string(v), viewports[v]);
     }
     
-    // Draw clouds, correspondences, and rejections
+    // Draw clouds, matches, and rejections
     
     for (int v = 0; v < frames.size(); v++)
     {
@@ -372,15 +373,15 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
         pcl::PointXYZ p, q;
         
         // Groundtruth annotations represented as yellow spheres
-        // Correspondences are in green linked with green line to groundtruth
-        for (int i = 0; i < correspondences[v].size(); i++)
+        // matches are in green linked with green line to groundtruth
+        for (int i = 0; i < matches[v].size(); i++)
         {
-            p = correspondences[v][i].first;
-            q = correspondences[v][i].second;
+            p = matches[v][i].first;
+            q = matches[v][i].second;
             
-            pVis->addSphere(p, markersRadius, 0, 1, 0, "correspondences_prediction_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addSphere(q, markersRadius, 1, 1, 1, "correspondences_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
-            pVis->addLine(p, q, 0, 1, 0, "correspondences_line_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(q, markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
+            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
         for (int i = 0; i < rejections[v].size(); i++)
@@ -414,15 +415,6 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
     cv::Mat mntrCombinations;
     expandParameters<double>(mntrParameters, mntrCombinations);
     
-    if (!bQualitativeEvaluation)
-    {
-        cv::FileStorage fs;
-        fs.open(path + filename, cv::FileStorage::WRITE);
-        fs << "mntr_combinations" << mntrCombinations;
-        fs << "bs_combinations" << bsCombinations;
-        fs.release();
-    }
-    
     vector<BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr> pSubtractors;
     pSubtractors.resize(bsCombinations.rows);
     for (int i = 0; i < bsCombinations.rows; i++)
@@ -442,12 +434,18 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
         pSubtractors[i] = pBs;
     }
     
-    Monitorizer::Ptr pMonitorizer = sys.getMonitorizer();
+    ObjectDetector::Ptr pObjectDetector = sys.getObjectDetector();
     
     // Initialization of visualizer (qualitative) or data structures (quantitative)
     
     if (!bQualitativeEvaluation)
     {
+        cv::FileStorage fs;
+        fs.open(path + filename, cv::FileStorage::WRITE);
+        fs << "mntr_combinations" << mntrCombinations;
+        fs << "bs_combinations" << bsCombinations;
+        fs.release();
+        
         // Data structures
         
         errors.resize(bsCombinations.rows);
@@ -481,7 +479,7 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
 
             // Variables can be shared in some combinations (throughout those only the detection tolerance varies), do not need to recalculate
             cv::Mat aux (mntrCombinations.row(0).size(), mntrCombinations.type()); // previous combination
-            vector<vector<pcl::PointXYZ> > detections; // previous detections
+            vector<vector<pcl::PointXYZ> > detectionPositions; // previous detections
             
             for (int i = 0; i < bsCombinations.rows; i++) for (int j = 0; j < mntrCombinations.rows; j++)
             {
@@ -505,24 +503,25 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
                     for (int v = 0; v < pSeq->getNumOfViews(); v++)
                         frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
                     
-                    pMonitorizer->setMorhologyLevel(mntrCombinations.at<double>(j,0));
-                    pMonitorizer->setDownsamplingSize(mntrCombinations.at<double>(j,1));
-                    pMonitorizer->setClusteringIntradistanceFactor(mntrCombinations.at<double>(j,2));
-                    pMonitorizer->setMinClusterSize(mntrCombinations.at<double>(j,3));
+                    pObjectDetector->setMorhologyLevel(mntrCombinations.at<double>(j,0));
+                    pObjectDetector->setDownsamplingSize(mntrCombinations.at<double>(j,1));
+                    pObjectDetector->setClusteringIntradistanceFactor(mntrCombinations.at<double>(j,2));
+                    pObjectDetector->setMinClusterSize(mntrCombinations.at<double>(j,3));
                     
-                    pMonitorizer->setInputFrames(frames);
-                    pMonitorizer->detect(detections);
+                    pObjectDetector->setInputFrames(frames);
+                    pObjectDetector->detect();
+                    pObjectDetector->getDetectionPositions(detectionPositions);
                 }
                 
                 detectionGroundtruths[s].setTolerance(mntrCombinations.at<double>(j,4));
                 
-                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >correspondences, rejections;
+                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
                 cv::Mat frameErrors;
                 
-                detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detections, correspondences, rejections, frameErrors);
+                detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
                 
                 if (bQualitativeEvaluation)
-                    visualizeSegmentations(frames, correspondences, rejections, 0.02);
+                    visualizeSegmentations(frames, matches, rejections, 0.02);
                 else
                     frameErrors.copyTo(errors[i][j][s].col(f));
             }
@@ -584,7 +583,7 @@ void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::M
     }
 }
 
-void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > correspondences, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius)
+void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius)
 {
     // Create visualizer
     pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
@@ -597,7 +596,7 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
         pVis->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_string(v), viewports[v]);
     }
     
-    // Draw clouds, correspondences, and rejections
+    // Draw clouds, matches, and rejections
     
     for (int v = 0; v < frames.size(); v++)
     {
@@ -610,15 +609,15 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
         pcl::PointXYZ p, q;
         
         // Groundtruth annotations represented as yellow spheres
-        // Correspondences are in green linked with green line to groundtruth
-        for (int i = 0; i < correspondences[v].size(); i++) for (int o = 0; o < correspondences[v][i].size(); o++)
+        // matches are in green linked with green line to groundtruth
+        for (int i = 0; i < matches[v].size(); i++) for (int o = 0; o < matches[v][i].size(); o++)
         {
-            p = correspondences[v][i][o].first;
-            q = correspondences[v][i][o].second;
+            p = matches[v][i][o].first;
+            q = matches[v][i][o].second;
             
-            pVis->addSphere(p, markersRadius, 0, 1, 0, "correspondences_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "correspondences_groundtruth_"  + to_string(v) + to_string(i) + to_string(o), viewports[v]);
-            pVis->addLine(p, q, 0, 1, 0, "correspondences_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addSphere(q, markersRadius, g_Colors[o][0], g_Colors[o][1], g_Colors[0][2], "matches_groundtruth_"  + to_string(v) + to_string(i) + to_string(o), viewports[v]);
+            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i) + to_string(o), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
         for (int i = 0; i < rejections[v].size(); i++)  for (int o = 0; o < rejections[v][i].size(); o++)
@@ -636,7 +635,7 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
 }
 
 // Faster version
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<float> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
 {
     sys.initialize();
     
@@ -649,8 +648,12 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
         assert (numOfViews == sequences[s]->getNumOfViews());
     // -------------------------------------------------
     
+    cv::Mat rcgnCombinations;
+    expandParameters(rcgnParameters, rcgnCombinations);
+    
+    // Do not repeat the bs every time. Pre-compute the required combinations!
     cv::Mat bsCombinations, bsIndices;
-    cvx::unique(combinations.colRange(0,6), 0, bsCombinations, bsIndices);
+    cvx::unique(combinations.colRange(0,6), 0, bsCombinations, bsIndices); // separate (bs,sgmn) parameters in combinations and find unique bs' sub-combinations
     
     vector<BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr> pSubtractors (bsCombinations.rows);
     
@@ -671,20 +674,34 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
         pSubtractors[i] = pBs;
     }
     
-    Monitorizer::Ptr pMonitorizer = sys.getMonitorizer();
+    ObjectDetector::Ptr pObjectDetector = sys.getObjectDetector();
+    void* pObjectRecognizer             = sys.getObjectRecognizer();
     
     // Initialization of visualizer (qualitative) or data structures (quantitative)
     
     if (!bQualitativeEvaluation)
     {
+        cv::FileStorage fs;
+        fs.open(path + filename, cv::FileStorage::APPEND);
+        fs << "rcgn_combinations" << rcgnCombinations;
+        fs << "bs-sgmn_combinations" << combinations;
+        fs.release();
+        
         // Data structures
-        errors.resize(combinations.rows);
-        for (int i = 0; i < combinations.rows; i++)
+        
+        errors.resize(rcgnCombinations.rows);
+        for (int i = 0; i < errors.size(); i++)
         {
-            errors[i].resize(sequences.size());
-            for (int s = 0; s < sequences.size(); s++)
+            errors[i].resize(combinations.rows);
+            for (int j = 0; j < errors[i].size(); j++)
             {
-                errors[i][s].create(sequences[s]->getNumOfViews(), sequences[s]->getMinNumOfFrames(), CV_32SC3);
+                errors[i][j].resize(sequences.size());
+                for (int s = 0; s < errors[i][j].size(); s++)
+                {
+                    errors[i][j][s].create(sequences[s]->getNumOfViews(),
+                                           sequences[s]->getMinNumOfFrames(),
+                                           CV_32SC3);
+                }
             }
         }
     
@@ -706,50 +723,101 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
             
             // Variables can be shared in some combinations (throughout those only the detection tolerance varies), do not need to recalculate
             cv::Mat aux (combinations.row(0).size(), combinations.type()); // previous combination
+            vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionCorrespondences;
             vector<vector<vector<pcl::PointXYZ> > > recognitions; // previous recognitions
             
-            for (int i = 0; i < combinations.rows; i++)
+            int prevDescriptionType = rcgnCombinations.at<double>(0,0);
+            for (int i = 0; i < rcgnCombinations.rows; i++)
             {
-                // special case: only changed the tolerance parameter on detections,
-                // no need to re-compute anything except errors
-                cv::Point p = cvx::diffIdx(combinations.row(i), aux);
-                if (p.x < combinations.cols - 1)
+                // Re-initialize ObjectRecognizer internal representations of the objects models (cloudject models)
+                // if description type changes (fpfh <-> pfhrgb)
+                int descriptionType = rcgnCombinations.at<double>(i,0);
+
+                if (descriptionType == DESCRIPTION_FPFH && prevDescriptionType == DESCRIPTION_PFHRGB)
                 {
-                    aux = combinations.row(i);
+                    ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer) );
+                    delete ((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer);
                     
-                    sys.getRegisterer()->setInputFrames(frames);
-                    sys.getRegisterer()->registrate(frames);
+                    pOR->create();
                     
-                    vector<cv::Mat> foregroundMasks;
-                    pSubtractors[i]->setInputFrames(frames);
-                    pSubtractors[i]->subtract(foregroundMasks);
+                    pObjectRecognizer = (void*) pOR;
+                }
+                else if (descriptionType == DESCRIPTION_PFHRGB && prevDescriptionType == DESCRIPTION_FPFH)
+                {
+                    ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer) );
+                    delete ((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer);
                     
-                    vector<cv::Mat> tabletopMasks;
-                    sys.getTableModeler()->getTabletopMask(frames, tabletopMasks);
+                    pOR->create();
                     
-                    for (int v = 0; v < pSeq->getNumOfViews(); v++)
-                        frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
-                    
-                    pMonitorizer->setMorhologyLevel(combinations.at<double>(i, bsCombinations.cols + 0));
-                    pMonitorizer->setDownsamplingSize(combinations.at<double>(i, bsCombinations.cols + 1));
-                    pMonitorizer->setClusteringIntradistanceFactor(combinations.at<double>(i, bsCombinations.cols + 2));
-                    pMonitorizer->setMinClusterSize(combinations.at<double>(i, bsCombinations.cols + 3));
-                    
-                    pMonitorizer->setInputFrames(frames);
-                    pMonitorizer->recognize(recognitions);
+                    pObjectRecognizer = (void*) pOR;
                 }
                 
-                detectionGroundtruths[s].setTolerance(combinations.at<double>(i, bsCombinations.cols + 4));
+                if (prevDescriptionType != descriptionType)
+                    prevDescriptionType = descriptionType;
                 
-                vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > correspondences, rejections;
-                cv::Mat frameErrors;
-                
-                detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, correspondences, rejections, frameErrors);
+                for (int j = 0; j < combinations.rows; j++)
+                {
+                    // special case: only changed the tolerance parameter on detections,
+                    // no need to re-compute anything except errors
+                    cv::Point p = cvx::diffIdx(combinations.row(j), aux);
+                    if (p.x < combinations.cols - 1)
+                    {
+                        aux = combinations.row(j);
+                        
+                        sys.getRegisterer()->setInputFrames(frames);
+                        sys.getRegisterer()->registrate(frames);
+                        
+                        vector<cv::Mat> foregroundMasks;
+                        pSubtractors[bsIndices.at<int>(j,0)]->setInputFrames(frames);
+                        pSubtractors[bsIndices.at<int>(j,0)]->subtract(foregroundMasks);
+                        
+                        vector<cv::Mat> tabletopMasks;
+                        sys.getTableModeler()->getTabletopMask(frames, tabletopMasks);
+                        
+                        for (int v = 0; v < pSeq->getNumOfViews(); v++)
+                        {
+                            frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
+                        }
+                        
+                        pObjectDetector->setInputFrames(frames);
+                        
+                        pObjectDetector->setMorhologyLevel(combinations.at<double>(j, bsCombinations.cols + 0));
+                        pObjectDetector->setDownsamplingSize(combinations.at<double>(j, bsCombinations.cols + 1));
+                        pObjectDetector->setClusteringIntradistanceFactor(combinations.at<double>(j, bsCombinations.cols + 2));
+                        pObjectDetector->setMinClusterSize(combinations.at<double>(j, bsCombinations.cols + 3));
+                        pObjectDetector->setInterviewCorrepondenceDistance(combinations.at<double>(j, bsCombinations.cols + 4));
+                        
+                        pObjectDetector->detect();
+                        pObjectDetector->getDetectionCorrespondences(detectionCorrespondences);
+                        
+                        if (descriptionType == DESCRIPTION_FPFH)
+                        {
+                            ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = ((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer);
+                            pOR->setInputDetections(detectionCorrespondences);
+                            pOR->setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
+                            pOR->recognize(recognitions);
+                        }
+                        else if (descriptionType == DESCRIPTION_PFHRGB)
+                        {
+                            ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = ((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer);
+                            pOR->setInputDetections(detectionCorrespondences);
+                            pOR->setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
+                            pOR->recognize(recognitions);
+                        }
+                    }
+                    
+                    detectionGroundtruths[s].setTolerance(combinations.at<double>(j, bsCombinations.cols + 4));
+                    
+                    vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
+                    cv::Mat frameErrors;
+                    
+                    detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, matches, rejections, frameErrors);
 
-                if (bQualitativeEvaluation)
-                    visualizeRecognitions(frames, correspondences, rejections, 0.02);
-                else
-                    frameErrors.copyTo(errors[i][s].col(f));
+                    if (bQualitativeEvaluation)
+                        visualizeRecognitions(frames, matches, rejections, 0.02);
+                    else
+                        frameErrors.copyTo(errors[i][j][s].col(f));
+                }
             }
             
             f++;
@@ -761,12 +829,15 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
     {
         cv::FileStorage fs;
         fs.open(path + filename, cv::FileStorage::APPEND);
-        for (int i = 0; i < combinations.rows; i++)
+        for (int i = 0; i < rcgnCombinations.rows; i++)
         {
-            for (int s = 0; s < sequences.size(); s++)
+            for (int j = 0; j < combinations.rows; j++)
             {
-                string id = "combination_" + to_string(i) + "-" + to_string(s);
-                fs << id << errors[i][s];
+                for (int s = 0; s < sequences.size(); s++)
+                {
+                    string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s);
+                    fs << id << errors[i][j][s];
+                }
             }
         }
         fs.release();
@@ -808,11 +879,6 @@ void showValidationSummary(cv::Mat combinations, vector<vector<double> > paramet
         }
         cout << "]" << endl;
     }
-}
-
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<DetectionOutput> groundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
-{
-    
 }
 
 void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, int k, cv::Mat scores, cv::Mat& bestCombinations, bool bMinimize)
@@ -870,7 +936,7 @@ int validation()
     KinectReader reader;
     
     // background sequence
-    Sequence<ColorDepthFrame>::Ptr pBgSeq (new Sequence<ColorDepthFrame>(KINECT_NUM_OF_VIEWS));
+    Sequence<ColorDepthFrame>::Ptr pBgSeq (new Sequence<ColorDepthFrame>(NUM_OF_VIEWS));
     reader.setPreallocation();
     reader.read(colorDirPaths[0], depthDirPaths[0], *pBgSeq);
     reader.setPreallocation(false);
@@ -882,7 +948,7 @@ int validation()
     vector<Sequence<ColorDepthFrame>::Ptr> sequences;
     for (int s = 1; s < colorDirPaths.size(); s++) // skip BG sequence
     {
-        Sequence<ColorDepthFrame>::Ptr pSeq (new Sequence<ColorDepthFrame>(KINECT_NUM_OF_VIEWS));
+        Sequence<ColorDepthFrame>::Ptr pSeq (new Sequence<ColorDepthFrame>(NUM_OF_VIEWS));
         reader.read(colorDirPaths[s], depthDirPaths[s], *pSeq);
         pSeq->setName(sequencesNames[s]);
         pSeq->setDelays(delays[s]);
@@ -902,6 +968,7 @@ int validation()
     
     sys.setRegistererParameters(IR_NUM_OF_POINTS, IR_VIS_WND_HEIGHT, IR_VIS_WND_WIDTH, IR_VIS_VP, IR_VIS_HP, IR_VIS_DIST, IR_VIS_MARKER_RADIUS);
     sys.setTableModelerParameters(TM_LEAF_SIZE, TM_NORMAL_RADIUS, TM_SAC_ITERS, TM_SAC_DIST_THRESH, TM_TT_Y_OFFSET, TM_INTERACTIVE_BORDER_DIST, TM_CONF_LEVEL);
+    sys.setSubtractorParameters(BS_NUM_OF_SAMPLES, BS_MODALITY, BS_K, BS_LRATE, BS_BGRATIO, BS_VARGEN); // some of these are re-set during the validation of the background subtractor
 
     // *------------------------------------*
     // | Validation of BackgroundSubtractor |
@@ -922,7 +989,7 @@ int validation()
     
     string bsValidationDir;
     
-    modalities += ReMedi::COLOR, ReMedi::DEPTH, ReMedi::COLOR_WITH_SHADOWS, ReMedi::COLORDEPTH;
+    modalities += COLOR, DEPTH, COLOR_WITH_SHADOWS, COLORDEPTH;
     vector<double> components, backgroundRatios, varGenThresholds;
     components += 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 20, 25, 30;
     backgroundRatios += 0.9, 0.99, 0.99999;
@@ -952,7 +1019,7 @@ int validation()
     vector<Sequence<Frame>::Ptr> foregroundMasksSequences;
     for (int s = 1; s < foregroundMasksDirPaths.size(); s++) // skip BG sequence
     {
-        Sequence<Frame>::Ptr pFgSeq (new Sequence<Frame>(KINECT_NUM_OF_VIEWS));
+        Sequence<Frame>::Ptr pFgSeq (new Sequence<Frame>(NUM_OF_VIEWS));
         reader.read(foregroundMasksDirPaths[s], *pFgSeq);
         pFgSeq->setName(sequencesNames[s]);
         
@@ -974,10 +1041,10 @@ int validation()
     showValidationSummary(bsCombinations, filterParameters, filterIndices, bsMeans, bsStddevs);
 
     // *----------------------------------------*
-    // | Validation of Monitorizer (detection)  |
+    // | Validation of ObjectDetector (detection)  |
     // *----------------------------------------*
     
-    cout << "Validation of Monitorizer (detection)" << endl;
+    cout << "Validation of ObjectDetector (detection)" << endl;
     
     vector<DetectionOutput> detectionGroundtruths;
     for (int s = 1; s < sequencesNames.size(); s++)
@@ -1002,20 +1069,44 @@ int validation()
     cv::Mat mntrCombinations;
     vector<vector<vector<cv::Mat> > > mntrSgmtErrors;
 //    validateMonitorizationClustering(sys, sequences, bsBestCombinations, mntrParameters, detectionGroundtruths, "mntr_results/", "mntr_validation.yml", mntrCombinations, mntrErrors, false);
-    loadMonitorizationSegmentationValidationFile("mntr_results/mntr_validation.yml", bsCombinations, mntrCombinations, mntrSgmtErrors);
+    loadMonitorizationSegmentationValidationFile("mntr_results/mntr_segmentation.yml", bsCombinations, mntrCombinations, mntrSgmtErrors);
     
     cv::Mat combinations, mntrSgmtMeans, mntrSgmtStddevs;
     summarizeMonitorizationSegmentationValidation(bsBestCombinations, mntrCombinations, mntrSgmtErrors, computeF1Score, combinations, mntrSgmtMeans, mntrSgmtStddevs);
 
     showValidationSummary(combinations, filterParameters, filterIndices, mntrSgmtMeans, mntrSgmtStddevs);
     
-    // *------------------*
-    // | Final validation |
-    // *------------------*
+    // *------------------------*
+    // | Recognition validation |
+    // *------------------------*
     
-    cv::Mat bestCombinations = combinations.rowRange(0, 0.5 * combinations.rows);
+    // Load objects models
+    
+    vector<int> objectsIDs;
+    vector<string> objectsNames;
+    vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
+    ReMedi::loadObjectsModels(string(PARENT_PATH) + string(OBJECTMODELS_SUBDIR), objectsIDs, objectsNames, objectsViews);
+    
+    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsIDs.size());
+    for (int m = 0; m < objectsModels.size(); m++)
+    {
+        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(objectsIDs[m], objectsNames[m], objectsViews[m]) );
+        objectsModels[m] = pObjectModel;
+    }
+    
+    sys.setObjectRecognizerParameters(objectsModels, DESCRIPTION_FPFH, RECOGNITION_MULTIOCULAR_AVERAGE);
+    sys.setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS);
+    
+    vector<vector<float> > mntrRcgnParameters;
+    vector<float> rcgnDescriptions;
+    rcgnDescriptions += DESCRIPTION_FPFH, DESCRIPTION_PFHRGB;
+    vector<float> rcgnStrategies;
+    rcgnStrategies += RECOGNITION_MONOCULAR, RECOGNITION_MULTIOCULAR_AVERAGE;
+    mntrRcgnParameters += rcgnStrategies;
+    
+    cv::Mat bestCombinations = combinations.rowRange(combinations.rows - 1, combinations.rows);
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-//    validateMonitorizationRecognition(sys, sequences, bestCombinations, detectionGroundtruths, "mntr_results/", "mntr_performance.yml", mntrRcgnErrors);
+    validateMonitorizationRecognition(sys, sequences, bestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
     
     return 0;
 }

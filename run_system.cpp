@@ -42,7 +42,7 @@ int run()
     KinectReader reader;
     
     // background sequence
-    Sequence<ColorDepthFrame>::Ptr pBgSeq (new Sequence<ColorDepthFrame>(KINECT_NUM_OF_VIEWS));
+    Sequence<ColorDepthFrame>::Ptr pBgSeq (new Sequence<ColorDepthFrame>(NUM_OF_VIEWS));
     reader.setPreallocation();
     reader.read(colorDirPaths[0], depthDirPaths[0], *pBgSeq);
     reader.setPreallocation(false);
@@ -54,7 +54,7 @@ int run()
     vector<Sequence<ColorDepthFrame>::Ptr> sequences;
     for (int s = 1; s < colorDirPaths.size(); s++) // skip BG sequence
     {
-        Sequence<ColorDepthFrame>::Ptr pSeq (new Sequence<ColorDepthFrame>(KINECT_NUM_OF_VIEWS));
+        Sequence<ColorDepthFrame>::Ptr pSeq (new Sequence<ColorDepthFrame>(NUM_OF_VIEWS));
         reader.read(colorDirPaths[s], depthDirPaths[s], *pSeq);
         pSeq->setName(sequencesNames[s]);
         pSeq->setDelays(delays[s]);
@@ -76,7 +76,7 @@ int run()
     sys.setSubtractorParameters(BS_NUM_OF_SAMPLES, BS_MODALITY, BS_K, BS_LRATE, BS_BGRATIO, BS_VARGEN);
 //    sys.setSubtractorParameters(BS_NUM_OF_SAMPLES, BS_MODALITY, BS_MAX_FEATURES, BS_LRATE, BS_QUANTIZATION_LEVELS, BS_DECISIONVAR);
 
-    sys.setMonitorizerParameters(MO_MORPHOLOGY, MO_LEAF_SIZE, MO_CLUSTERS_DIST_FACTOR, MO_MINIMUM_CLUSTER_SIZE);
+    sys.setObjectDetectorParameters(OD_MORPHOLOGY, OD_LEAF_SIZE, OD_CLUSTERS_DIST_FACTOR, OD_MINIMUM_CLUSTER_SIZE);
     
     sys.run();
 

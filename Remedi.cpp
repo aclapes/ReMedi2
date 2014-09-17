@@ -18,7 +18,8 @@ ReMedi::ReMedi()
   m_pRegisterer(new InteractiveRegisterer),
   m_bSetRegistererCorrespondences(false),
   m_pTableModeler(new TableModeler),
-  m_pMonitorizer(new Monitorizer)
+  m_pObjectDetector(new ObjectDetector), 
+  m_pObjectRecognizer(NULL)
 {
     m_pBackgroundSubtractor = BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr(new BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>);
 //    m_pBackgroundSubtractor = BackgroundSubtractor<cv::BackgroundSubtractorGMG, ColorDepthFrame>::Ptr(new BackgroundSubtractor<cv::BackgroundSubtractorGMG, ColorDepthFrame>);
@@ -44,7 +45,10 @@ ReMedi& ReMedi::operator=(const ReMedi& rhs)
         
         m_pBackgroundSubtractor = rhs.m_pBackgroundSubtractor;
         
-        m_pMonitorizer = rhs.m_pMonitorizer;
+        m_pObjectDetector = rhs.m_pObjectDetector;
+        
+        m_DescriptionType = rhs.m_DescriptionType;
+        m_pObjectRecognizer = rhs.m_pObjectRecognizer;
     }
     
     return *this;
@@ -65,9 +69,14 @@ BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr ReMedi:
     return m_pBackgroundSubtractor;
 }
 
-Monitorizer::Ptr ReMedi::getMonitorizer()
+ObjectDetector::Ptr ReMedi::getObjectDetector()
 {
-    return m_pMonitorizer;
+    return m_pObjectDetector;
+}
+
+void* ReMedi::getObjectRecognizer()
+{
+    return m_pObjectRecognizer;
 }
 
 /** \brief Set the sequences of frames used to learn the background model, for its further subtraction
@@ -190,18 +199,79 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
 //    m_pBackgroundSubtractor->setDecisionThreshold(t);
 //}
 
-/** \brief Set the parameters of the monitorizer
+/** \brief Set the parameters of the object detector
  * \param morphSize : kernel size of the mathematical morphology operation
  * \param leafSize : leaf size in the voxel grid downsampling (speeds up further processes)
  * \param clusterDist : distance threshold in spatial clustering of 3-D blobs
  * \param minClusterSize : minimum number of points a cluster hast to have to be considered
  */
-void ReMedi::setMonitorizerParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize)
+void ReMedi::setObjectDetectorParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize)
 {
-    m_pMonitorizer->setMorhologyLevel(morphSize);
-    m_pMonitorizer->setDownsamplingSize(leafSize);
-    m_pMonitorizer->setClusteringIntradistanceFactor(clusterDist);
-    m_pMonitorizer->setMinClusterSize(minClusterSize);
+    m_pObjectDetector->setMorhologyLevel(morphSize);
+    m_pObjectDetector->setDownsamplingSize(leafSize);
+    m_pObjectDetector->setClusteringIntradistanceFactor(clusterDist);
+    m_pObjectDetector->setMinClusterSize(minClusterSize);
+}
+
+void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, int descriptionType, int strategy)
+{
+    m_DescriptionType = descriptionType;
+
+    // Delete previously initialized object recognizer
+    
+    if (m_pObjectRecognizer != NULL)
+    {
+        if (m_DescriptionType == DESCRIPTION_FPFH)
+            delete ((ObjectRecognizer<ColorPointT,FPFHSignature>*) m_pObjectRecognizer);
+        else if (m_DescriptionType == DESCRIPTION_PFHRGB)
+            delete ((ObjectRecognizer<ColorPointT,PFHRGBSignature>*) m_pObjectRecognizer);
+
+        m_pObjectRecognizer = NULL;
+    }
+    
+    // Initialize a new recognizer
+    
+    if (m_DescriptionType == DESCRIPTION_FPFH)
+    {
+        ObjectRecognizer<ColorPointT,FPFHSignature>* pObjectRecognizer = new ObjectRecognizer<ColorPointT,FPFHSignature>();
+        pObjectRecognizer->setInputObjectModels(objectModels);
+        pObjectRecognizer->setRecognitionStrategy(strategy);
+        m_pObjectRecognizer = pObjectRecognizer;
+    }
+    else if (m_DescriptionType == DESCRIPTION_PFHRGB)
+    {
+        ObjectRecognizer<ColorPointT,PFHRGBSignature>* pObjectRecognizer = new ObjectRecognizer<ColorPointT,PFHRGBSignature>();
+        pObjectRecognizer->setInputObjectModels(objectModels);
+        pObjectRecognizer->setRecognitionStrategy(strategy);
+        m_pObjectRecognizer = pObjectRecognizer;
+    }
+}
+
+void ReMedi::setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel)
+{
+    if (m_pObjectRecognizer != NULL)
+    {
+        if (m_DescriptionType == DESCRIPTION_FPFH)
+        {
+            ObjectRecognizer<ColorPointT,FPFHSignature>* pObjectRecognizer = (ObjectRecognizer<ColorPointT,FPFHSignature>*) m_pObjectRecognizer;
+            pObjectRecognizer->setCloudjectsLeafSize(leafSize);
+            pObjectRecognizer->setCloudjectModelsLeafSize(leafSizeModel);
+            pObjectRecognizer->setCloudjectsNormalRadius(normalRadius);
+            pObjectRecognizer->setCloudjectModelsNormalRadius(normalRadiusModel);
+            pObjectRecognizer->setCloudjectsPfhRadius(pfhRadius);
+            pObjectRecognizer->setCloudjectModelsPfhRadius(pfhRadiusModel);
+        }
+        else if (m_DescriptionType == DESCRIPTION_PFHRGB)
+        {
+            ObjectRecognizer<ColorPointT,PFHRGBSignature>* pObjectRecognizer = (ObjectRecognizer<ColorPointT,PFHRGBSignature>*) m_pObjectRecognizer;
+            pObjectRecognizer->setCloudjectsLeafSize(leafSize);
+            pObjectRecognizer->setCloudjectModelsLeafSize(leafSizeModel);
+            pObjectRecognizer->setCloudjectsNormalRadius(normalRadius);
+            pObjectRecognizer->setCloudjectModelsNormalRadius(normalRadiusModel);
+            pObjectRecognizer->setCloudjectsPfhRadius(pfhRadius);
+            pObjectRecognizer->setCloudjectModelsPfhRadius(pfhRadiusModel);
+        }
+    }
 }
 
 void ReMedi::initialize()
@@ -227,6 +297,12 @@ void ReMedi::initialize()
     
     m_pTableModeler->setInputFrames(frames);
     m_pTableModeler->model();
+    
+    // Create the cloudjects
+    if (m_DescriptionType == DESCRIPTION_FPFH)
+        ((ObjectRecognizer<ColorPointT,FPFHSignature>*) m_pObjectRecognizer)->create();
+    else if (m_DescriptionType == DESCRIPTION_PFHRGB)
+        ((ObjectRecognizer<ColorPointT,PFHRGBSignature>*) m_pObjectRecognizer)->create();
 }
 
 void ReMedi::run()
@@ -295,3 +371,67 @@ void ReMedi::loadDelaysFile(string parent, string filename, vector<vector<int> >
     
     inFile.close();
 }
+
+void ReMedi::loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews)
+{
+    objectsIDs.clear();
+    objectsNames.clear();
+    objectsViews.clear();
+    
+    vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> prevObjViews;
+    int prevObjID = 0;
+    string prevObjName = "";
+    
+    const char* c_parent = parent.c_str();
+	if( boost::filesystem::exists( c_parent ) )
+	{
+		boost::filesystem::directory_iterator end;
+		boost::filesystem::directory_iterator iter( c_parent );
+		for( ; iter != end ; ++iter )
+		{
+			if ( !boost::filesystem::is_directory( *iter ) )
+            {
+                // Determine id and object name from cloud file's filename
+                string filenameStemStr = iter->path().stem().string();
+                
+                if (filenameStemStr.size() > 0) // not .<filename> (hidden file in osx)
+                {
+                    vector<string> filenameSubwords;
+                    boost::split(filenameSubwords, filenameStemStr, boost::is_any_of("_"));
+                    
+                    int objID = stoi(filenameSubwords[0]);
+                    string objName = filenameSubwords[1];
+                    
+                    // Construct the cloudject using the views
+                    if ( ((prevObjID != objID) && (prevObjID > 0)))
+                    {
+                        objectsIDs.push_back(prevObjID);
+                        objectsNames.push_back(prevObjName);
+                        objectsViews.push_back(prevObjViews);
+                        
+                        prevObjViews.clear();
+                    }
+                    
+                    // Read point cloud
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud (new pcl::PointCloud<pcl::PointXYZRGB>());
+                    
+                    pcl::PCDReader reader;
+                    reader.read(iter->path().string(), *pCloud);
+                    prevObjViews.push_back(pCloud);
+                    
+                    prevObjID = objID;
+                    prevObjName = objName;
+                }
+            }
+        }
+        
+        // Construct the cloudject using the views
+        if (prevObjViews.size() > 0)
+        {
+            objectsIDs.push_back(prevObjID);
+            objectsNames.push_back(prevObjName);
+            objectsViews.push_back(prevObjViews);
+        }
+    }
+}
+
