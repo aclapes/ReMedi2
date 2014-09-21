@@ -58,6 +58,7 @@ public:
     BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr getBackgroundSubtractor();
     ObjectDetector::Ptr getObjectDetector();
     void* getObjectRecognizer();
+    int getDescriptionType();
     
     /** \brief Set the sequences of frames used to learn the background model, for its further subtraction
      *  \param pBgSeq Background sequence

@@ -74,6 +74,11 @@ ObjectDetector::Ptr ReMedi::getObjectDetector()
     return m_pObjectDetector;
 }
 
+int ReMedi::getDescriptionType()
+{
+    return m_DescriptionType;
+}
+
 void* ReMedi::getObjectRecognizer()
 {
     return m_pObjectRecognizer;

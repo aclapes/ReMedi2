@@ -33,9 +33,6 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
     if (this != &rhs)
     {
         m_ObjectModels = rhs.m_ObjectModels;
-        m_CloudjectModels = rhs.m_CloudjectModels;
-        m_RecognitionStrategy = rhs.m_RecognitionStrategy;
-        m_CloudjectDetections = rhs.m_CloudjectDetections;
         
         m_LeafSize = rhs.m_LeafSize;
         m_LeafSizeModel = rhs.m_LeafSizeModel;
@@ -43,6 +40,11 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
         m_NormalRadiusModel = rhs.m_NormalRadiusModel;
         m_PfhRadius = rhs.m_PfhRadius;
         m_PfhRadiusModel = rhs.m_PfhRadiusModel;
+        
+        m_RecognitionStrategy = rhs.m_RecognitionStrategy;
+        m_CloudjectModels = rhs.m_CloudjectModels;
+        
+        m_CloudjectDetections = rhs.m_CloudjectDetections;
     }
     
     return *this;
@@ -51,7 +53,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
 ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::operator=(const ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& rhs)
 {
     m_ObjectModels = rhs.getInputObjectModels();
-    m_RecognitionStrategy = rhs.getRecognitionStrategy();
+    setInputObjectModels(m_ObjectModels);
     
     m_LeafSize = rhs.getCloudjectsLeafSize();
     m_LeafSizeModel = rhs.getCloudjectModelsLeafSize();
@@ -59,6 +61,8 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
     m_NormalRadiusModel = rhs.getCloudjectModelsNormalRadius();
     m_PfhRadius = rhs.getCloudjectsPfhRadius();
     m_PfhRadiusModel = rhs.getCloudjectModelsPfhRadius();
+    
+    m_RecognitionStrategy = rhs.getRecognitionStrategy();
     
     return *this;
 }
@@ -155,7 +159,7 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setInputDetection
     m_CloudjectDetections.resize(detections.size());
     for (int i = 0; i < detections.size(); i++)
     {
-        LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>(detections[i]) );
+        LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>( detections[i]) );
         m_CloudjectDetections[i] = pCloudject;
     }
 }
@@ -172,19 +176,6 @@ int ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getRecognitionStra
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions)
 {
-//    // Segment objects
-//    vector<vector<ColorPointCloudPtr> > detections;
-//    detect(detections);
-//    
-//    // Find inter-view correspondences
-//    vector<vector<pair<int,ColorPointCloudPtr> > > correspondences;
-//    if (m_RecognitionStrategy == RECOGNITION_MULTIOCULAR_AVERAGE)
-//        findCorrespondences(detections, m_CorrespenceDist, correspondences);
-//    else
-//        findCorrespondences(detections, 0, correspondences);
-//    
-//
-//    
     // Recognize the initialized cloudjects
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
     {
@@ -209,6 +200,8 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(vector<
     
     // Cloudjects to output format
     
+    recognitions.clear();
+    
     recognitions.resize(NUM_OF_VIEWS);
     for (int v = 0; v < recognitions.size(); v++)
         recognitions[v].resize(OD_NUM_OF_OBJECTS + 1);
@@ -220,7 +213,7 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(vector<
         vector<pcl::PointXYZ> positions = m_CloudjectDetections[i]->getPositions();
         
         for (int v = 0; v < viewIDs.size(); v++)
-            recognitions[v][id].push_back(positions[v]);
+            recognitions[viewIDs[v]][id].push_back(positions[v]);
     }
 }
 
@@ -249,8 +242,17 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
     if (this != &rhs)
     {
         m_ObjectModels = rhs.m_ObjectModels;
-        m_CloudjectModels = rhs.m_CloudjectModels;
+        
+        m_LeafSize = rhs.m_LeafSize;
+        m_LeafSizeModel = rhs.m_LeafSizeModel;
+        m_NormalRadius = rhs.m_NormalRadius;
+        m_NormalRadiusModel = rhs.m_NormalRadiusModel;
+        m_PfhRadius = rhs.m_PfhRadius;
+        m_PfhRadiusModel = rhs.m_PfhRadiusModel;
+        
         m_RecognitionStrategy = rhs.m_RecognitionStrategy;
+        m_CloudjectModels = rhs.m_CloudjectModels;
+        
         m_CloudjectDetections = rhs.m_CloudjectDetections;
     }
     
@@ -260,7 +262,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
 ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::operator=(const ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& rhs)
 {
     m_ObjectModels = rhs.getInputObjectModels();
-    m_RecognitionStrategy = rhs.getRecognitionStrategy();
+    setInputObjectModels(m_ObjectModels);
     
     m_LeafSize = rhs.getCloudjectsLeafSize();
     m_LeafSizeModel = rhs.getCloudjectModelsLeafSize();
@@ -269,12 +271,25 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
     m_PfhRadius = rhs.getCloudjectsPfhRadius();
     m_PfhRadiusModel = rhs.getCloudjectModelsPfhRadius();
     
+    m_RecognitionStrategy = rhs.getRecognitionStrategy();
+    
     return *this;
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setInputObjectModels(vector<ObjectModel<pcl::PointXYZRGB>::Ptr> models)
 {
     m_ObjectModels = models;
+    
+    m_CloudjectModels.resize(models.size());
+    for (int m = 0; m < models.size(); m++)
+    {
+        int oid = models[m]->getID();
+        string name = models[m]->getName();
+        vector<ColorPointCloud::Ptr> views = models[m]->getViews();
+        
+        LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::Ptr pCloudjectModel (new LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250>(oid, name, views));
+        m_CloudjectModels[m] = pCloudjectModel;
+    }
 }
 
 vector<ObjectModel<pcl::PointXYZRGB>::Ptr> ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getInputObjectModels() const
@@ -344,25 +359,17 @@ float ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getCloudjectM
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::create()
 {
-    m_CloudjectModels.clear();
     for (int m = 0; m < m_ObjectModels.size(); m++)
-    {
-        int oid = m_ObjectModels[m]->getID();
-        string name = m_ObjectModels[m]->getName();
-        vector<ColorPointCloud::Ptr> views = m_ObjectModels[m]->getViews();
-        
-        LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::Ptr pCloudjectModel (new LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250>(oid, name, views));
-        m_CloudjectModels.push_back(pCloudjectModel);
-    }
+        m_CloudjectModels[m]->describe(m_NormalRadiusModel, m_PfhRadiusModel, m_LeafSizeModel);
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections)
 {
-    m_CloudjectDetections.clear();
+    m_CloudjectDetections.resize(detections.size());
     for (int i = 0; i < detections.size(); i++)
     {
-        LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>(detections[i]) );
-        m_CloudjectDetections.push_back(pCloudject);
+        LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>( detections[i]) );
+        m_CloudjectDetections[i] = pCloudject;
     }
 }
 
@@ -378,8 +385,11 @@ int ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getRecognitionS
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions)
 {
+    // Recognize the initialized cloudjects
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
     {
+        m_CloudjectDetections[i]->describe(m_NormalRadius, m_PfhRadius, m_LeafSize);
+
         int maxScoreIdx;
         float maxScore = 0;
         
@@ -399,9 +409,11 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vect
     
     // Cloudjects to output format
     
+    recognitions.clear();
+    
     recognitions.resize(NUM_OF_VIEWS);
     for (int v = 0; v < recognitions.size(); v++)
-        recognitions[v].resize(OD_NUM_OF_OBJECTS);
+        recognitions[v].resize(OD_NUM_OF_OBJECTS + 1);
     
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
     {
@@ -410,6 +422,6 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vect
         vector<pcl::PointXYZ> positions = m_CloudjectDetections[i]->getPositions();
         
         for (int v = 0; v < viewIDs.size(); v++)
-            recognitions[v][id].push_back(positions[v]);
+            recognitions[viewIDs[v]][id].push_back(positions[v]);
     }
 }

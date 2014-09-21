@@ -35,7 +35,7 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
 void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::Mat mntrCombinations, vector<vector<vector<cv::Mat> > > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), cv::Mat& combinations, cv::Mat& meanScores, cv::Mat& sdScores);
 
 // ObjectDetector recognition performance
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<float> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<double> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
 
 // General functions
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
@@ -347,7 +347,7 @@ void loadMonitorizationSegmentationValidationFile(string filePath, cv::Mat& bsCo
     fs.release();
 }
 
-void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius)
+void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius, float lineWidth)
 {
     // Create visualizer
     pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
@@ -380,8 +380,12 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             q = matches[v][i].second;
             
             pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i), viewports[v]);
+            
             pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            
             pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
         for (int i = 0; i < rejections[v].size(); i++)
@@ -390,8 +394,13 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             q = rejections[v][i].second;
             
             pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i), viewports[v]);
+            
             pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) +to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            
+            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_string(v) + to_string(i), viewports[v]);
+            
         }
     }
     
@@ -441,10 +450,57 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
     if (!bQualitativeEvaluation)
     {
         cv::FileStorage fs;
-        fs.open(path + filename, cv::FileStorage::WRITE);
-        fs << "mntr_combinations" << mntrCombinations;
-        fs << "bs_combinations" << bsCombinations;
-        fs.release();
+
+        // Backup file
+        
+        boost::filesystem::path filePath (path + filename);
+        if (!boost::filesystem::exists(filePath))
+        {
+            fs.open(path + filename, cv::FileStorage::WRITE);
+            fs << "bs_combinations" << bsCombinations;
+            fs << "mntr_combinations" << mntrCombinations;
+            fs.release();
+        }
+        else
+        {
+            boost::filesystem::path fileBakPath (path + filePath.stem().string() + ".bak" + filePath.extension().string());
+            boost::filesystem::copy_file(filePath, fileBakPath, boost::filesystem::copy_option::overwrite_if_exists);
+        
+            cv::Mat bsCombinationsTmp, mntrCombinationsTmp;
+            vector<vector<vector<cv::Mat> > > errorsTmp;
+            loadMonitorizationSegmentationValidationFile(path + filename, bsCombinationsTmp, mntrCombinationsTmp, errorsTmp);
+            
+            cv::Mat mntrMatchedCombinations, mntrPendingCombinations;
+            cvx::match(mntrCombinationsTmp, mntrCombinations, mntrMatchedCombinations, mntrPendingCombinations);
+            
+            fs.open(path + filename, cv::FileStorage::WRITE);
+            
+            fs << "bs_combinations" << bsCombinations;
+            
+            if (mntrPendingCombinations.empty())
+            {
+                fs << "mntr_combinations" << mntrCombinationsTmp;
+            }
+            else
+            {
+                cv::Mat aux;
+                cv::vconcat(mntrCombinationsTmp, mntrPendingCombinations, aux);
+                fs << "mntr_combinations" << aux;
+            }
+        
+            for (int i = 0; i < bsCombinations.rows; i++) for (int j = 0; j < mntrCombinationsTmp.rows; j++)
+            {
+                for (int s = 0; s < sequences.size(); s++)
+                {
+                    string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s);
+                    fs << id << errorsTmp[i][j][s];
+                }
+            }
+            
+            fs.release();
+            
+            mntrCombinations = mntrPendingCombinations;
+        }
         
         // Data structures
         
@@ -521,7 +577,7 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
                 detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
                 
                 if (bQualitativeEvaluation)
-                    visualizeSegmentations(frames, matches, rejections, 0.02);
+                    visualizeSegmentations(frames, matches, rejections, 0.02, 3);
                 else
                     frameErrors.copyTo(errors[i][j][s].col(f));
             }
@@ -534,16 +590,36 @@ void validateMonitorizationSegmentation(ReMedi sys, vector<Sequence<ColorDepthFr
     if (!bQualitativeEvaluation)
     {
         cv::FileStorage fs;
+        
+        int offset = 0;
+        
+        boost::filesystem::path filePath (path + filename);
+        if (boost::filesystem::exists(filePath))
+        {
+            cv::Mat mntrCombinationsTmp;
+
+            fs.open(path + filename, cv::FileStorage::READ);
+            fs["mntr_combinations"] >> mntrCombinationsTmp;
+            fs.release();
+        
+            offset = mntrCombinationsTmp.rows -  mntrCombinations.rows;
+        }
+        
         fs.open(path + filename, cv::FileStorage::APPEND);
         for (int i = 0; i < bsCombinations.rows; i++) for (int j = 0; j < mntrCombinations.rows; j++)
         {
             for (int s = 0; s < sequences.size(); s++)
             {
-                string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s);
+                string id = "combination_" + to_string(i) + "-" + to_string(offset + j) + "-" + to_string(s);
                 fs << id << errors[i][j][s];
             }
         }
         fs.release();
+        
+        
+        boost::filesystem::path fileBakPath (path + filePath.stem().string() + ".bak" + filePath.extension().string());
+        if (boost::filesystem::exists(fileBakPath))
+            boost::filesystem::remove(fileBakPath);
     }
 }
 
@@ -583,7 +659,7 @@ void summarizeMonitorizationSegmentationValidation(cv::Mat bsCombinations, cv::M
     }
 }
 
-void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius)
+void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius, float lineWidth)
 {
     // Create visualizer
     pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
@@ -617,10 +693,12 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
             q = matches[v][o][i].second;
             
             pVis->addSphere(p, markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "matches_prediction_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            
             pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "matches_groundtruth_"  + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_groundtruth_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
             
             pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "matches_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
         for (int o = 0; o < rejections[v].size(); o++)  for (int i = 0; i < rejections[v][o].size(); i++)
@@ -629,10 +707,12 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
             q = rejections[v][o][i].second;
             
             pVis->addSphere(p, markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "rejections_prediction_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            
             pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, g_Colors[o][2], g_Colors[o][1], g_Colors[o][0], "rejections_groundtruth_"  + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
             
             pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "rejections_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_string(v) + to_string(o) + to_string(i), viewports[v]);
        }
     }
     
@@ -640,7 +720,7 @@ void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<ve
 }
 
 // Faster version
-void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<float> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
+void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<double> > rcgnParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
 {
     sys.initialize();
     
@@ -654,7 +734,7 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
     // -------------------------------------------------
     
     cv::Mat rcgnCombinations;
-    expandParameters(rcgnParameters, rcgnCombinations);
+    expandParameters<double>(rcgnParameters, rcgnCombinations);
     
     // Do not repeat the bs every time. Pre-compute the required combinations!
     cv::Mat bsCombinations, bsIndices;
@@ -679,15 +759,60 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
         pSubtractors[i] = pBs;
     }
     
-    ObjectDetector::Ptr pObjectDetector = sys.getObjectDetector();
-    void* pObjectRecognizer             = sys.getObjectRecognizer();
+    // Same for object recognizer (and its internal cloudjectmodels)
+    
+    cv::Mat descCombinations, descIndices;
+    cvx::unique(rcgnCombinations.colRange(0,1), 0, descCombinations, descIndices); // separate (descs,strategies) parameters in combinations and find unique bs' sub-combinations
+    
+    vector<void*> recognizers (descCombinations.rows);
+    
+    for (int i = 0; i < descCombinations.rows; i++)
+    {
+        int dType = (int) descCombinations.at<double>(i,0);
+        if (dType == DESCRIPTION_FPFH)
+        {
+            if (sys.getDescriptionType() == dType)
+                recognizers[i] = sys.getObjectRecognizer();
+            else
+            {
+                ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>();
+                
+                if (sys.getDescriptionType() == DESCRIPTION_PFHRGB)
+                    *pOR = *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) sys.getObjectRecognizer());
+                // else if (in case of more kinds of descriptions)
+                // ...
+                
+                pOR->create();
+                
+                recognizers[i] = (void*) pOR;
+            }
+        }
+        else if (dType == DESCRIPTION_PFHRGB)
+        {
+            if (sys.getDescriptionType() == dType)
+                recognizers[i] = sys.getObjectRecognizer();
+            else
+            {
+                ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>();
+                
+                if (sys.getDescriptionType() == DESCRIPTION_FPFH)
+                    *pOR = *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) sys.getObjectRecognizer());
+                // else if (in case of more kinds of descriptions)
+                // ...
+                
+                pOR->create();
+                
+                recognizers[i] = (void*) pOR;
+            }
+        }
+    }
     
     // Initialization of visualizer (qualitative) or data structures (quantitative)
     
     if (!bQualitativeEvaluation)
     {
         cv::FileStorage fs;
-        fs.open(path + filename, cv::FileStorage::APPEND);
+        fs.open(path + filename, cv::FileStorage::WRITE);
         fs << "rcgn_combinations" << rcgnCombinations;
         fs << "bs-sgmn_combinations" << combinations;
         fs.release();
@@ -703,15 +828,15 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
                 errors[i][j].resize(sequences.size());
                 for (int s = 0; s < errors[i][j].size(); s++)
                 {
-                    errors[i][j][s].create(sequences[s]->getNumOfViews(),
-                                           sequences[s]->getMinNumOfFrames(),
-                                           CV_32SC3);
+                    errors[i][j][s] = cv::Mat(sequences[s]->getNumOfViews(),
+                                              sequences[s]->getMinNumOfFrames(),
+                                              CV_32SC3, cv::Scalar(0));
                 }
             }
         }
     
     }
-    
+
     // Calculate the errors
     
     for (int s = 0; s < sequences.size(); s++)
@@ -726,104 +851,90 @@ void validateMonitorizationRecognition(ReMedi sys, vector<Sequence<ColorDepthFra
             boost::timer t;
             vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
             
-            // Variables can be shared in some combinations (throughout those only the detection tolerance varies), do not need to recalculate
-            cv::Mat aux (combinations.row(0).size(), combinations.type()); // previous combination
-            vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionCorrespondences;
-            vector<vector<vector<pcl::PointXYZ> > > recognitions; // previous recognitions
+            sys.getRegisterer()->setInputFrames(frames);
+            sys.getRegisterer()->registrate(frames);
             
-            int prevDescriptionType = rcgnCombinations.at<double>(0,0);
             for (int i = 0; i < rcgnCombinations.rows; i++)
             {
-                // Re-initialize ObjectRecognizer internal representations of the objects models (cloudject models)
-                // if description type changes (fpfh <-> pfhrgb)
-                int descriptionType = rcgnCombinations.at<double>(i,0);
-
-                if (descriptionType == DESCRIPTION_FPFH && prevDescriptionType == DESCRIPTION_PFHRGB)
-                {
-                    ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer) );
-                    delete ((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer);
-                    
-                    pOR->create();
-                    
-                    pObjectRecognizer = (void*) pOR;
-                }
-                else if (descriptionType == DESCRIPTION_PFHRGB && prevDescriptionType == DESCRIPTION_FPFH)
-                {
-                    ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = new ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer) );
-                    delete ((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer);
-                    
-                    pOR->create();
-                    
-                    pObjectRecognizer = (void*) pOR;
-                }
-                
-                if (prevDescriptionType != descriptionType)
-                    prevDescriptionType = descriptionType;
+                vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionCorrespondences;
+                vector<vector<vector<pcl::PointXYZ> > > recognitions; // previous recognitions
                 
                 for (int j = 0; j < combinations.rows; j++)
                 {
-                    // special case: only changed the tolerance parameter on detections,
-                    // no need to re-compute anything except errors
-                    cv::Point p = cvx::diffIdx(combinations.row(j), aux);
-                    if (p.x < combinations.cols - 1)
+                    vector<cv::Mat> foregroundMasks;
+                    pSubtractors[bsIndices.at<int>(j,0)]->setInputFrames(frames);
+                    pSubtractors[bsIndices.at<int>(j,0)]->subtract(foregroundMasks);
+                    
+                    vector<cv::Mat> tabletopMasks;
+                    sys.getTableModeler()->getTabletopMask(frames, tabletopMasks);
+                    
+                    for (int v = 0; v < pSeq->getNumOfViews(); v++)
                     {
-                        aux = combinations.row(j);
-                        
-                        sys.getRegisterer()->setInputFrames(frames);
-                        sys.getRegisterer()->registrate(frames);
-                        
-                        vector<cv::Mat> foregroundMasks;
-                        pSubtractors[bsIndices.at<int>(j,0)]->setInputFrames(frames);
-                        pSubtractors[bsIndices.at<int>(j,0)]->subtract(foregroundMasks);
-                        
-                        vector<cv::Mat> tabletopMasks;
-                        sys.getTableModeler()->getTabletopMask(frames, tabletopMasks);
-                        
-                        for (int v = 0; v < pSeq->getNumOfViews(); v++)
-                        {
-                            frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
-                        }
-                        
-                        pObjectDetector->setInputFrames(frames);
-                        
-                        pObjectDetector->setMorhologyLevel(combinations.at<double>(j, bsCombinations.cols + 0));
-                        pObjectDetector->setDownsamplingSize(combinations.at<double>(j, bsCombinations.cols + 1));
-                        pObjectDetector->setClusteringIntradistanceFactor(combinations.at<double>(j, bsCombinations.cols + 2));
-                        pObjectDetector->setMinClusterSize(combinations.at<double>(j, bsCombinations.cols + 3));
-                        pObjectDetector->setInterviewCorrepondenceDistance(combinations.at<double>(j, bsCombinations.cols + 4));
-                        
-                        pObjectDetector->detect();
-                        pObjectDetector->getDetectionCorrespondences(detectionCorrespondences);
-                        
-                        if (descriptionType == DESCRIPTION_FPFH)
-                        {
-                            ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = ((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pObjectRecognizer);
-                            pOR->setInputDetections(detectionCorrespondences);
-                            pOR->setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
-                            pOR->recognize(recognitions);
-                        }
-                        else if (descriptionType == DESCRIPTION_PFHRGB)
-                        {
-                            ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = ((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pObjectRecognizer);
-                            pOR->setInputDetections(detectionCorrespondences);
-                            pOR->setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
-                            pOR->recognize(recognitions);
-                        }
+                        frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
+                    }
+                    
+                    ObjectDetector::Ptr pObjectDetector = sys.getObjectDetector();
+                    pObjectDetector->setInputFrames(frames);
+                    
+                    pObjectDetector->setMorhologyLevel(combinations.at<double>(j, bsCombinations.cols + 0));
+                    pObjectDetector->setDownsamplingSize(combinations.at<double>(j, bsCombinations.cols + 1));
+                    pObjectDetector->setClusteringIntradistanceFactor(combinations.at<double>(j, bsCombinations.cols + 2));
+                    pObjectDetector->setMinClusterSize(combinations.at<double>(j, bsCombinations.cols + 3));
+                    pObjectDetector->setInterviewCorrepondenceDistance(combinations.at<double>(j, bsCombinations.cols + 4));
+                    
+                    pObjectDetector->detect();
+                    if ((int) rcgnCombinations.at<double>(i,1) == RECOGNITION_MONOCULAR)
+                        pObjectDetector->getDetectionCorrespondences(detectionCorrespondences, false);
+                    else
+                        pObjectDetector->getDetectionCorrespondences(detectionCorrespondences, true);
+                    
+                    int dType = (int) rcgnCombinations.at<double>(i,0);
+                    if (dType == DESCRIPTION_FPFH)
+                    {
+                        ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>* pOR = (ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizers[descIndices.at<int>(i,0)];
+                        pOR->setInputDetections(detectionCorrespondences);
+                        pOR->recognize(recognitions);
+                    }
+                    else if (dType == DESCRIPTION_PFHRGB)
+                    {
+                        ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>* pOR = (ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizers[descIndices.at<int>(i,0)];
+                        pOR->setInputDetections(detectionCorrespondences);
+                        pOR->recognize(recognitions);
                     }
                     
                     detectionGroundtruths[s].setTolerance(combinations.at<double>(j, bsCombinations.cols + 4));
                     
                     vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
                     cv::Mat frameErrors;
-                    
                     detectionGroundtruths[s].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, matches, rejections, frameErrors);
-
+                    
                     if (bQualitativeEvaluation)
-                        visualizeRecognitions(frames, matches, rejections, 0.02);
+                        visualizeRecognitions(frames, matches, rejections, 0.02, 3);
                     else
                         frameErrors.copyTo(errors[i][j][s].col(f));
                 }
             }
+            
+            // DEBUG
+            // <-----------------------------------------------------------------------------------------------
+            for (int i = 0; i < rcgnCombinations.rows; i++) for (int j = 0; j < combinations.rows; j++)
+            {
+                cv::Mat errorsF;
+                errors[i][j][s].convertTo(errorsF, CV_32FC(errors[i][j][s].channels()));
+                cv::Mat errorsRoi (errorsF, cv::Rect(0, 0, f+1, errorsF.rows));
+                
+                cv::Mat errorsRoiReduced;
+                cv::reduce(errorsRoi, errorsRoiReduced, 1, CV_REDUCE_SUM);
+                
+                cout << (i * combinations.rows + j) << " " << i << " " << j << " : ";
+                for (int v = 0; v < errorsRoiReduced.rows; v++)
+                {
+                    cv::Vec3f err = errorsRoiReduced.at<cv::Vec3f>(v,0);
+                    float fscore = computeF1Score(err.val[0], err.val[1], err.val[2]);
+                    cout << (v > 0 ? ", " : "") << to_string_with_precision<float>(fscore);
+                } cout << endl;
+            }
+            // ----------------------------------------------------------------------------------------------->
             
             f++;
             cout << "Processing the frame took " << t.elapsed() << " secs." << endl;
@@ -1064,7 +1175,7 @@ int validation()
     morphLevels += -2, -1, 0, 1, 2;
     leafSizes += 0.005, 0.01;
     clusterIntradists += 2, 4, 6; // factor in function of leaf size
-    minClusterSizes += 25, 50;
+    minClusterSizes += 25, 50, 100;
     detecionTolerances += 0.05, 0.10, 0.15, 0.20;
     mntrParameters += morphLevels, leafSizes, clusterIntradists, minClusterSizes, detecionTolerances;
     
@@ -1073,13 +1184,17 @@ int validation()
     
     cv::Mat mntrCombinations;
     vector<vector<vector<cv::Mat> > > mntrSgmtErrors;
-//    validateMonitorizationClustering(sys, sequences, bsBestCombinations, mntrParameters, detectionGroundtruths, "mntr_results/", "mntr_validation.yml", mntrCombinations, mntrErrors, false);
+    validateMonitorizationSegmentation(sys, sequences, bsBestCombinations, mntrParameters, detectionGroundtruths, "mntr_results/", "mntr_segmentation.yml", mntrCombinations, mntrSgmtErrors, false);
     loadMonitorizationSegmentationValidationFile("mntr_results/mntr_segmentation.yml", bsCombinations, mntrCombinations, mntrSgmtErrors);
     
     cv::Mat combinations, mntrSgmtMeans, mntrSgmtStddevs;
     summarizeMonitorizationSegmentationValidation(bsBestCombinations, mntrCombinations, mntrSgmtErrors, computeF1Score, combinations, mntrSgmtMeans, mntrSgmtStddevs);
 
     showValidationSummary(combinations, filterParameters, filterIndices, mntrSgmtMeans, mntrSgmtStddevs);
+    
+    // Combinations to test in the recognition
+    cv::Mat sgmtBestCombinations;
+    getBestCombinations(combinations, filterParameters, filterIndices, 1, mntrSgmtMeans, sgmtBestCombinations);
     
     // *------------------------*
     // | Recognition validation |
@@ -1099,19 +1214,19 @@ int validation()
         objectsModels[m] = pObjectModel;
     }
     
-    sys.setObjectRecognizerParameters(objectsModels, DESCRIPTION_FPFH, RECOGNITION_MULTIOCULAR_AVERAGE);
+    sys.setObjectRecognizerParameters(objectsModels, DESCRIPTION_FPFH, RECOGNITION_MULTIOCULAR);
     sys.setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS);
     
-    vector<vector<float> > mntrRcgnParameters;
-    vector<float> rcgnDescriptions;
+    vector<vector<double> > mntrRcgnParameters;
+    vector<double> rcgnDescriptions;
     rcgnDescriptions += DESCRIPTION_FPFH, DESCRIPTION_PFHRGB;
-    vector<float> rcgnStrategies;
-    rcgnStrategies += RECOGNITION_MONOCULAR, RECOGNITION_MULTIOCULAR_AVERAGE;
-    mntrRcgnParameters += rcgnStrategies;
+    vector<double> rcgnStrategies;
+    rcgnStrategies += RECOGNITION_MONOCULAR, RECOGNITION_MULTIOCULAR;
+    mntrRcgnParameters += rcgnDescriptions, rcgnStrategies;
     
-    cv::Mat bestCombinations = combinations.rowRange(combinations.rows - 1, combinations.rows);
+    
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-    validateMonitorizationRecognition(sys, sequences, bestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
+    validateMonitorizationRecognition(sys, sequences, sgmtBestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, false);
     
     return 0;
 }

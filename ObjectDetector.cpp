@@ -92,6 +92,8 @@ void ObjectDetector::detect()
 
 void ObjectDetector::detect(vector<vector<ColorPointCloudPtr> >& detections)
 {
+    m_Detections.clear();
+    
     m_Detections.resize(m_InputFrames.size());
     for (int v = 0; v < m_InputFrames.size(); v++)
     {
@@ -126,16 +128,22 @@ void ObjectDetector::detect(vector<vector<ColorPointCloudPtr> >& detections)
 
 void ObjectDetector::getDetectionPositions(vector<vector<PointT> >& positions)
 {
+    positions.clear();
+    
     _getDetectionPositions(m_Detections, m_bRegistration, positions);
 }
 
-void ObjectDetector::getDetectionCorrespondences(vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences)
+void ObjectDetector::getDetectionCorrespondences(vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences, bool bMakeCorrespondences)
 {
-    findCorrespondences(m_Detections, m_CorrespenceDist, correspondences);
+    correspondences.clear();
+    
+    findCorrespondences(m_Detections, bMakeCorrespondences ? m_CorrespenceDist : 0, correspondences);
 }
 
 void ObjectDetector::_getDetectionPositions(vector<vector<ColorPointCloudPtr> > detections, bool bRegistrate, vector<vector<PointT> >& positions)
 {
+    positions.clear();
+    
     positions.resize(detections.size());
     for (int v = 0; v < detections.size(); v++)
     {
@@ -150,10 +158,6 @@ void ObjectDetector::_getDetectionPositions(vector<vector<ColorPointCloudPtr> > 
                 viewPositions[i].getVector4fMap() = centroid;
             else
                 viewPositions[i].getVector4fMap() = m_InputFrames[v]->registratePoint(centroid);
-            
-//            viewPositions[i].getVector4fMap() = centroid;
-//            if (bRegistrate)
-//                viewPositions[i] = m_InputFrames[v]->registratePoint(viewPositions[i]);
         }
         
         positions[v] = viewPositions;
@@ -162,6 +166,8 @@ void ObjectDetector::_getDetectionPositions(vector<vector<ColorPointCloudPtr> > 
 
 void ObjectDetector::clusterize(ColorPointCloudPtr pCloud, float leafSize, float clusterIdF, int minSize, vector<ColorPointCloudPtr>& clusters)
 {
+    clusters.clear();
+    
     // Creating the KdTree object for the search method of the extraction
     pcl::search::KdTree<ColorPointT>::Ptr tree (new pcl::search::KdTree<ColorPointT>);
     tree->setInputCloud (pCloud);
@@ -207,6 +213,8 @@ void ObjectDetector::downsample(ColorPointCloudPtr pCloud, float leafSize, Color
 
 void ObjectDetector::findCorrespondences(vector<vector<ColorPointCloudPtr> > detections, float tol, vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences)
 {
+    correspondences.clear();
+    
     // Correspondences found using the positions of the clouds' centroids
     vector<vector<PointT> > positions;
     _getDetectionPositions(detections, true, positions); // registrate is "true"
@@ -232,6 +240,8 @@ void ObjectDetector::findCorrespondences(vector<vector<ColorPointCloudPtr> > det
 
 void ObjectDetector::_findCorrespondences(vector<vector<PointT> > positions, float tol, vector<vector<pair<pair<int,int>,PointT> > >& correspondences)
 {
+    correspondences.clear();
+    
     // Keep already made assignations, to cut search paths
     vector<vector<bool> > assignations (positions.size());
     for (int v = 0; v < positions.size(); v++)

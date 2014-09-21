@@ -618,9 +618,15 @@ void cvx::match(cv::Mat src, cv::Mat queries, cv::Mat& matched, cv::Mat& pending
         bool bMatch = false;
         for (int j = 0; j < src.rows && !bMatch; j++)
         {
-            bMatch = cv::sum(queries.row(j) == queries.row(i)).val[0] > 0;
-            bMatch ? matchedRows.push_back(src.row(j)) : pendingRows.push_back(src.row(j));
+            cv::Mat nonZeros;
+            cv::findNonZero(src.row(j) == queries.row(i), nonZeros);
+            bMatch = (nonZeros.rows == queries.cols);
         }
+        
+        if (bMatch)
+            matchedRows.push_back(queries.row(i));
+        else
+            pendingRows.push_back(queries.row(i));
     }
     
     cvx::vconcat(matchedRows, matched);
@@ -710,7 +716,7 @@ void cvx::vconcat(std::vector<cv::Mat> array, cv::Mat& mat)
     {
         int length = 0;
         for (int i = 0; i < array.size(); i++)
-            length += array[i].cols;
+            length += array[i].rows;
         
         mat.create(length, array[0].cols, array[0].type());
         

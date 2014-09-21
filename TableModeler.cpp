@@ -666,7 +666,7 @@ void TableModeler::extractTableContour(DepthFrame::Ptr pDepthFrame, int closingL
 void TableModeler::findClosestContourPointToReference(PointCloudPtr pContourCloud, PointT referencePoint, PointT& closestPoint)
 {
     int minIdx;
-    float minDist = std::numeric_limits<float>::infinity();
+    float minDist = std::numeric_limits<float>::max();
     for (int i = 0; i < pContourCloud->points.size(); i++)
     {
         if (pContourCloud->points[i].z > 0)

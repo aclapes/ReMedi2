@@ -136,7 +136,7 @@ public:
     string getName() { return m_Name; }
     void setName(string name) { m_Name = name; }
     
-	PointT getPosition(int i) const
+    pcl::PointXYZ getPosition(int i) const
 	{
 		return m_Positions[i];
 	}

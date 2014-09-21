@@ -417,16 +417,16 @@ void DetectionOutput::getSegmentationResults(DetectionOutput groundtruth, int& t
         {
             if (m_Annotations[v][f])
             {
-                vector<pair<pcl::PointXYZ, pcl::PointXYZ> > correspondencesTmp; // discarded afterwards
+                vector<pair<pcl::PointXYZ, pcl::PointXYZ> > matchesTmp; // discarded afterwards
                 vector<pair<pcl::PointXYZ, pcl::PointXYZ> > rejectionsTmp; // discarded afterwards
                 int ftp, ffn, ffp;
                 
                 if (f >= groundtruth.m_Positions[v].size())
-                    getFrameSegmentationResults(vector<vector<pcl::PointXYZ> >(), m_Positions[v][f][0], correspondencesTmp, rejectionsTmp, ftp, ffn, ffp);
+                    getFrameSegmentationResults(vector<vector<pcl::PointXYZ> >(), m_Positions[v][f][0], matchesTmp, rejectionsTmp, ftp, ffn, ffp);
                 else if (f >= m_Positions[v].size())
-                    getFrameSegmentationResults(groundtruth.m_Positions[v][f], vector<pcl::PointXYZ>(), correspondencesTmp, rejectionsTmp, ftp, ffn, ffp);
+                    getFrameSegmentationResults(groundtruth.m_Positions[v][f], vector<pcl::PointXYZ>(), matchesTmp, rejectionsTmp, ftp, ffn, ffp);
                 else
-                    getFrameSegmentationResults(groundtruth.m_Positions[v][f], m_Positions[v][f][0], correspondencesTmp, rejectionsTmp, ftp, ffn, ffp);
+                    getFrameSegmentationResults(groundtruth.m_Positions[v][f], m_Positions[v][f][0], matchesTmp, rejectionsTmp, ftp, ffn, ffp);
 
                 tp += ftp;
                 fn += ffn;
@@ -439,23 +439,24 @@ void DetectionOutput::getSegmentationResults(DetectionOutput groundtruth, int& t
 void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, cv::Mat& errors)
 {
     errors.create(indices.size(), 1, CV_32SC(3));
+    errors.setTo(0);
     
     for (int v = 0; v < indices.size(); v++)
     {
         vector<vector<pcl::PointXYZ> > annotations = m_Positions[v][indices[v]];
         
-        vector<pair<pcl::PointXYZ, pcl::PointXYZ> > correspondencesTmp; // discarded afterwards
+        vector<pair<pcl::PointXYZ, pcl::PointXYZ> > matchesTmp; // discarded afterwards
         vector<pair<pcl::PointXYZ, pcl::PointXYZ> > rejectionsTmp; // discarded afterwards
         int tp, fn, fp;
-        getFrameSegmentationResults(annotations, predictions[v], correspondencesTmp, rejectionsTmp, tp, fn, fp);
+        getFrameSegmentationResults(annotations, predictions[v], matchesTmp, rejectionsTmp, tp, fn, fp);
         
         errors.at<cv::Vec3i>(v,0) = cv::Vec3i(tp, fn, fp);
     }
 }
 
-void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& correspondences, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& rejections, cv::Mat& errors)
+void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& rejections, cv::Mat& errors)
 {
-    correspondences.resize(indices.size());
+    matches.resize(indices.size());
     rejections.resize(indices.size());
     errors.create(indices.size(), 1, CV_32SC(3));
     
@@ -464,7 +465,7 @@ void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<ve
         vector<vector<pcl::PointXYZ> > annotations = m_Positions[v][indices[v]];
         
         int tp, fn, fp;
-        getFrameSegmentationResults(annotations, predictions[v], correspondences[v], rejections[v], tp, fn, fp);
+        getFrameSegmentationResults(annotations, predictions[v], matches[v], rejections[v], tp, fn, fp);
         
         errors.at<cv::Vec3i>(v,0) = cv::Vec3i(tp, fn, fp);
     }
@@ -537,7 +538,7 @@ void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<ve
 //    return;
 //}
 
-void DetectionOutput::getFrameSegmentationResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<pcl::PointXYZ> predictions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& correspondences, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp)
+void DetectionOutput::getFrameSegmentationResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<pcl::PointXYZ> predictions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& matches, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp)
 {
     vector<vector<float> > distances;
     vector<pcl::PointXYZ> srlgroundtruth; // easier to index later
@@ -600,7 +601,7 @@ void DetectionOutput::getFrameSegmentationResults(vector<vector<pcl::PointXYZ> >
         // and determine which are the ones below the threshold
         cv::Mat d (D <= m_Tol);
         
-        tp = 0; // ..those will be the true positives (correspondences)
+        tp = 0; // ..those will be the true positives (matches)
         
         for (int i = 0; i < matchesIndices.size(); i++)
         {
@@ -612,7 +613,7 @@ void DetectionOutput::getFrameSegmentationResults(vector<vector<pcl::PointXYZ> >
             
             if ( d.at<uchar>(matchesIndices[i].y, matchesIndices[i].x) )
             {
-                correspondences.push_back(match);
+                matches.push_back(match);
                 tp++;
             }
             else
@@ -646,17 +647,17 @@ void DetectionOutput::getRecognitionResults(DetectionOutput groundtruth, int& tp
             {
                 for (int o = 0; o < groundtruth.m_Positions[v][f].size(); o++)
                 {
-                    vector<pair<pcl::PointXYZ, pcl::PointXYZ> > correspondencesTmp;
+                    vector<pair<pcl::PointXYZ, pcl::PointXYZ> > matchesTmp;
                     vector<pair<pcl::PointXYZ, pcl::PointXYZ> > rejectionsTmp;
                     
                     int otp, ofn, ofp;
 
                     if (f >= groundtruth.m_Positions[v].size())
-                        getFrameObjectRecognitionResults(vector<pcl::PointXYZ>(), m_Positions[v][f][o], correspondencesTmp, rejectionsTmp, otp, ofn, ofp);
+                        getFrameObjectRecognitionResults(vector<pcl::PointXYZ>(), m_Positions[v][f][o], matchesTmp, rejectionsTmp, otp, ofn, ofp);
                     else if (f >= m_Positions[v].size())
-                        getFrameObjectRecognitionResults(groundtruth.m_Positions[v][f][o], vector<pcl::PointXYZ>(), correspondencesTmp, rejectionsTmp, otp, ofn, ofp);
+                        getFrameObjectRecognitionResults(groundtruth.m_Positions[v][f][o], vector<pcl::PointXYZ>(), matchesTmp, rejectionsTmp, otp, ofn, ofp);
                     else
-                        getFrameObjectRecognitionResults(groundtruth.m_Positions[v][f][o], m_Positions[v][f][o], correspondencesTmp, rejectionsTmp, otp, ofn, ofp);
+                        getFrameObjectRecognitionResults(groundtruth.m_Positions[v][f][o], m_Positions[v][f][o], matchesTmp, rejectionsTmp, otp, ofn, ofp);
                     
                     tp += otp;
                     fn += ofn;
@@ -670,6 +671,7 @@ void DetectionOutput::getRecognitionResults(DetectionOutput groundtruth, int& tp
 void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > >recognitions, cv::Mat& errors)
 {
     errors.create(indices.size(), 1, CV_32SC(3));
+    errors.setTo(0);
     
     for (int v = 0; v < indices.size(); v++)
     {
@@ -677,39 +679,40 @@ void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vec
         
         for (int o = 0; o < annotations.size(); o++)
         {
-            vector<pair<pcl::PointXYZ, pcl::PointXYZ> > correspondencesTmp; // discarded afterwards
+            vector<pair<pcl::PointXYZ, pcl::PointXYZ> > matchesTmp; // discarded afterwards
             vector<pair<pcl::PointXYZ, pcl::PointXYZ> > rejectionsTmp; // discarded afterwards
             int otp, ofn, ofp;
-            getFrameObjectRecognitionResults(annotations[o], recognitions[v][o], correspondencesTmp, rejectionsTmp, otp, ofn, ofp);
+            getFrameObjectRecognitionResults(annotations[o], recognitions[v][o], matchesTmp, rejectionsTmp, otp, ofn, ofp);
         
             errors.at<cv::Vec3i>(v,0) += cv::Vec3i(otp, ofn, ofp);
         }
     }
 }
 
-void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > >recognitions, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& correspondences, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& rejections, cv::Mat& errors)
+void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > >recognitions, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& rejections, cv::Mat& errors)
 {
-    correspondences.resize(indices.size());
+    matches.resize(indices.size());
     rejections.resize(indices.size());
     errors.create(indices.size(), 1, CV_32SC(3));
+    errors.setTo(0);
     
     for (int v = 0; v < indices.size(); v++)
     {
         vector<vector<pcl::PointXYZ> > annotations = m_Positions[v][indices[v]];
-        correspondences[v].resize(annotations.size());
+        matches[v].resize(annotations.size());
         rejections[v].resize(annotations.size());
         
         for (int o = 0; o < annotations.size(); o++)
         {
             int otp, ofn, ofp;
-            getFrameObjectRecognitionResults(annotations[o], recognitions[v][o], correspondences[v][o], rejections[v][o], otp, ofn, ofp);
+            getFrameObjectRecognitionResults(annotations[o], recognitions[v][o], matches[v][o], rejections[v][o], otp, ofn, ofp);
             
             errors.at<cv::Vec3i>(v,0) += cv::Vec3i(otp, ofn, ofp);
         }
     }
 }
 
-void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> groundtruth, vector<pcl::PointXYZ>recognitions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& correspondences, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp)
+void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> groundtruth, vector<pcl::PointXYZ>recognitions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& matches, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp)
 {
     vector<vector<float> > distances;
     for (int k = 0; k < recognitions.size(); k++)
@@ -766,7 +769,7 @@ void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> gro
         // and determine which are the ones below the threshold
         cv::Mat d (D <= m_Tol);
         
-        tp = 0; // ..those will be the true positives (correspondences)
+        tp = 0; // ..those will be the true positives (matches)
         
         for (int i = 0; i < matchesIndices.size(); i++)
         {
@@ -778,7 +781,7 @@ void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> gro
             
             if ( d.at<uchar>(matchesIndices[i].y, matchesIndices[i].x) )
             {
-                correspondences.push_back(match);
+                matches.push_back(match);
                 tp++;
             }
             else

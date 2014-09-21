@@ -309,7 +309,7 @@ vector<string> SequenceBase<FrameT>::getFramesFilenames()
 template<typename FrameT>
 int SequenceBase<FrameT>::getMinNumOfFrames()
 {
-    int min = std::numeric_limits<int>::infinity();
+    int min = std::numeric_limits<int>::max();
     for (int v = 0; v < getNumOfViews(); v++)
     {
         int numOfFramesOfView = m_Paths[v].size() - m_Delays[v];

@@ -237,17 +237,22 @@ public:
 
     float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject)
     {
-        float penalizedScoresAcc = 0.f;
+        vector<float> penalizedScores (pCloudject->getNumOfViews());
+
+        float pnlScoreAcc = 0.f;
+        float invDistAcc = 0.f;
         
-        for (int i = 0; i < pCloudject->getNumOfViews(); i++)
+        for (int v = 0; v < pCloudject->getNumOfViews(); v++)
         {
-            float score = matchView(pCloudject->getDescription(i));
+            // Compute score and penalty
+            
+            float score = matchView(pCloudject->getDescription(v));
             
             float penalty = 1.f;
 			if (getPenalty() == 0)
 			{
                 float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
-				float ratio = pCloudject->getNumOfPointsInView(i) / avg;
+				float ratio = pCloudject->getNumOfPointsInView(v) / avg;
 				float x = (ratio <= 1) ? ratio : 1 + (1 - (1 / ratio));
                 
 				penalty *= (1.0 / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf((x-1)/m_SigmaPenaltyThresh, 2));
@@ -255,15 +260,19 @@ public:
 			else if (getPenalty() == 1)
 			{
                 float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
-				float diff = (pCloudject->medianDistToCentroidInView(i) - avg);
+				float diff = (pCloudject->medianDistToCentroidInView(v) - avg);
 
 				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
 			}
             
-            penalizedScoresAcc += (score * penalty);
+            pcl::PointXYZ pos = pCloudject->getPosition(v);
+            float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
+            
+            pnlScoreAcc += invDist * (score * penalty);
+            invDistAcc += invDist;
         }
         
-        return penalizedScoresAcc / pCloudject->getNumOfViews();
+        return pnlScoreAcc / invDistAcc;
     }
 
 protected:
@@ -293,8 +302,8 @@ protected:
 		{
 			bool freeCorrespondences = false; // there is any point to match against in the views of the model?
 
-			minDistToP = numeric_limits<float>::infinity(); // min distance to other point histogram
-			ndMinDist =  numeric_limits<float>::infinity();
+			minDistToP = numeric_limits<float>::max(); // min distance to other point histogram
+			ndMinDist =  numeric_limits<float>::max();
 		
 			for (int i = 0; i < m_ViewsDescriptors.size() && numOfMatches[i] < m_ViewsDescriptors[i]->points.size(); i++) 
 			{
@@ -335,7 +344,7 @@ protected:
 		//float factor = (descriptor->points.size() / (float) averageNumOfPointsInModels());
 		
 		float avgDist = accDistToSig / numOfTotalMatches;
-		float score =  1 - avgDist;
+		float score =  1.f - avgDist;
 
 		return score; // / descriptor->points.size());
 	}
@@ -345,27 +354,31 @@ protected:
 	// This is a normalized [0,1] distance
 	float battacharyyaDistanceSignatures(SignatureT s1, SignatureT s2)
 	{
-		float accSqProd = 0;
-		float accS1 = 0;
-		float accS2 = 0;
-		for (int b = 0; b < sizeof(s1.histogram) / sizeof(s1.histogram[0]); b++)
+		float accSqProd = 0.f;
+		float accS1 = 0.f;
+		float accS2 = 0.f;
+        
+        int B = sizeof(s1.histogram) / sizeof(s1.histogram[0]);
+		for (int b = 0; b < B ; b++)
 		{
 			accSqProd += sqrt(s1.histogram[b] * s2.histogram[b]);
 			accS1 += s1.histogram[b];
 			accS2 += s2.histogram[b];
 		}
 
-		float f = 1.0 / sqrt((accS1/33) * (accS2/33) * (33*33));
+		float f = 1.f / sqrt((accS1/B) * (accS2/B) * (B*B));
 
-		return sqrt(1 - f * accSqProd);
+		return sqrt(1.f - f * accSqProd);
 	}
 
 
 	// Returns the euclidean distance between two fpfh signatures, which are actually histograms
 	float euclideanDistanceSignatures(SignatureT s1, SignatureT s2)
 	{
-		float acc = 0;
-		for (int b = 0; b < sizeof(s1.histogram) / sizeof(s1.histogram[0]); b++)
+		float acc = 0.f;
+        
+        int B = sizeof(s1.histogram) / sizeof(s1.histogram[0]);
+		for (int b = 0; b < B; b++)
 		{
 			acc += powf(s1.histogram[b] - s2.histogram[b], 2.0);
 		}
