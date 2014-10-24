@@ -386,7 +386,7 @@ void DetectionOutput::read(string path, string filename, string extension)
         inFile.close();
         m_NumOfViews++;
 
-        inFilePath = path + filename + "_" + to_string(m_NumOfViews++) + "." + extension;
+        inFilePath = path + filename + "_" + std::to_string(static_cast<long long>(m_NumOfViews++)) + "." + extension;
         inFile.open(inFilePath, ios::in);
     }
 }
