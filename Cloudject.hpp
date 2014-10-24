@@ -435,10 +435,10 @@ template<>
 class LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFCloudjectBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>
 {
     typedef pcl::PointXYZRGB PointT;
-    typedef pcl::PointCloud<PointT> PointCloud;
-	typedef pcl::PointCloud<typename PointT>::Ptr PointCloudPtr;
-    typedef pcl::search::KdTree<PointT> KdTree;
-	typedef pcl::search::KdTree<typename PointT>::Ptr KdTreePtr;
+    typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
+	typedef pcl::search::KdTree<pcl::PointXYZRGB>::Ptr KdTreePtr;
 
 public:
 	LFCloudject() 
