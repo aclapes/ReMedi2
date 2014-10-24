@@ -13,6 +13,7 @@
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include "cvxtended.h"
+#include "conversion.h"
 
 DetectionOutput::DetectionOutput()
 : m_NumOfViews(0), m_NumOfObjects(0), m_Tol(0.07)
@@ -229,7 +230,7 @@ void DetectionOutput::write(string path, string filename, string extension)
     for (int v = 0; v < m_NumOfViews; v++)
     {
         ofstream outFile;
-        string outputPath = path + filename + "_" + std::to_string(static_cast<long long>(v)) + "." + extension;
+        string outputPath = path + filename + "_" + to_str(v) + "." + extension;
         outFile.open(outputPath, ios::out);
         
         // create two view files
@@ -270,7 +271,7 @@ void DetectionOutput::write(string path, string filename, string extension)
 //    for (int v = 0; v < m_NumOfViews; v++)
 //    {
 //        ifstream inFile;
-//        inFile.open(path + filename + "_" + to_string(v) + "." + extension, ios::in);
+//        inFile.open(path + filename + "_" + to_str(v) + "." + extension, ios::in);
 //
 //        string line;
 //        int f = 0; // number of lines, i.e. [f]rames
@@ -317,7 +318,7 @@ void DetectionOutput::read(string path, string filename, string extension)
     clear();
     
     ifstream inFile;
-    string inFilePath = path + filename + "_" + std::to_string(static_cast<long long>(m_NumOfViews)) + "." + extension; // num of views is already set to 0 in clear() calling
+    string inFilePath = path + filename + "_" + to_str(m_NumOfViews) + "." + extension; // num of views is already set to 0 in clear() calling
     inFile.open(inFilePath, ios::in);
     
     while (inFile.is_open())
@@ -386,7 +387,7 @@ void DetectionOutput::read(string path, string filename, string extension)
         inFile.close();
         m_NumOfViews++;
 
-        inFilePath = path + filename + "_" + std::to_string(static_cast<long long>(m_NumOfViews++)) + "." + extension;
+        inFilePath = path + filename + "_" + to_str(m_NumOfViews++) + "." + extension;
         inFile.open(inFilePath, ios::in);
     }
 }

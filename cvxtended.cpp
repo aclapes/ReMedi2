@@ -7,8 +7,9 @@
 //
 
 #include "cvxtended.h"
+#include <iterator>
 
-#include <matio.h>
+//#include <matio.h>
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)

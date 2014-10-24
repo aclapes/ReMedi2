@@ -571,12 +571,12 @@ std::string to_string_with_precision(const T a_value, const int n)
 }
 
 template <typename T>
-std::string to_string(cv::Mat values, std::string separator)
+std::string to_str(cv::Mat values, std::string separator)
 {
-    std::string out = std::to_string(values.at<T>(0,0));
+    std::string out = to_str(values.at<T>(0,0));
     for (int i = 0; i < values.rows; i++)
         for (int j = ((i > 0) ? 0 : 1); j < values.cols; j++)
-            out += separator + std::to_string(values.at<T>(i,j));
+            out += separator + to_str(values.at<T>(i,j));
     
     return out;
 }
@@ -590,6 +590,11 @@ std::string to_string_with_precision(cv::Mat values, std::string separator, cons
             out += separator + to_string_with_precision<T>(values.at<T>(i,j), n);
     
     return out;
+}
+
+std::string to_str(int i)
+{
+	return std::to_string(static_cast<long long>(i));
 }
 
 
@@ -701,7 +706,7 @@ std::vector<std::vector<pcl::PointXYZ> > matTow(cv::Mat mat)
 template std::string to_string_with_precision<float>(const float a_value, const int n);
 template std::string to_string_with_precision<double>(const double a_value, const int n);
 
-template std::string to_string<int>(cv::Mat values, std::string separator);
+//template std::string to_string<int>(cv::Mat values, std::string separator);
 template std::string to_string_with_precision<float>(cv::Mat values, std::string separator, const int n);
 template std::string to_string_with_precision<double>(cv::Mat values, std::string separator, const int n);
 

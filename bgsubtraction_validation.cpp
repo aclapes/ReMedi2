@@ -23,7 +23,7 @@ int loadBackgroundSubtractionValidationFile(string path, cv::Mat& combinations, 
     
     overlaps.resize(combinations.rows);
     for (int c = 0; c < combinations.rows; c++)
-        fs["overlaps_" + to_string(c)] >> overlaps[c];
+        fs["overlaps_" + to_str(c)] >> overlaps[c];
     
     fs.release();
     
@@ -102,7 +102,7 @@ void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthF
         for (int c = 0; c < combinationsTmp.rows; c++)
         {
             overlaps.push_back(overlapsTmp[c]);
-            fs << "overlaps_" + to_string(c) << overlapsTmp[c];
+            fs << "overlaps_" + to_str(c) << overlapsTmp[c];
         }
         fs.release();
         
@@ -140,7 +140,7 @@ void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthF
             Sequence<Frame>::Ptr pFgGtSeq = fgMasksSequences[s];
             Sequence<ColorDepthFrame>::Ptr pTestSeq = sequences[s];
             
-            string seqPath = path + to_string(s+1) + "/";
+            string seqPath = path + to_str(s+1) + "/";
             
             cv::Mat seqOverlaps (pFgGtSeq->getNumOfViews(), pFgGtSeq->getMinNumOfFrames(), cv::DataType<float>::type);
             
@@ -180,7 +180,7 @@ void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthF
                     seqOverlaps.at<float>(v,f) = cvx::overlap(maskedPrediction, fgGtBinMask);
                     
                     // Qualitative result (mask image)
-                    //string maskPath = seqPath + "ForegroundMasks" + to_string(v+1) + "/";
+                    //string maskPath = seqPath + "ForegroundMasks" + to_str(v+1) + "/";
                     //cv::imwrite(maskPath + filenames[v] + "-" + parametersStr + ".png", maskedPrediction);
                 }
                 
@@ -194,7 +194,7 @@ void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthF
         cvx::hconcat(seqsOverlaps, combinationOverlaps);
         
         fs.open(path + filename, cv::FileStorage::APPEND);
-        fs << "overlaps_" + to_string(offset + c) << combinationOverlaps;
+        fs << "overlaps_" + to_str(offset + c) << combinationOverlaps;
         fs.release();
         
         overlaps.push_back(combinationOverlaps);
@@ -255,8 +255,8 @@ void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, 
     //
     //            for (int s = 3; s < 4 /*fgMasksSequences.size()*/; s++)
     //            {
-    //                string seqPath = path + to_string(s+1) + "/";
-    //                string maskPath = seqPath + "ForegroundMasks" + to_string(v+1) + "/";
+    //                string seqPath = path + to_str(s+1) + "/";
+    //                string maskPath = seqPath + "ForegroundMasks" + to_str(v+1) + "/";
     //
     //                Sequence<Frame>::Ptr pFgGtSeq = fgMasksSequences[s];
     //                pFgGtSeq->restart();

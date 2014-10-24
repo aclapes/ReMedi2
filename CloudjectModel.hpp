@@ -611,10 +611,10 @@ class LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFClo
     typedef pcl::PointXYZRGB PointT;
 	typedef pcl::PointCloud<pcl::PFHRGBSignature250> Descriptor;
 	typedef pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr DescriptorPtr;
-	typedef pcl::PointCloud<PointT> PointCloud;
-	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
-    typedef pcl::search::KdTree<PointT> KdTree;
-    typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
+	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB>::Ptr KdTreePtr;
     
 	typedef LFCloudject<PointT,pcl::PFHRGBSignature250> LFCloudject;
     
@@ -735,9 +735,9 @@ template class CloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 template class LFCloudjectModelBase<pcl::PointXYZ,pcl::FPFHSignature33>;
 template class LFCloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+//template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 
 template class LFCloudjectModel<pcl::PointXYZ,pcl::FPFHSignature33>;
 template class LFCloudjectModel<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModel<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-template class LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+//template class LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;

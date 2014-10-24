@@ -690,7 +690,7 @@ void computeConfidenceInterval(cv::Mat values, float* mean, float* confidence, f
     else pval = 1.96; // alpha == 0.05
     
     *mean = _mean.val[0];
-    *confidence = pval * (stddev.val[0] / sqrt(values.rows));
+    *confidence = pval * (stddev.val[0] / sqrtf(values.rows));
 }
 
 //void computeConfidenceInterval(GridMat values, cv::Mat& means, cv::Mat& confidences, float alpha)

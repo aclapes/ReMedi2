@@ -27,7 +27,7 @@
 //            int s = 0;
 //            do
 //            {
-//                string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s++);
+//                string id = "combination_" + to_str(i) + "-" + to_str(j) + "-" + to_str(s++);
 //                fs[id] >> m;
 //                
 //                if (!m.empty()) errors[i][j].push_back(m);
@@ -48,7 +48,7 @@
 //    {
 //        for (int s = 0; s < errors[i][j].size(); s++)
 //        {
-//            string id = "combination_" + to_string(i * mntrCombinations.rows + j) + "-" + to_string(s);
+//            string id = "combination_" + to_str(i * mntrCombinations.rows + j) + "-" + to_str(s);
 //            fs << id << errors[i][j][s];
 //        }
 //    }
@@ -70,7 +70,7 @@ void loadMonitorizationSegmentationValidationFile2(string filePath, cv::Mat& com
         int s = 0;
         do
         {
-            string str = "combination_" + to_string(i) + "-" + to_string(s++);
+            string str = "combination_" + to_str(i) + "-" + to_str(s++);
             fs[str.c_str()] >> m;
             
             if (!m.empty()) errors[i].push_back(m);
@@ -206,7 +206,7 @@ void loadMonitorizationSegmentationValidationFile2(string filePath, cv::Mat& com
 //                {
 //                    errors[i][j][s] = errorsTmp[i][j][s];
 //
-//                    string id = "combination_" + to_string(i) + "-" + to_string(j) + "-" + to_string(s);
+//                    string id = "combination_" + to_str(i) + "-" + to_str(j) + "-" + to_str(s);
 //                    fs << id << errorsTmp[i][j][s];
 //                }
 //            }
@@ -307,7 +307,7 @@ void loadMonitorizationSegmentationValidationFile2(string filePath, cv::Mat& com
 //        {
 //            for (int s = 0; s < sequences.size(); s++)
 //            {
-//                string id = "combination_" + to_string(i) + "-" + to_string(offset + j) + "-" + to_string(s);
+//                string id = "combination_" + to_str(i) + "-" + to_str(offset + j) + "-" + to_str(s);
 //                fs << id << errors[i][offset+j][s];
 //            }
 //        }
@@ -407,7 +407,7 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             {
                 errors[i][s] = errorsTmp[i][s];
                 
-                string id = "combination_" + to_string(i) + "-" + to_string(s);
+                string id = "combination_" + to_str(i) + "-" + to_str(s);
                 fs << id << errorsTmp[i][s];
             }
             
@@ -518,7 +518,7 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
         fs.open(path + filename, cv::FileStorage::APPEND);
         for (int i = 0; i < combinations.rows; i++) for (int s = 0; s < sequences.size(); s++)
         {
-            string id = "combination_" + to_string(i+offset) + "-" + to_string(s);
+            string id = "combination_" + to_str(i+offset) + "-" + to_str(s);
             fs << id << errors[i+offset][s];
         }
         fs.release();
@@ -567,7 +567,7 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
     for (int v = 0; v < viewports.size(); v++)
     {
         pVis->createViewPort(v * (1.f/viewports.size()), 0, (v+1) * (1.f/viewports.size()), 1, viewports[v]);
-        pVis->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_string(v), viewports[v]);
+        //pVis->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_str(v), viewports[v]);
     }
     
     // Draw clouds, matches, and rejections
@@ -578,7 +578,7 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredCloud (new pcl::PointCloud<pcl::PointXYZRGB>);
         frames[v]->getColoredPointCloud( *pColoredCloud ); // unregistered
         
-        pVis->addPointCloud(pColoredCloud, "cloud_" + to_string(v), viewports[v]);
+        pVis->addPointCloud(pColoredCloud, "cloud_" + to_str(v), viewports[v]);
         
         pcl::PointXYZ p, q;
         
@@ -589,13 +589,13 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             p = matches[v][i].first;
             q = matches[v][i].second;
             
-            pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(p, markersRadius, 0, 1, 0, "matches_prediction_" + to_str(v) + to_str(i), viewports[v]);
             
-            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_string(v) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "matches_groundtruth_"  + to_str(v) + to_str(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
             
-            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_line_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addLine(p, q, 0, 1, 0, "matches_line_" + to_str(v) + to_str(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "matches_line_" + to_str(v) + to_str(i), viewports[v]);
         }
         // Rejections are in red linked with red line to groundtruth
         for (int i = 0; i < rejections[v].size(); i++)
@@ -603,13 +603,13 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             p = rejections[v][i].first;
             q = rejections[v][i].second;
             
-            pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_str(v) + to_str(i), viewports[v]);
             
-            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
             
-            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_string(v) + to_string(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_string(v) + to_string(i), viewports[v]);
+            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
+            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
             
         }
     }

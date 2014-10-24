@@ -113,8 +113,8 @@ void InteractiveRegisterer::setCorrespondencesManually()
         m_pViz->createViewPort(hside * x, vside * y, hside * (x+1), vside * (y+1), vid);
         m_VIDs.push_back(vid);
         
-        m_pViz->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_string(v), vid);
-        m_pViz->addPointCloud(m_pClouds[v], "cloud" + to_string(v), vid);
+        //m_pViz->addCoordinateSystem(0.1, 0, 0, 0, "cs" + to_str(v), vid);
+        m_pViz->addPointCloud(m_pClouds[v], "cloud" + to_str(v), vid);
         
         setDefaultCamera(m_pViz, vid);
     }
@@ -129,7 +129,7 @@ void InteractiveRegisterer::saveCorrespondences(string filename, string extensio
     
     for (int v = 0; v < m_pMarkers.size(); v++)
     {
-        writer.write(filename + "-" + to_string(v) + "." + extension, *(m_pMarkers[v]));
+        writer.write(filename + "-" + to_str(v) + "." + extension, *(m_pMarkers[v]));
     }
 }
 
@@ -141,7 +141,7 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
     for (int v = 0; v < m_pFrames.size(); v++)
     {
         PointCloudPtr pMarkers (new PointCloud);
-        reader.read(filename + "-" + to_string(v) + "." + extension, *pMarkers);
+        reader.read(filename + "-" + to_str(v) + "." + extension, *pMarkers);
         m_pMarkers[v] = pMarkers;
     }
     
@@ -421,7 +421,7 @@ void InteractiveRegisterer::ppCallback(const pcl::visualization::PointPickingEve
         m_pMarkers[m_Viewport]->push_back(p);
         
         int idx = m_pMarkers[m_Viewport]->points.size();
-        string mid = "marker" + to_string(m_Viewport) + to_string(idx);
+        string mid = "marker" + to_str(m_Viewport) + to_str(idx);
         m_pViz->addSphere(p, m_MarkerRadius, g_Colors[idx][0], g_Colors[idx][1], g_Colors[idx][2], mid, m_VIDs[m_Viewport]);
         
         // all set?

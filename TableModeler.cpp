@@ -532,7 +532,7 @@ void TableModeler::getMinMax3D(PointCloudPtr pCloud, int d, int confidence, Poin
             cv::Scalar mean, stddev;
             cv::meanStdDev(values.col(d), mean, stddev);
             
-            float pm = getPVal(confidence) * (stddev.val[0] / sqrt(values.rows));
+            float pm = getPVal(confidence) * (stddev.val[0] / sqrtf(values.rows));
             
             min.data[i] = mean.val[0] - pm;
             max.data[i] = mean.val[0] + pm;

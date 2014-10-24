@@ -85,7 +85,8 @@ public:
     
     void restart();
     
-    void allocate();
+    //virtual void allocate() = 0;
+	void allocate();
     
     typedef boost::shared_ptr<SequenceBase<FrameT> > Ptr;
     
@@ -120,6 +121,8 @@ public:
     Sequence(const Sequence<FrameT>& rhs);
     Sequence<FrameT>& operator=(const Sequence<FrameT>& rhs);
     
+	//void allocate();
+
     typedef boost::shared_ptr<Sequence<Frame> > Ptr;
 };
 
@@ -138,6 +141,8 @@ public:
     Sequence(const Sequence<ColorDepthFrame>& rhs);
     Sequence<ColorFrame>& operator=(const Sequence<ColorDepthFrame>& rhs);
     
+	//void allocate();
+
     typedef boost::shared_ptr<Sequence<ColorFrame> > Ptr;
 };
 
@@ -156,6 +161,8 @@ public:
     Sequence(const Sequence<ColorDepthFrame>& rhs);
     Sequence<DepthFrame>& operator=(const Sequence<ColorDepthFrame>& rhs);
     
+	//void allocate();
+
     void setReferencePoints(vector<pcl::PointXYZ> points);
     vector<pcl::PointXYZ> getReferencePoints();
 

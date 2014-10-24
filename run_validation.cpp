@@ -172,8 +172,6 @@ int validation()
     vector<string> varNames;
     varNames += "modality";
     
-    string bsValidationDir;
-    
     vector<double> modalities, components, learningRates, backgroundRatios, varGenThresholds, openingSizes;
     modalities += COLOR, DEPTH, COLOR_WITH_SHADOWS, COLORDEPTH;
     components += 2, 3, 5, 10, 20, 30;
@@ -185,7 +183,7 @@ int validation()
     bsParameters += modalities, components, learningRates, backgroundRatios, varGenThresholds, openingSizes;
     
     varNames += "#mixture_components", "learning_rate", "background_ratio", "var_threshold_gen", "opening_size";
-    bsValidationDir = "bs-mog2_results/";
+
 //    modalities += ReMedi::COLOR, ReMedi::DEPTH, ReMedi::COLOR_WITH_SHADOWS, ReMedi::COLORDEPTH;
 //    vector<double> maxFeatures, quantizationLevels, decisionThresholds;
 //    maxFeatures += 2, 3, 4, 5, 6, 7, 8, 16, 32;
@@ -195,7 +193,6 @@ int validation()
 //    bsParameters += modalities, maxFeatures, learningRates, quantizationLevels, decisionThresholds, openingSizes;
 //    
 //    varNames += "#max_features", "learning_rate", "#quantization_levels", "var_decision_threshold", "opening_size";
-//    bsValidationDir = "bs-gmg_results/";
     
     vector<string> foregroundMasksDirNames;
     foregroundMasksDirNames += FOREGROUND_MASKS_DIRNAME_1, FOREGROUND_MASKS_DIRNAME_2;
@@ -216,7 +213,7 @@ int validation()
     cv::Mat bsCombinations;
     vector<cv::Mat> bsOverlaps;
 //    validateBackgroundSubtraction(sys, sequences, bsParameters, foregroundMasksSequences, "bs-mog2_results/", "bs_validation.yml", bsCombinations, bsOverlaps);
-    loadBackgroundSubtractionValidationFile("bs-mog2_results/bs_validation.yml", bsCombinations, bsOverlaps);
+    loadBackgroundSubtractionValidationFile("Results/bs-mog2_results/bs_validation.yml", bsCombinations, bsOverlaps);
 
     cv::Mat bsMeans, bsStddevs;
     summarizeBackgroundSubtractionValidation(bsCombinations, bsOverlaps, bsMeans, bsStddevs);
@@ -255,7 +252,7 @@ int validation()
     cv::Mat sgmtCombinations;
     vector<vector<cv::Mat> > sgmtErrors;
 //    validateMonitorizationSegmentation2(sys, sequences, bsBestCombinations, mntrParameters, detectionGroundtruths, "sgmt_results/", "sgmt_validation.yml", sgmtCombinations, sgmtErrors, false);
-    loadMonitorizationSegmentationValidationFile2("sgmt_results/sgmt_validation.yml", sgmtCombinations, sgmtErrors);
+    loadMonitorizationSegmentationValidationFile2("Results/sgmt_results/sgmt_validation.yml", sgmtCombinations, sgmtErrors);
 
     cv::Mat sgmtMeans, sgmtStddevs;
     summarizeMonitorizationSegmentationValidation(sgmtCombinations, sgmtErrors, computeF1Score, sgmtMeans, sgmtStddevs);
@@ -292,11 +289,11 @@ int validation()
     pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS);
     
     vector<vector<vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, sgmtBestCombinations, "rcgn_results/", "rcgn_scores.yml", scoreds);
+    precomputeRecognitionScores(pSys, sequences, sgmtBestCombinations, "Results/rcgn_results/", "rcgn_scores.yml", scoreds);
     
     vector<vector<double> > mntrRcgnParameters;
     vector<double> rcgnStrategies;
-    rcgnStrategies += RECOGNITION_MONOCULAR, RECOGNITION_MULTIOCULAR;
+    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
     vector<double> rcgnTempCoherences;
     rcgnTempCoherences += 0, 1, 2, 3;
     mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;

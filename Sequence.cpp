@@ -481,7 +481,6 @@ Sequence<FrameT>& Sequence<FrameT>::operator=(const Sequence<FrameT>& rhs)
     return *this;
 }
 
-
 //
 // Sequence<ColorFrame>
 //
@@ -1075,17 +1074,6 @@ void Sequence<ColorDepthFrame>::readFrame(vector< pair<string,string> > paths, i
 template class SequenceBase<Frame>;
 template class SequenceBase<ColorFrame>;
 template class SequenceBase<DepthFrame>;
-//template class SequenceBase<ColorDepthFrame>;
-
 
 template class Sequence<Frame>;
-template class Sequence<ColorFrame>;
-//template class Sequence<DepthFrame>;
-//template class Sequence<ColorDepthFrame>;
-
-//template SequenceBase<DepthFrame>::SequenceBase(const SequenceBase<ColorDepthFrame>& rhs);
-//template SequenceBase<DepthFrame>& SequenceBase<DepthFrame>::operator=(const SequenceBase<ColorDepthFrame>& rhs);
-//
-//template Sequence<DepthFrame>::Sequence(const Sequence<ColorDepthFrame>& rhs);
-//template Sequence<DepthFrame>& Sequence<DepthFrame>::operator=(const Sequence<ColorDepthFrame>& rhs);
 // ------------------------------------------------------

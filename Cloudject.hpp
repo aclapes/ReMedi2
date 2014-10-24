@@ -493,7 +493,7 @@ public:
 		//
 
 		// Create the normal estimation class, and pass the input dataset to it
-		typename pcl::NormalEstimation<PointT, pcl::Normal> ne;
+		pcl::NormalEstimation<PointT, pcl::Normal> ne;
 		ne.setInputCloud (pView);
 
 		// Create an empty kdtree representation, and pass it to the normal estimation object.
