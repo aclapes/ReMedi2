@@ -115,7 +115,7 @@ public:
      *  \param vargen The variance threshold to consider generation of new mixture components
      *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen);
+    void setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen, float opening);
 #else
     /** \brief Set the parameters of the background subtractor
      *  \param n The number of samples used for modelling
@@ -125,13 +125,13 @@ public:
      *  \param q The background ratio
      *  \param t The decision threshold based on the variance criterion
      */
-    void setSubtractorParameters(int n, int m, int f, float lrate, float q, float t);
+    void setSubtractorParameters(int n, int m, int f, float lrate, float q, float t, float opening);
 #endif
     
     /** \brief Set the parameters of the background subtractor
      *  \param level The size (2*level+1) of the kernel convolved to perform mathematical morphology (opening) to the background mask
      */
-    void setObjectDetectorParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize);
+    void setObjectDetectorParameters(float leafSize, float clusterDist, int minClusterSize);
 
     void setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, int descriptionType, int recognitionStrategy);
     void setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel);
@@ -163,6 +163,8 @@ public:
     static void loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths);
     static void loadDelaysFile(string parent, string filename, vector<vector<int> >& delays);
     static void loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews);
+    
+    typedef boost::shared_ptr<ReMedi> Ptr;
     
 private:
     Sequence<ColorDepthFrame>::Ptr m_pBgSeq;

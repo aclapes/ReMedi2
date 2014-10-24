@@ -47,6 +47,30 @@ void pcl2cv(pcl::PointXYZRGB p, cv::Mat& m)
     m.at<float>(0,2) = p.b;
 }
 
+void ProjectiveToRealworld(std::vector<float> p, int xres, int yres, std::vector<float>& rw)
+{
+    pcl::PointXYZ rwpoint;
+    ProjectiveToRealworld(pcl::PointXYZ(p[0],p[1],p[2]), xres, yres, rwpoint);
+    
+    rw.clear();
+    rw.resize(3);
+    rw[0] = rwpoint.x;
+    rw[1] = rwpoint.y;
+    rw[2] = rwpoint.z;
+}
+
+void RealworldToProjective(std::vector<float> rw, int xres, int yres, std::vector<float>& p)
+{
+    pcl::PointXYZ ppoint;
+    RealworldToProjective(pcl::PointXYZ(rw[0],rw[1],rw[2]), xres, yres, ppoint);
+    
+    p.clear();
+    p.resize(3);
+    p[0] = ppoint.x;
+    p[1] = ppoint.y;
+    p[2] = ppoint.z;
+}
+
 void ProjectiveToRealworld(pcl::PointXYZ p, int xres, int yres, pcl::PointXYZ& rw)
 {
     float invfocal = (1/285.63f) / (xres/320.f);
@@ -71,15 +95,10 @@ void ProjectiveToRealworld(pcl::PointCloud<pcl::PointXYZ>::Ptr pProjCloud, pcl::
     realCloud.width  = pProjCloud->width;
     realCloud.resize( pProjCloud->height * pProjCloud->width );
     
-    float invfocal = (1/285.63f) / (realCloud.width/320.f);
-    
     for (unsigned int y = 0; y < realCloud.height; y++) for (unsigned int x = 0; x < realCloud.width; x++)
     {
         pcl::PointXYZ realPoint;
-        realPoint.x = ((x - realCloud.width/2) * invfocal * pProjCloud->at(x,y).z) / 1000.f,
-        realPoint.y = ((y - realCloud.height/2) * invfocal * pProjCloud->at(x,y).z) / 1000.f,
-        realPoint.z = pProjCloud->at(x,y).z / 1000.f;
-        
+        ProjectiveToRealworld(pProjCloud->at(x,y), pProjCloud->width, pProjCloud->height, realPoint);
         realCloud.at(x,y) = realPoint;
     }
 }
@@ -90,15 +109,10 @@ void RealworldToProjective(pcl::PointCloud<pcl::PointXYZ>::Ptr pRealCloud, pcl::
     projCloud.width  = pRealCloud->width;
     projCloud.resize( pRealCloud->height * pRealCloud->width );
     
-    float invfocal = (1/285.63f) / (projCloud.width/320.f);
-    
     for (unsigned int y = 0; y < projCloud.height; y++) for (unsigned int x = 0; x < projCloud.width; x++)
     {
         pcl::PointXYZ projPoint;
-        projPoint.x = (int) ( ((pRealCloud->at(x,y).x) / (invfocal * pRealCloud->at(x,y).z)) + (projCloud.width / 2.f) );
-        projPoint.y = (int) ( ((pRealCloud->at(x,y).y) / (invfocal * pRealCloud->at(x,y).z)) + (projCloud.height / 2.f) );
-        projPoint.z = pRealCloud->at(x,y).z * 1000.f;
-        
+        RealworldToProjective(pRealCloud->at(x,y), pRealCloud->width, pRealCloud->height, projPoint);
         projCloud.at(x,y) = projPoint;
     }
 }
@@ -614,6 +628,76 @@ int searchByName(std::vector<std::pair<std::string,std::string> > paths, std::st
     return -1;
 }
 
+template<typename T>
+cv::Mat wToMat(std::vector<std::vector<T> > w)
+{
+    cv::Mat mat (w.size(), w[0].size(), cv::DataType<T>::type);
+    
+    for (int i = 0; i < w.size(); i++)
+    {
+        assert (w[i].size() == w[0].size());
+        for (int j = 0; j < w[i].size(); j++)
+        {
+            mat.at<T>(i,j) = w[i][j];
+        }
+    }
+    
+    return mat;
+}
+
+template<>
+cv::Mat wToMat(std::vector<std::vector<pcl::PointXYZ> > w)
+{
+    cv::Mat mat (w.size(), w[0].size(), CV_32FC(3));
+    
+    for (int i = 0; i < w.size(); i++)
+    {
+        assert (w[i].size() == w[0].size());
+        for (int j = 0; j < w[i].size(); j++)
+        {
+            mat.at<cv::Vec3f>(i,j) = cv::Vec3f(w[i][j].x, w[i][j].y, w[i][j].z);
+        }
+    }
+    
+    return mat;
+}
+
+template<typename T>
+std::vector<std::vector<T> > matTow(cv::Mat mat)
+{
+    std::vector<std::vector<T> > w (mat.rows);
+    
+    for (int i = 0; i < mat.rows; i++)
+    {
+        w[i].resize(mat.cols);
+        for (int j = 0; j < mat.cols; j++)
+        {
+            w[i][j] = mat.at<T>(i,j);
+        }
+    }
+    
+    return w;
+}
+
+template<>
+std::vector<std::vector<pcl::PointXYZ> > matTow(cv::Mat mat)
+{
+    std::vector<std::vector<pcl::PointXYZ> > w (mat.rows);
+    
+    for (int i = 0; i < mat.rows; i++)
+    {
+        w[i].resize(mat.cols);
+        for (int j = 0; j < mat.cols; j++)
+        {
+            w[i][j].x = mat.at<cv::Vec3f>(i,j)[0];
+            w[i][j].y = mat.at<cv::Vec3f>(i,j)[1];
+            w[i][j].z = mat.at<cv::Vec3f>(i,j)[2];
+        }
+    }
+    
+    return w;
+}
+
 template std::string to_string_with_precision<float>(const float a_value, const int n);
 template std::string to_string_with_precision<double>(const double a_value, const int n);
 
@@ -621,3 +705,10 @@ template std::string to_string<int>(cv::Mat values, std::string separator);
 template std::string to_string_with_precision<float>(cv::Mat values, std::string separator, const int n);
 template std::string to_string_with_precision<double>(cv::Mat values, std::string separator, const int n);
 
+template cv::Mat wToMat(std::vector<std::vector<int> > w);
+template cv::Mat wToMat(std::vector<std::vector<float> > w);
+template cv::Mat wToMat(std::vector<std::vector<double> > w);
+
+template std::vector<std::vector<int> > matTow(cv::Mat mat);
+template std::vector<std::vector<float> > matTow(cv::Mat mat);
+template std::vector<std::vector<double> > matTow(cv::Mat mat);

@@ -858,9 +858,12 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>::subtract(cv
     cv::Mat mask;
     subtractor(image, mask, 0);
     
-    cvx::open(mask, m_OpeningSize, mask);
-    
-	fgMask = (mask == 255); // no background (0), no shadows (127)
+    fgMask = (mask == 255); // no background (0), no shadows (127)
+
+    if (m_OpeningSize < 0)
+        cvx::close(fgMask, abs(m_OpeningSize), fgMask);
+    else
+        cvx::open(fgMask, m_OpeningSize, fgMask);
 }
 
 //
@@ -961,9 +964,12 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>::subtract(cv
     cv::Mat mask;
     subtractor(depthMap, mask, 0);
     
-    cvx::open(mask, m_OpeningSize, mask);
+    fgMask = (mask == 255); // no background (0), no shadows (127)
     
-	fgMask = (mask == 255);
+    if (m_OpeningSize < 0)
+        cvx::close(fgMask, abs(m_OpeningSize), fgMask);
+    else
+        cvx::open(fgMask, m_OpeningSize, fgMask);
 }
 
 //
@@ -1212,9 +1218,12 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::subtra
     cv::Mat mask;
     subtractor(image, mask, 0);
 
-    cvx::open(mask, m_OpeningSize, mask);
+    fgMask = (mask == 255); // no background (0), no shadows (127)
     
-	fgMask = (mask == 255);
+    if (m_OpeningSize < 0)
+        cvx::close(fgMask, abs(m_OpeningSize), fgMask);
+    else
+        cvx::open(fgMask, m_OpeningSize, fgMask);
 }
 
 // Template instantiaions

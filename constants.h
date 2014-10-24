@@ -10,7 +10,12 @@
 #define remedi2_constants_h
 
 // KinectReader's constants
+#ifdef __APPLE__
 #define PARENT_PATH                         "../../../Data/"
+#elif _WIN32 || _WIN64
+#define PARENT_PATH                         "../../Data/"
+#endif
+
 #define SEQUENCES_SUBDIR                    "Sequences/"
 #define KINECT_SUBSUBDIR                    "Kinects/"
 #define OBJECTLABELS_SUBDIR                 "ObjectLabels/"
@@ -47,6 +52,7 @@
 #define BS_NUM_OF_SAMPLES                   400
 #define BS_MODALITY                         3
 #define BS_LRATE                            -1
+#define BS_MORPHOLOGY                       2
 
 #define BS_K                                30
 #define BS_BGRATIO                          0.99999
@@ -67,19 +73,24 @@
 // Monitorizer's constants
 #define OD_NUM_OF_OBJECTS                   5
 // ... segmentation-related ones
-#define OD_MORPHOLOGY                       2
 #define OD_LEAF_SIZE                        0.005
 #define OD_CLUSTERS_DIST_FACTOR             5
 #define OD_MINIMUM_CLUSTER_SIZE             50
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
-// ... recognition-related ones
+// ... recognition-related ones (computed in an independent dataset)
 #define OR_PFHDESC_LEAFSIZE                 0.01
-#define OR_PFHDESC_MODEL_LEAFSIZE           0.0225
-#define OR_PFHDESC_NORMAL_RADIUS            0.04
-#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.03
-#define OR_PFHDESC_PFH_RADIUS               0.125
-#define OR_PFHDESC_MODEL_PFH_RADIUS         0.125
+#define OR_PFHDESC_MODEL_LEAFSIZE           0.01
+#define OR_PFHDESC_NORMAL_RADIUS            0.02
+#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.02
+#define OR_PFHDESC_PFH_RADIUS               0.15
+#define OR_PFHDESC_MODEL_PFH_RADIUS         0.15
+#define OR_POINT_REJECTION_THRESH           0.60
 
+#define OR_BOOK_REJECTION_THRESH            0.85
+#define OR_CUP_REJECTION_THRESH             0.75
+#define OR_DISH_REJECTION_THRESH            0.85
+#define OR_PILLBOX_REJECTION_THRESH         0.80
+#define OR_TETRABRICK_REJECTION_THRESH      0.80
 
 // Marker colors (as many as objects at least)
 static float g_Colors[][3] = {

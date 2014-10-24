@@ -138,12 +138,12 @@ void ColorDepthFrame::getDepthMask(cv::Mat& depthMask)
     DepthFrame::getMask(depthMask);
 }
 
-void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)
+void ColorDepthFrame::getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud, bool bMasked)
 {
-    if (m_Mask.empty())
-        MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), coloredCloud);
-    else
+    if (bMasked && !m_Mask.empty())
         MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), m_Mask, coloredCloud);
+    else
+        MatToColoredPointCloud(DepthFrame::get(), ColorFrame::get(), coloredCloud);
 }
 
 void ColorDepthFrame::getColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud)

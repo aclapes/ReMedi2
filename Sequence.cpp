@@ -262,6 +262,20 @@ vector<typename FrameT::Ptr> SequenceBase<FrameT>::getFrames(int i)
 }
 
 template<typename FrameT>
+void SequenceBase<FrameT>::next(int step)
+{
+    for (int v = 0; v < m_Paths.size(); v++)
+        m_FrameIndices[v] += step;
+}
+
+template<typename FrameT>
+void SequenceBase<FrameT>::previous(int step)
+{
+    for (int v = 0; v < m_Paths.size(); v++)
+        m_FrameIndices[v] -= step;
+}
+
+template<typename FrameT>
 vector<typename FrameT::Ptr> SequenceBase<FrameT>::getFrames(vector<string> filenames)
 {
     vector<int> indices;
@@ -864,6 +878,18 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(int i)
     }
     
     return frames;
+}
+
+void Sequence<ColorDepthFrame>::next(int step)
+{
+    for (int v = 0; v < m_Paths.size(); v++)
+        m_FrameIndices[v] += step;
+}
+
+void Sequence<ColorDepthFrame>::previous(int step)
+{
+    for (int v = 0; v < m_Paths.size(); v++)
+        m_FrameIndices[v] -= step;
 }
 
 vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(vector<string> filenames)

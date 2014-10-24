@@ -49,7 +49,7 @@ public:
     void getColorMask(cv::Mat& colorMask);
     void getDepthMask(cv::Mat& depthMask);
     
-    void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
+    void getColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud, bool bMasked = false);
     void getColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     void getRegisteredColoredPointCloud(pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);
     void getRegisteredColoredPointCloud(cv::Mat mask, pcl::PointCloud<pcl::PointXYZRGB>& coloredCloud);

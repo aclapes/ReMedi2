@@ -65,6 +65,7 @@ public:
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
     
+    void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
     
 private:
@@ -121,6 +122,7 @@ public:
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
 
+    void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
     
 private:

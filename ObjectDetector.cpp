@@ -20,7 +20,7 @@
 using namespace boost::assign;
 
 ObjectDetector::ObjectDetector()
-: m_MorphLevel(1), m_LeafSize(0.01), m_ClusterIdF(2), m_MinClusterSize(100), m_CorrespenceDist(0.1), m_bRegistration(false)
+: m_LeafSize(0.01), m_ClusterIdF(2), m_MinClusterSize(100), m_CorrespenceDist(0.1), m_bRegistration(false)
 {
     
 }
@@ -36,7 +36,6 @@ ObjectDetector& ObjectDetector::operator=(const ObjectDetector& rhs)
     {
         m_InputFrames = rhs.m_InputFrames;
         
-        m_MorphLevel = rhs.m_MorphLevel;
         m_LeafSize = rhs.m_LeafSize;
         m_ClusterIdF = rhs.m_ClusterIdF;
         m_MinClusterSize = rhs.m_MinClusterSize;
@@ -52,11 +51,6 @@ ObjectDetector& ObjectDetector::operator=(const ObjectDetector& rhs)
 void ObjectDetector::setInputFrames(vector<ColorDepthFrame::Ptr> frames)
 {
     m_InputFrames = frames;
-}
-
-void ObjectDetector::setMorhologyLevel(int level)
-{
-    m_MorphLevel = level;
 }
 
 void ObjectDetector::setDownsamplingSize(float leafSize)
@@ -102,12 +96,6 @@ void ObjectDetector::detect(vector<vector<ColorPointCloudPtr> >& detections)
         cv::Mat depth = m_InputFrames[v]->getDepth();
         cv::Mat foreground = m_InputFrames[v]->getMask();
         
-        // Preprocess (at blob level), // mathematical morphology
-        if (m_MorphLevel < 0)
-            cvx::close(foreground, abs(m_MorphLevel), foreground);
-        else
-            cvx::open(foreground, m_MorphLevel, foreground);
-        
         // Convert to cloud form
         ColorPointCloudPtr pColorCloud (new ColorPointCloud);
         m_InputFrames[v]->getColoredPointCloud(foreground, *pColorCloud);
@@ -132,6 +120,12 @@ void ObjectDetector::getDetectionPositions(vector<vector<PointT> >& positions)
     
     _getDetectionPositions(m_Detections, m_bRegistration, positions);
 }
+
+//void ObjectDetector::getDetectionCorrespondences(vector<vector<pair<int,PointT> > >& positions)
+//{
+//    vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences;
+//    findCorrespondences(m_Detections, bMakeCorrespondences ? m_CorrespenceDist : 0, correspondences);
+//}
 
 void ObjectDetector::getDetectionCorrespondences(vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences, bool bMakeCorrespondences)
 {

@@ -836,6 +836,40 @@ void cvx::findRowsToColsAssignation(cv::Mat scores, cv::Mat& matches)
     cv::findNonZero(M, matches);
 }
 
+void cvx::combine(cv::InputArray src1, cv::InputArray src2, int dim, cv::OutputArray dst)
+{
+    cv::Mat _src1 = src1.getMat();
+    cv::Mat _src2 = src2.getMat();
+    
+    assert( _src1.type() == _src2.type() );
+    
+    cv::Mat _dst;
+    if (dim == 0)
+        _dst.create(_src1.rows + _src2.rows, _src1.cols * _src2.cols, _src1.type());
+    else
+        _dst.create(_src1.rows * _src2.rows, _src1.cols + _src2.cols, _src1.type());
+    
+    
+    for (int i = 0; i < ((dim == 0) ? _src1.cols : _src1.rows); i++)
+    {
+        for (int j = 0; j < ((dim == 0) ? _src2.cols : _src2.rows); j++)
+        {
+            if (dim == 0)
+            {
+                _src1.col(i).copyTo(_dst.col(i * _src2.cols + j).colRange(0, _src1.rows));
+                _src2.col(j).copyTo(_dst.col(i * _src2.cols + j).colRange(_src1.rows, _src1.rows + _src2.rows));
+            }
+            else
+            {
+                _src1.row(i).copyTo(_dst.row(i * _src2.rows + j).colRange(0, _src1.cols));
+                _src2.row(j).copyTo(_dst.row(i * _src2.rows + j).colRange(_src1.cols, _src1.cols + _src2.cols));
+            }
+        }
+    }
+    
+    dst.getMatRef() = _dst;
+}
+
 
 template void cvx::convert(cv::Mat mat, std::vector<std::vector<uchar> >& vv);
 template void cvx::convert(cv::Mat mat, std::vector<std::vector<ushort> >& vv);

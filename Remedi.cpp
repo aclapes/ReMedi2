@@ -168,7 +168,7 @@ void ReMedi::setTableModelerParameters(float leafsz, float normrad, int sacIters
  *  \param bgratio The background ratio
  *  \param vargen The variance threshold to consider generation of new mixture components
  */
-void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen)
+void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgratio, float vargen, float opening)
 {
     m_pBackgroundSubtractor->setFramesResolution(m_XRes, m_YRes);
     
@@ -180,6 +180,7 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
     m_pBackgroundSubtractor->setLearningRate(lrate);
     m_pBackgroundSubtractor->setBackgroundRatio(bgratio);
     m_pBackgroundSubtractor->setVarThresholdGen(vargen);
+    m_pBackgroundSubtractor->setOpeningSize(opening);
 }
 
 ///** \brief Set the parameters of the background subtractor
@@ -190,7 +191,7 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
 // *  \param q The background ratio
 // *  \param t The decision threshold based on the variance criterion
 // */
-//void ReMedi::setSubtractorParameters(int n, int m, int f, float lrate, float q, float t)
+//void ReMedi::setSubtractorParameters(int n, int m, int f, float lrate, float q, float t, float o)
 //{
 //    m_pBackgroundSubtractor->setFramesResolution(m_XRes, m_YRes);
 //    
@@ -202,6 +203,7 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
 //    m_pBackgroundSubtractor->setLearningRate(lrate);
 //    m_pBackgroundSubtractor->setQuantizationLevels(q);
 //    m_pBackgroundSubtractor->setDecisionThreshold(t);
+//    m_pBackgroundSubtractor->setOpeningSize(o);
 //}
 
 /** \brief Set the parameters of the object detector
@@ -210,9 +212,8 @@ void ReMedi::setSubtractorParameters(int n, int m, int k, float lrate, float bgr
  * \param clusterDist : distance threshold in spatial clustering of 3-D blobs
  * \param minClusterSize : minimum number of points a cluster hast to have to be considered
  */
-void ReMedi::setObjectDetectorParameters(int morphSize, float leafSize, float clusterDist, int minClusterSize)
+void ReMedi::setObjectDetectorParameters(float leafSize, float clusterDist, int minClusterSize)
 {
-    m_pObjectDetector->setMorhologyLevel(morphSize);
     m_pObjectDetector->setDownsamplingSize(leafSize);
     m_pObjectDetector->setClusteringIntradistanceFactor(clusterDist);
     m_pObjectDetector->setMinClusterSize(minClusterSize);
@@ -304,10 +305,13 @@ void ReMedi::initialize()
     m_pTableModeler->model();
     
     // Create the cloudjects
-    if (m_DescriptionType == DESCRIPTION_FPFH)
-        ((ObjectRecognizer<ColorPointT,FPFHSignature>*) m_pObjectRecognizer)->create();
-    else if (m_DescriptionType == DESCRIPTION_PFHRGB)
-        ((ObjectRecognizer<ColorPointT,PFHRGBSignature>*) m_pObjectRecognizer)->create();
+    if (m_pObjectRecognizer != NULL)
+    {
+        if (m_DescriptionType == DESCRIPTION_FPFH)
+            ((ObjectRecognizer<ColorPointT,FPFHSignature>*) m_pObjectRecognizer)->create();
+        else if (m_DescriptionType == DESCRIPTION_PFHRGB)
+            ((ObjectRecognizer<ColorPointT,PFHRGBSignature>*) m_pObjectRecognizer)->create();
+    }
 }
 
 void ReMedi::run()

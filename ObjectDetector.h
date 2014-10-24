@@ -44,7 +44,6 @@ public:
     
     void setInputFrames(vector<ColorDepthFrame::Ptr> frames);
     
-    void setMorhologyLevel(int level);
     void setDownsamplingSize(float leafSize);
     void setClusteringIntradistanceFactor(float factor);
     void setMinClusterSize(int minSize);
@@ -54,7 +53,9 @@ public:
     
     void detect();
     void detect(vector<vector<ColorPointCloudPtr> >& detections);
+    
     void getDetectionPositions(vector<vector<PointT> >& positions);
+//    void getDetectionCorrespondences(vector<vector<pair<int,PointT> > >& positions, bool bMakeCorrespondences = true);
     void getDetectionCorrespondences(vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences, bool bMakeCorrespondences = true);
     
     typedef boost::shared_ptr<ObjectDetector> Ptr;
@@ -76,7 +77,6 @@ private:
     
     vector<ColorDepthFrame::Ptr> m_InputFrames;
     
-    int m_MorphLevel;
     float m_LeafSize;
     float m_ClusterIdF; // Cluster intradistance factor
     float m_MinClusterSize;

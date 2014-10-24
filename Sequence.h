@@ -61,6 +61,9 @@ public:
     vector<typename FrameT::Ptr> previousFrames(int step = 1);
     vector<typename FrameT::Ptr> getFrames(int i);
     
+    void next(int step = 1);
+    void previous(int step = 1);
+    
     vector<typename FrameT::Ptr> getFrames(vector<string> filenames);
     vector<typename FrameT::Ptr> getFrames(vector<string> filenames, vector<int>& indices);
     vector<string> getFramesFilenames();
@@ -207,6 +210,9 @@ public:
     vector<ColorDepthFrame::Ptr> nextFrames(int step = 1);
     vector<ColorDepthFrame::Ptr> previousFrames(int step = 1);
     vector<ColorDepthFrame::Ptr> getFrames(int i);
+    
+    void next(int step = 1);
+    void previous(int step = 1);
         
     vector<ColorDepthFrame::Ptr> getFrames(vector<string> filenames);
     vector<ColorDepthFrame::Ptr> getFrames(vector<string> filenames, vector<int>& indices);

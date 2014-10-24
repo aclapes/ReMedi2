@@ -238,7 +238,7 @@ public:
     float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject)
     {
         vector<float> penalizedScores (pCloudject->getNumOfViews());
-
+        
         float pnlScoreAcc = 0.f;
         float invDistAcc = 0.f;
         
@@ -261,7 +261,7 @@ public:
 			{
                 float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
 				float diff = (pCloudject->medianDistToCentroidInView(v) - avg);
-
+                
 				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
 			}
             
@@ -269,6 +269,49 @@ public:
             float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
             
             pnlScoreAcc += invDist * (score * penalty);
+            invDistAcc += invDist;
+        }
+        
+        return pnlScoreAcc / invDistAcc;
+    }
+    
+    float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject, std::vector<float>& scores)
+    {
+        scores.clear();
+        
+        scores.resize(pCloudject->getNumOfViews());
+        vector<float> penalizedScores (pCloudject->getNumOfViews());
+        
+        float pnlScoreAcc = 0.f;
+        float invDistAcc = 0.f;
+        
+        for (int v = 0; v < pCloudject->getNumOfViews(); v++)
+        {
+            // Compute score and penalty
+            
+            scores[v] = matchView(pCloudject->getDescription(v));
+            
+            float penalty = 1.f;
+			if (getPenalty() == 0)
+			{
+                float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
+				float ratio = pCloudject->getNumOfPointsInView(v) / avg;
+				float x = (ratio <= 1) ? ratio : 1 + (1 - (1 / ratio));
+                
+				penalty *= (1.0 / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf((x-1)/m_SigmaPenaltyThresh, 2));
+			}
+			else if (getPenalty() == 1)
+			{
+                float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
+				float diff = (pCloudject->medianDistToCentroidInView(v) - avg);
+                
+				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
+			}
+            
+            pcl::PointXYZ pos = pCloudject->getPosition(v);
+            float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
+            
+            pnlScoreAcc += invDist * (scores[v] * penalty);
             invDistAcc += invDist;
         }
         
@@ -302,14 +345,14 @@ protected:
 		{
 			bool freeCorrespondences = false; // there is any point to match against in the views of the model?
 
-			minDistToP = numeric_limits<float>::max(); // min distance to other point histogram
-			ndMinDist =  numeric_limits<float>::max();
+			minDistToP = 1; // min distance to other point histogram
+			ndMinDist =  1;
 		
 			for (int i = 0; i < m_ViewsDescriptors.size() && numOfMatches[i] < m_ViewsDescriptors[i]->points.size(); i++) 
 			{
 				for (int j = 0; j < m_ViewsDescriptors[i]->points.size(); j++)
 				{
-					if ( freeCorrespondences = !(matches[i][j]) ) // A point in a view can only be matched one time against
+					if ( (!(matches[i][j])) ) // A point in a vie)w can only be matched one time against
 					{
 						dist = battacharyyaDistanceSignatures( descriptor->points[p], m_ViewsDescriptors[i]->points[j]/*, minDistToP*/);
 
@@ -330,6 +373,7 @@ protected:
 			// if it is not "true", minDist is infinity. Not to accumulate infinity :S
 			// And dealing with another kinds of errors
 			//if ( fereCorrespondences && !(minIdx < 0 || minIdxP < 0) )
+                        
 			if (minDistToP <= m_PointRejectionThresh/* && (minDistToP/ndMinDist) < m_RatioRejectionThresh*/)
 			{
 				accDistToSig += minDistToP;

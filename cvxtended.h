@@ -101,6 +101,8 @@ namespace cvx
     void unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I);
     
     void findRowsToColsAssignation(cv::Mat scores, cv::Mat& matches);
+    
+    void combine(cv::InputArray src1, cv::InputArray src2, int dim, cv::OutputArray dst);
 }
 
 #endif /* defined(__remedi2__cvxtended__) */

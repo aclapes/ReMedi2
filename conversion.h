@@ -16,6 +16,8 @@ void normalsToAngles(pcl::PointCloud<pcl::Normal>::Ptr pNormals, cv::Mat& angles
 void pcl2cv(pcl::PointXYZ p, cv::Mat& m);
 void pcl2cv(pcl::PointXYZRGB p, cv::Mat& m);
 
+void ProjectiveToRealworld(std::vector<float> p, int xres, int yres, std::vector<float>& rw);
+void RealworldToProjective(std::vector<float> rw, int xres, int yres, std::vector<float>& p);
 void ProjectiveToRealworld(pcl::PointXYZ p, int xres, int yres, pcl::PointXYZ& rw);
 void RealworldToProjective(pcl::PointXYZ rw, int xres, int yres, pcl::PointXYZ& p);
 void ProjectiveToRealworld(pcl::PointCloud<pcl::PointXYZ>::Ptr pProjCloud, pcl::PointCloud<pcl::PointXYZ>& realCloud);
@@ -67,4 +69,9 @@ std::string getFilenameFromPath(std::string path);
 
 int searchByName(std::vector<std::string> paths, std::string filename);
 int searchByName(std::vector<std::pair<std::string,std::string> > paths, std::string filename);
+
+template<typename T>
+cv::Mat wToMat(std::vector<std::vector<T> > w);
+template<typename T>
+std::vector<std::vector<T> > matTow(cv::Mat mat);
 

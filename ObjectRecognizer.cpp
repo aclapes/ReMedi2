@@ -174,6 +174,44 @@ int ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getRecognitionStra
     return m_RecognitionStrategy;
 }
 
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores)
+{
+    vids.clear();
+    positions.clear();
+    scores.clear();
+    
+    vids.resize(m_CloudjectDetections.size());
+    positions.resize(m_CloudjectDetections.size());
+    scores.resize(m_CloudjectDetections.size());
+    
+    for (int i = 0; i < m_CloudjectDetections.size(); i++)
+    {
+        m_CloudjectDetections[i]->describe(m_NormalRadius, m_PfhRadius, m_LeafSize);
+        
+        // Build "positions"
+        vector<int> detectionViews = m_CloudjectDetections[i]->getViewIDs();
+        vector<pcl::PointXYZ> detectionPositions = m_CloudjectDetections[i]->getPositions();
+        
+        for (int j = 0; j < detectionViews.size(); j++)
+        {
+            vids[i].push_back(detectionViews[j]);
+            positions[i].push_back(detectionPositions[j]);
+        }
+        
+        // Build "scores"
+        vector<vector<float> > detectionScores (detectionViews.size(), std::vector<float>(m_CloudjectModels.size()));
+        for (int m = 0; m < m_CloudjectModels.size(); m++)
+        {
+            std::vector<float> detectionModelScores;
+            m_CloudjectModels[m]->getScore(m_CloudjectDetections[i], detectionModelScores);
+            
+            for (int j = 0; j < detectionModelScores.size(); j++)
+                detectionScores[j][m] = detectionModelScores[j];
+        }
+        scores.push_back(detectionScores);
+    }
+}
+
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions)
 {
     // Recognize the initialized cloudjects
@@ -381,6 +419,75 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setRecognition
 int ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getRecognitionStrategy() const
 {
     return m_RecognitionStrategy;
+}
+
+//void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getScores(vector<vector<pcl::PointXYZ> >& positions, vector<vector<float> >& scores)
+//{
+//    positions.clear();
+//    scores.clear();
+//    
+//    positions.resize(m_CloudjectDetections.size(), std::vector<pcl::PointXYZ>(NUM_OF_VIEWS));
+//    scores.resize(m_CloudjectDetections.size(), std::vector<float>(NUM_OF_VIEWS * m_CloudjectModels.size()));
+//    
+//    for (int i = 0; i < m_CloudjectDetections.size(); i++)
+//    {
+//        m_CloudjectDetections[i]->describe(m_NormalRadius, m_PfhRadius, m_LeafSize);
+//        
+//        // Build "positions"
+//        vector<int> detectionViews = m_CloudjectDetections[i]->getViewIDs();
+//        vector<pcl::PointXYZ> detectionPositions = m_CloudjectDetections[i]->getPositions();
+//        
+//        for (int j = 0; j < detectionViews.size(); j++)
+//            positions[i][detectionViews[j]] = detectionPositions[j];
+//        
+//        // Build "scores"
+//        for (int m = 0; m < m_CloudjectModels.size(); m++)
+//        {
+//            std::vector<float> detectionScores;
+//            m_CloudjectModels[m]->getScore(m_CloudjectDetections[i], detectionScores);
+//            
+//            for (int j = 0; j < detectionScores.size(); j++)
+//                scores[i][detectionViews[j] * m_CloudjectModels.size() + m] = detectionScores[j];
+//        }
+//    }
+//}
+
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores)
+{
+    vids.clear();
+    positions.clear();
+    scores.clear();
+     
+    vids.resize(m_CloudjectDetections.size());
+    positions.resize(m_CloudjectDetections.size());
+//    scores.resize(m_CloudjectDetections.size());
+    
+    for (int i = 0; i < m_CloudjectDetections.size(); i++)
+    {
+        m_CloudjectDetections[i]->describe(m_NormalRadius, m_PfhRadius, m_LeafSize);
+        
+        // Build "positions"
+        vector<int> detectionViews = m_CloudjectDetections[i]->getViewIDs();
+        vector<pcl::PointXYZ> detectionPositions = m_CloudjectDetections[i]->getPositions();
+        
+        for (int j = 0; j < detectionViews.size(); j++)
+        {
+            vids[i].push_back(detectionViews[j]);
+            positions[i].push_back(detectionPositions[j]);
+        }
+        
+        // Build "scores"
+        vector<vector<float> > detectionScores (detectionViews.size(), std::vector<float>(m_CloudjectModels.size()));
+        for (int m = 0; m < m_CloudjectModels.size(); m++)
+        {
+            std::vector<float> detectionModelScores;
+            m_CloudjectModels[m]->getScore(m_CloudjectDetections[i], detectionModelScores);
+            
+            for (int j = 0; j < detectionModelScores.size(); j++)
+                detectionScores[j][m] = detectionModelScores[j];
+        }
+        scores.push_back(detectionScores);
+    }
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions)
