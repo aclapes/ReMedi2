@@ -14,8 +14,8 @@ using namespace std;
 template<typename PointT, typename SignatureT>
 class CloudjectBase
 {
-	typedef typename pcl::PointCloud<PointT> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
+	typedef pcl::PointCloud<PointT> PointCloud;
+	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     
 public:
 	CloudjectBase() { m_ID = 0; }
