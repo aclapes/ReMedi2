@@ -22,3 +22,6 @@
 
 # Directories
 xbuild/
+build/
+
+CMakeLists.txt

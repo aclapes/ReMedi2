@@ -436,9 +436,9 @@ class LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFCloudjec
 {
     typedef pcl::PointXYZRGB PointT;
     typedef pcl::PointCloud<PointT> PointCloud;
-	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
+	typedef pcl::PointCloud<typename PointT>::Ptr PointCloudPtr;
     typedef pcl::search::KdTree<PointT> KdTree;
-	typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
+	typedef pcl::search::KdTree<typename PointT>::Ptr KdTreePtr;
 
 public:
 	LFCloudject() 

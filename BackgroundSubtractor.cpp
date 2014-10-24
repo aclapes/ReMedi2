@@ -1241,5 +1241,5 @@ template class BackgroundSubtractorBase<cv::BackgroundSubtractorMOG2, ColorFrame
 template class BackgroundSubtractorBase<cv::BackgroundSubtractorMOG2, DepthFrame>;
 
 template class BackgroundSubtractor<cv::BackgroundSubtractorMOG2, Frame>;
-template class BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>;
-template class BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>;
+//template class BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>;
+//template class BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>;

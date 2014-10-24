@@ -229,7 +229,7 @@ void DetectionOutput::write(string path, string filename, string extension)
     for (int v = 0; v < m_NumOfViews; v++)
     {
         ofstream outFile;
-        string outputPath = path + filename + "_" + to_string(v) + "." + extension;
+        string outputPath = path + filename + "_" + std::to_string(static_cast<long long>(v)) + "." + extension;
         outFile.open(outputPath, ios::out);
         
         // create two view files
@@ -317,7 +317,7 @@ void DetectionOutput::read(string path, string filename, string extension)
     clear();
     
     ifstream inFile;
-    string inFilePath = path + filename + "_" + to_string(m_NumOfViews) + "." + extension; // num of views is already set to 0 in clear() calling
+    string inFilePath = path + filename + "_" + std::to_string(static_cast<long long>(m_NumOfViews)) + "." + extension; // num of views is already set to 0 in clear() calling
     inFile.open(inFilePath, ios::in);
     
     while (inFile.is_open())
