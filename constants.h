@@ -77,7 +77,10 @@
 #define OD_CLUSTERS_DIST_FACTOR             5
 #define OD_MINIMUM_CLUSTER_SIZE             50
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
+
 // ... recognition-related ones (computed in an independent dataset)
+#define OR_OBJECTS_NAMES                    "book,cup,dish,pillbox,tetrabrick"
+
 #define OR_PFHDESC_LEAFSIZE                 0.01
 #define OR_PFHDESC_MODEL_LEAFSIZE           0.01
 #define OR_PFHDESC_NORMAL_RADIUS            0.02

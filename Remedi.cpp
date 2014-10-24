@@ -381,66 +381,100 @@ void ReMedi::loadDelaysFile(string parent, string filename, vector<vector<int> >
     inFile.close();
 }
 
-void ReMedi::loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews)
+void ReMedi::loadObjectModels(const char* path, const char* pcdDir, vector<string> modelsNames,
+                     vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& views)
 {
-    objectsIDs.clear();
-    objectsNames.clear();
-    objectsViews.clear();
+    pcl::PCDReader reader; // to read pcd files containing point clouds
     
-    vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> prevObjViews;
-    int prevObjID = 0;
-    string prevObjName = "";
-    
-    const char* c_parent = parent.c_str();
-	if( boost::filesystem::exists( c_parent ) )
-	{
-		boost::filesystem::directory_iterator end;
-		boost::filesystem::directory_iterator iter( c_parent );
-		for( ; iter != end ; ++iter )
-		{
-			if ( !boost::filesystem::is_directory( *iter ) )
+    views.resize(modelsNames.size());
+    for (int i = 0; i < modelsNames.size(); i++)
+    {
+        string objectPath = path + modelsNames[i] + "/" + pcdDir;
+        vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> objectViews;
+        
+        if( boost::filesystem::exists( objectPath ) )
+        {
+            boost::filesystem::directory_iterator end;
+            boost::filesystem::directory_iterator iter(objectPath);
+            
+            for( ; iter != end ; ++iter )
             {
-                // Determine id and object name from cloud file's filename
-                string filenameStemStr = iter->path().stem().string();
-                
-                if (filenameStemStr.size() > 0) // not .<filename> (hidden file in osx)
+                if ( !boost::filesystem::is_directory( *iter ) && iter->path().extension().string().compare(".pcd") == 0)
                 {
-                    vector<string> filenameSubwords;
-                    boost::split(filenameSubwords, filenameStemStr, boost::is_any_of("_"));
+                    stringstream ss;
                     
-                    int objID = stoi(filenameSubwords[0]);
-                    string objName = filenameSubwords[1];
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr object (new pcl::PointCloud<pcl::PointXYZRGB>);
+                    reader.read( iter->path().string(), *object );
                     
-                    // Construct the cloudject using the views
-                    if ( ((prevObjID != objID) && (prevObjID > 0)))
-                    {
-                        objectsIDs.push_back(prevObjID);
-                        objectsNames.push_back(prevObjName);
-                        objectsViews.push_back(prevObjViews);
-                        
-                        prevObjViews.clear();
-                    }
-                    
-                    // Read point cloud
-                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud (new pcl::PointCloud<pcl::PointXYZRGB>());
-                    
-                    pcl::PCDReader reader;
-                    reader.read(iter->path().string(), *pCloud);
-                    prevObjViews.push_back(pCloud);
-                    
-                    prevObjID = objID;
-                    prevObjName = objName;
+                    objectViews.push_back(object);
                 }
             }
         }
         
-        // Construct the cloudject using the views
-        if (prevObjViews.size() > 0)
-        {
-            objectsIDs.push_back(prevObjID);
-            objectsNames.push_back(prevObjName);
-            objectsViews.push_back(prevObjViews);
-        }
+        views[i] = objectViews;
     }
 }
+
+//void ReMedi::loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews)
+//{
+//    objectsIDs.clear();
+//    objectsNames.clear();
+//    objectsViews.clear();
+//    
+//    vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> prevObjViews;
+//    int prevObjID = 0;
+//    string prevObjName = "";
+//    
+//    const char* c_parent = parent.c_str();
+//	if( boost::filesystem::exists( c_parent ) )
+//	{
+//		boost::filesystem::directory_iterator end;
+//		boost::filesystem::directory_iterator iter( c_parent );
+//		for( ; iter != end ; ++iter )
+//		{
+//			if ( !boost::filesystem::is_directory( *iter ) )
+//            {
+//                // Determine id and object name from cloud file's filename
+//                string filenameStemStr = iter->path().stem().string();
+//                
+//                if (filenameStemStr.size() > 0) // not .<filename> (hidden file in osx)
+//                {
+//                    vector<string> filenameSubwords;
+//                    boost::split(filenameSubwords, filenameStemStr, boost::is_any_of("_"));
+//                    
+//                    int objID = stoi(filenameSubwords[0]);
+//                    string objName = filenameSubwords[1];
+//                    
+//                    // Construct the cloudject using the views
+//                    if ( ((prevObjID != objID) && (prevObjID > 0)))
+//                    {
+//                        objectsIDs.push_back(prevObjID);
+//                        objectsNames.push_back(prevObjName);
+//                        objectsViews.push_back(prevObjViews);
+//                        
+//                        prevObjViews.clear();
+//                    }
+//                    
+//                    // Read point cloud
+//                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pCloud (new pcl::PointCloud<pcl::PointXYZRGB>());
+//                    
+//                    pcl::PCDReader reader;
+//                    reader.read(iter->path().string(), *pCloud);
+//                    prevObjViews.push_back(pCloud);
+//                    
+//                    prevObjID = objID;
+//                    prevObjName = objName;
+//                }
+//            }
+//        }
+//        
+//        // Construct the cloudject using the views
+//        if (prevObjViews.size() > 0)
+//        {
+//            objectsIDs.push_back(prevObjID);
+//            objectsNames.push_back(prevObjName);
+//            objectsViews.push_back(prevObjViews);
+//        }
+//    }
+//}
 

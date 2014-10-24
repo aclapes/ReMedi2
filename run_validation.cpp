@@ -273,15 +273,18 @@ int validation()
     
     // Load objects models
     
-    vector<int> objectsIDs;
-    vector<string> objectsNames;
-    vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
-    ReMedi::loadObjectsModels(string(PARENT_PATH) + string(OBJECTMODELS_SUBDIR), objectsIDs, objectsNames, objectsViews);
+    std::string modelsPath = std::string(PARENT_PATH) + std::string(OBJECTMODELS_SUBDIR);
+
+    std::vector<std::string> objectsNames;
+    boost::split(objectsNames, OR_OBJECTS_NAMES, boost::is_any_of(","));
     
-    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsIDs.size());
+    vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
+    ReMedi::loadObjectModels(modelsPath.c_str(), "PCDs/", objectsNames, objectsViews);
+    
+    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsNames.size());
     for (int m = 0; m < objectsModels.size(); m++)
     {
-        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(objectsIDs[m], objectsNames[m], objectsViews[m]) );
+        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(m, objectsNames[m], objectsViews[m]) );
         objectsModels[m] = pObjectModel;
     }
     

@@ -162,7 +162,9 @@ public:
     static void loadSequences(string parent, vector<string>& names);
     static void loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths);
     static void loadDelaysFile(string parent, string filename, vector<vector<int> >& delays);
-    static void loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews);
+//    static void loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews);
+    static void loadObjectModels(const char* path, const char* pcdDir, vector<string> modelsNames,
+                                 vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& views);
     
     typedef boost::shared_ptr<ReMedi> Ptr;
     
