@@ -9,6 +9,8 @@
 #ifndef remedi2_constants_h
 #define remedi2_constants_h
 
+#define NUM_OF_THREADS                      4
+
 // KinectReader's constants
 #ifdef __APPLE__
 #define PARENT_PATH                         "../../../Data/"

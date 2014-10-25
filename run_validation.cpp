@@ -24,6 +24,8 @@ using namespace boost::assign;
 #include "segmentation_validation.h"
 #include "recognition_validation.h"
 
+#include <pcl/console/parse.h>
+
 // Declarations
 
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
@@ -101,14 +103,15 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
     }
 }
 
-int validation()
+int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
 {
     vector<string> colorDirNames, depthDirNames;
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
     depthDirNames += DEPTH_DIRNAME_1, DEPTH_DIRNAME_2;
     
-    vector<string> sequencesNames;
-    ReMedi::loadSequences(string(PARENT_PATH) + string(SEQUENCES_SUBDIR), sequencesNames);
+    std::vector<std::string> sequencesNames;
+    std::vector<int> sequencesSids;
+    ReMedi::loadSequences(string(PARENT_PATH) + string(SEQUENCES_SUBDIR), sequencesNames, sequencesSids);
     
     vector< vector<string> > colorDirPaths, depthDirPaths;
     ReMedi::loadDirPaths(string(PARENT_PATH) + string(SEQUENCES_SUBDIR),
@@ -214,7 +217,7 @@ int validation()
     vector<cv::Mat> bsOverlaps;
 //    validateBackgroundSubtraction(sys, sequences, bsParameters, foregroundMasksSequences, "bs-mog2_results/", "bs_validation.yml", bsCombinations, bsOverlaps);
     loadBackgroundSubtractionValidationFile("Results/bs-mog2_results/bs_validation.yml", bsCombinations, bsOverlaps);
-
+    
     cv::Mat bsMeans, bsStddevs;
     summarizeBackgroundSubtractionValidation(bsCombinations, bsOverlaps, bsMeans, bsStddevs);
 
@@ -261,9 +264,6 @@ int validation()
     filterIndices += (bsParameters.size() + mntrParameters.size() - 1);
     showValidationSummary(sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
     
-    // Focus on 15 cm
-    filterParameters[1] = std::vector<double>(1, 0.15); // 0.15 m
-    
     cv::Mat sgmtBestCombinations;
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
     
@@ -291,8 +291,11 @@ int validation()
     pSys->setObjectRecognizerParameters(objectsModels, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
     pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS);
     
+    filterParameters[1] = std::vector<double>(1, 0.15); // 0.15 m
+    getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
+    
     vector<vector<vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, sgmtBestCombinations, "Results/rcgn_results/", "rcgn_scores.yml", scoreds);
+    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, "Results/rcgn_results/", "rcgn_scores.yml", scoreds);
     
     vector<vector<double> > mntrRcgnParameters;
     vector<double> rcgnStrategies;
@@ -307,7 +310,24 @@ int validation()
     return 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    return validation();
+    std::string rcgnModalitiesStr;
+    pcl::console::parse(argc, argv, "-Rm", rcgnModalitiesStr);
+    
+    std::string rcgnSequencesStr;
+    pcl::console::parse(argc, argv, "-Rs", rcgnSequencesStr);
+
+    std::vector<std::string> rcgnModalitiesStrL, rcgnSequencesStrL;
+    boost::split(rcgnModalitiesStrL, rcgnModalitiesStr, boost::is_any_of(","));
+    boost::split(rcgnSequencesStrL, rcgnSequencesStr, boost::is_any_of(","));
+    
+    std::vector<int> rcgnModalities, rcgnSequences;
+    std::vector<std::string>::iterator it;
+    for (it = rcgnModalitiesStrL.begin(); it != rcgnModalitiesStrL.end(); it++)
+        rcgnModalities.push_back( stoi(*it) );
+    for (it = rcgnSequencesStrL.begin(); it != rcgnSequencesStrL.end(); it++)
+        rcgnSequences.push_back( stoi(*it) );
+    
+    return validation(rcgnModalities, rcgnSequences);
 }

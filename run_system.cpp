@@ -25,8 +25,9 @@ int run()
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
     depthDirNames += DEPTH_DIRNAME_1, DEPTH_DIRNAME_2;
     
-    vector<string> sequencesNames;
-    ReMedi::loadSequences(string(PARENT_PATH) + string(SEQUENCES_SUBDIR), sequencesNames);
+    std::vector<std::string> sequencesNames;
+    std::vector<int> sequencesSids; // subjects identifiers
+    ReMedi::loadSequences(string(PARENT_PATH) + string(SEQUENCES_SUBDIR), sequencesNames, sequencesSids);
     
     vector< vector<string> > colorDirPaths, depthDirPaths;
     ReMedi::loadDirPaths(string(PARENT_PATH) + string(SEQUENCES_SUBDIR),

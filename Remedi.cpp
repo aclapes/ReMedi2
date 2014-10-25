@@ -319,19 +319,33 @@ void ReMedi::run()
     initialize();
 }
 
-void ReMedi::loadSequences(string parent, vector<string>& names)
+void ReMedi::loadSequences(std::string parent, std::vector<std::string>& names, std::vector<int>& indices)
 {
+    names.clear();
+    indices.clear();
+    
     const char* path = parent.c_str();
 	if( boost::filesystem::exists( path ) )
 	{
 		boost::filesystem::directory_iterator end;
 		boost::filesystem::directory_iterator iter(path);
+        int i = -1;
+        std::string sid = "";
 		for( ; iter != end ; ++iter )
 		{
 			if ( boost::filesystem::is_directory( *iter ) )
             {
-                string nameStr = iter->path().stem().string();
+                std::string nameStr = iter->path().stem().string();
                 names.push_back(nameStr);
+                
+                std::vector<string> nameStrL;
+                boost::split(nameStrL, nameStr, boost::is_any_of("_"));
+                if (nameStrL[1] != sid)
+                {
+                    i++;
+                    sid = nameStrL[1];
+                }
+                indices.push_back(i);
             }
         }
     }

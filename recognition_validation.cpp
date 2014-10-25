@@ -86,11 +86,10 @@ void ScoredDetections::toSparseRepresentation(cv::Mat& positions, cv::Mat& score
     }
 }
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, int cid, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds)
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds)
 {
-    g_Mutex.lock();
-    std::cout << cid << std::endl;
-    g_Mutex.unlock();
+    pSys->getRegisterer()->setInputFrames(frames);
+    pSys->getRegisterer()->registrate(frames);
     
     vector<cv::Mat> foregroundMasks;
     pBS->setInputFrames(frames);
@@ -99,15 +98,11 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     vector<cv::Mat> tabletopMasks;
     pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
     
-    vector<ColorDepthFrame::Ptr> _frames (frames.size(), ColorDepthFrame::Ptr(new ColorDepthFrame));
     for (int v = 0; v < frames.size(); v++)
-    {
-        *(_frames[v]) = *(frames[v]);
-        _frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
-    }
+        frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
     
     ObjectDetector od (*pSys->getObjectDetector());
-    od.setInputFrames(_frames);
+    od.setInputFrames(frames);
     
     od.setDownsamplingSize(combination.at<double>(0, offset + 0));
     od.setClusteringIntradistanceFactor(combination.at<double>(0, offset + 1));
@@ -153,7 +148,7 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     g_Mutex.unlock();
 }
 
-void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds)
+void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds)
 {
     pSys->initialize();
     
@@ -162,8 +157,8 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
     // Some consistency checks
     // -------------------------------------------------
     int numOfViews = pBgSeq->getNumOfViews();
-    for (int s = 0; s < sequences.size(); s++)
-        assert (numOfViews == sequences[s]->getNumOfViews());
+    for (int k = 0; k < seqsIndices.size(); k++)
+        assert (numOfViews == sequences[seqsIndices[k]]->getNumOfViews());
     // -------------------------------------------------
     
     cv::Mat scoresCombinations, scoresIndices;
@@ -203,30 +198,25 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
     
     // Data structures
     
-    scoreds.resize(scoresCombinations.rows);
-    for (int i = 0; i < scoresCombinations.rows; i++)
+    scoreds.resize(combsIndices.size());
+    for (int i = 0; i < combsIndices.size(); i++)
     {
-        scoreds[i].resize(sequences.size());
-        for (int j = 0; j < sequences.size(); j++)
-            scoreds[i][j].resize(sequences[i]->getMinNumOfFrames());
+        scoreds[i].resize(seqsIndices.size());
+        for (int j = 0; j < seqsIndices.size(); j++)
+            scoreds[i][j].resize(sequences[seqsIndices[i]]->getMinNumOfFrames());
     }
 
     // Calculate the errors
     
-    for (int s = 0; s < sequences.size(); s++)
+    for (int i = 0; i < combsIndices.size(); i++)
     {
-        Sequence<ColorDepthFrame>::Ptr pSeq = sequences[s];
-        
-        int f = 0;
-        
-        pSeq->restart();
-        while (pSeq->hasNextFrames())
+        int c = combsIndices[i];
+        for (int k = 0; k < seqsIndices.size(); k++)
         {
-            boost::timer t;
-            vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
+            int s = seqsIndices[k];
+            Sequence<ColorDepthFrame>::Ptr pSeq = sequences[s];
             
-            pSys->getRegisterer()->setInputFrames(frames);
-            pSys->getRegisterer()->registrate(frames);
+            int f = 0;
             
             // Threading variables
             // ---------------------------------
@@ -234,37 +224,45 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             std::vector<boost::thread*> actives;
             // ---------------------------------
             
-            std::cout << "Threading started..." << endl;
-            for (int i = 0; i < scoresCombinations.rows; i++)
+            boost::timer t;
+            
+            pSeq->restart();
+            while (pSeq->hasNextFrames())
             {
+                
+                vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
+
                 // Threading stuff
                 // ---------------------------------
-                if ((i % 4) == 0)
-                { 
+                if ((f % NUM_OF_THREADS) == 0)
+                {
+                    std::cout << "Processing " << NUM_OF_THREADS << " frames ..";
+                    t.restart();
+                    
                     tg.join_all();
+
                     for (int t = 0; t < actives.size(); t++)
                         tg.remove_thread(actives[t]);
                     
                     actives.clear();
+                    
+                    cout << t.elapsed() << " secs." << endl;
                 }
                 // ---------------------------------
                 
-                BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS = pSubtractors[scoresIndices.at<int>(i,0)];
-                string id = to_str(i) + "-" + to_str(s) + "-" + to_str(f);
-                
-//                _precomputeScores( pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id);//, &(scoreds[i][s][f]) );
+                BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS = pSubtractors[bsIndices.at<int>(scoresIndices.at<int>(c,0),0)];
+                string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, i, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][s][f]) );
+                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][s][f]) );
                 tg.add_thread(pThread);
                 actives.push_back(pThread);
                 // ---------------------------------------
+            
+                f++;
             }
             tg.join_all();
-
-            f++;
-            cout << "Processing the frame took " << t.elapsed() << " secs." << endl;
         }
     }
 }

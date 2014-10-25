@@ -159,7 +159,7 @@ public:
 //    void getMonitorizerFScorePerformances(cv::Mat combinations, vector<cv::Mat> errors, cv::Mat& meanScores, cv::Mat& sdScores);
 //    void showMonitorizerValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
     
-    static void loadSequences(string parent, vector<string>& names);
+    static void loadSequences(std::string parent, std::vector<std::string>& names, std::vector<int>& sids);
     static void loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths);
     static void loadDelaysFile(string parent, string filename, vector<vector<int> >& delays);
 //    static void loadObjectsModels(string parent, vector<int>& objectsIDs, vector<string>& objectsNames, vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& objectsViews);
