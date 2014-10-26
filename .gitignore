@@ -20,8 +20,8 @@
 *.out
 *.app
 
+CMakeLists.txt
+
 # Directories
 xbuild/
 build/
-
-CMakeLists.txt
