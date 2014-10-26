@@ -235,7 +235,7 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 // ---------------------------------
                 if (tg.size() > 0 && (tg.size() % NUM_OF_THREADS) == 0)
                 {
-                    std::cout << "Processing frames [" << f << "," << (f + NUM_OF_THREADS) << "] in seq " << s << " .. ";
+                    std::cout << "Processing frames [" << (f - NUM_OF_THREADS) << "," << f << "] in seq " << s << " .. ";
                     t.restart();
                     
                     tg.join_all();
