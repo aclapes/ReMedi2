@@ -14,62 +14,70 @@ using namespace std;
 template<typename PointT, typename SignatureT>
 class CloudjectBase
 {
-	typedef typename pcl::PointCloud<PointT> PointCloud;
-	typedef typename PointCloud::Ptr PointCloudPtr;
+	typedef pcl::PointCloud<PointT> PointCloud;
+	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     
 public:
-	CloudjectBase(float leafSize = 0.f) 
-		: m_ID(0), m_Name(""), m_LeafSize(leafSize)
-	{ 
-	}
+	CloudjectBase() { m_ID = 0; }
     
-    CloudjectBase(PointCloudPtr pView, float leafSize = 0.f)
-        : m_ID(0), m_Name(""), m_LeafSize(leafSize)
+	CloudjectBase(vector<PointCloudPtr> views, float leafSize = 0.0)
 	{
-        addView(pView);
-	}
-    
-    CloudjectBase(string viewFilepath, float leafSize = 0.f)
-        : m_ID(0), m_Name(""), m_LeafSize(leafSize)
-	{
-        PointCloudPtr pView (new PointCloud);
+		m_ID = 0;
+        m_LeafSize = leafSize;
         
-        pcl::PCDReader reader;
-        reader.read(viewFilepath, *pView);
-        
-        addView(pView);
+        m_OriginalViews.resize(views.size());
+        m_Views.resize(views.size());
+        m_ViewIDs.resize(views.size());
+        m_Positions.resize(views.size());
+        m_MedianDists.resize(views.size());
+        for (int i = 0; i < views.size(); i++)
+        {
+            m_ViewIDs[i] = i;
+            
+            m_OriginalViews[i] = PointCloudPtr(new PointCloud);
+            m_Views[i] = PointCloudPtr(new PointCloud);
+            init(views[i], m_OriginalViews[i], m_Views[i], m_Positions[i], m_MedianDists[i], m_LeafSize);
+        }
 	}
     
-    CloudjectBase(vector<PointCloudPtr> views, float leafSize = 0.f)
-        : m_ID(0), m_Name(""), m_LeafSize(leafSize)
+    CloudjectBase(vector<string> viewsFilepaths, float leafSize = 0.0)
 	{
-        for (int v = 0; v < views.size(); v++)
-		{
-			addView(views[v]);
-		}
-	}
-    
-    CloudjectBase(vector<string> viewsFilepaths, float leafSize = 0.f)
-		: m_ID(0), m_Name(""), m_LeafSize(leafSize)
-	{
-		for (int v = 0; v < viewsFilepaths.size(); v++)
-		{
-			PointCloudPtr pView (new PointCloud);
+		m_ID = 0;
+        m_LeafSize = leafSize;
         
-			pcl::PCDReader reader;
-			reader.read(viewsFilepaths[v], *pView);
+        m_OriginalViews.resize(viewsFilepaths.size());
+        m_Views.resize(viewsFilepaths.size());
+        m_ViewIDs.resize(viewsFilepaths.size());
+        m_Positions.resize(viewsFilepaths.size());
+        m_MedianDists.resize(viewsFilepaths.size());
+        for (int i = 0; i < viewsFilepaths.size(); i++)
+        {
+            m_ViewIDs[i] = i;
 
-			addView(pView);
-		}
+            m_OriginalViews[i] = PointCloudPtr(new PointCloud);
+            m_Views[i] = PointCloudPtr(new PointCloud);
+            init(viewsFilepaths[i], m_OriginalViews[i], m_Views[i], m_Positions[i], m_MedianDists[i], m_LeafSize);
+        }
 	}
     
-    CloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.f)
-		: m_ID(0), m_Name(""), m_LeafSize(leafSize)
+    CloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
 	{
-        for (int v = 0; v < views.size(); v++)
-		{
-			addView(views[v].second, views[v].first);
-		}
+		m_ID = 0;
+        m_LeafSize = leafSize;
+        
+        m_OriginalViews.resize(views.size());
+        m_Views.resize(views.size());
+        m_ViewIDs.resize(views.size());
+        m_Positions.resize(views.size());
+        m_MedianDists.resize(views.size());
+        for (int i = 0; i < views.size(); i++)
+        {
+            m_ViewIDs[i] = views[i].first;
+
+            m_OriginalViews[i] = PointCloudPtr(new PointCloud);
+            m_Views[i] = PointCloudPtr(new PointCloud);
+            init(views[i].second, m_OriginalViews[i], m_Views[i], m_Positions[i], m_MedianDists[i], m_LeafSize);
+        }
 	}
 
 	CloudjectBase(const CloudjectBase& cloudject)
@@ -77,17 +85,18 @@ public:
         *this = cloudject;
 	}
 
+//	virtual ~CloudjectBase() {}
+
     CloudjectBase& operator=(const CloudjectBase& cloudject)
     {
         if (this != &cloudject)
         {
             m_ID	= cloudject.m_ID;
             m_Name = cloudject.m_Name;
-            m_LeafSize = cloudject.m_LeafSize;
-            
-            m_ViewIDs = cloudject.m_ViewIDs;
             m_OriginalViews = cloudject.m_OriginalViews;
+            m_LeafSize = cloudject.m_LeafSize;
             m_Views = cloudject.m_Views;
+            m_ViewIDs = cloudject.m_ViewIDs;
             m_Positions	= cloudject.m_Positions;
             m_MedianDists = cloudject.m_MedianDists;
         }
@@ -95,66 +104,56 @@ public:
         return *this;
     }
     
-	void addView(PointCloudPtr pView, int id = -1)
-	{
-		// Get the new view ID
-		int vid;
-		if (id < 0) // Default argument
-			vid = m_Views.size(); // auto-incremental id
-		else 
-			vid = id; // passed-by one
-
-		// Get a copy of the view untouched
-		PointCloudPtr pOriginalView (new PointCloud);
-		*pOriginalView = *pView;
-
-		// Get the downsampled version of the view
-		if (m_LeafSize > 0.f)
-			downsampleView(pOriginalView, m_LeafSize, *pView);
-		
-		// Get the precomputed view centroid
-		pcl::PointXYZ centroidPt;
-		Eigen::Vector4f centroidVc;
-		pcl::compute3DCentroid(*pView, centroidVc);
-        centroidPt.getVector4fMap() = centroidVc;
+    void init(PointCloudPtr view, PointCloudPtr& pOriginalView, PointCloudPtr& pTransfView, pcl::PointXYZ& pos, float& medianDist, float leafSize = 0.f)
+    {
+        *pOriginalView = *view;
         
-		// Get the precomputed view's median distance to centroid
-		float medianDist = medianDistanceToCentroid(pView, centroidPt);
+		if (m_LeafSize == 0.f)
+            *pTransfView = *pOriginalView;
+        else
+			downsample(pOriginalView, m_LeafSize, *pTransfView);
+        
+		Eigen::Vector4f centroid;
+		pcl::compute3DCentroid(*pTransfView, centroid);
+		pos = pcl::PointXYZ(centroid.x(), centroid.y(), centroid.z());
+        
+		medianDist = medianDistanceToCentroid(pTransfView, pos);
+    }
 
-		// And... keep it properly
-		m_ViewIDs.push_back(vid);
-		m_OriginalViews.push_back(pOriginalView);
-		m_Views.push_back(pView);
-        m_Positions.push_back(centroidPt);
-        m_MedianDists.push_back(medianDist);
-	}
+    void init(string viewPath, PointCloudPtr& pOriginalView, PointCloudPtr& pTransfView, pcl::PointXYZ& pos, float& medianDist, float leafSize = 0.f)
+    {
+        PointCloudPtr pView;
+        
+		pcl::PCDReader reader;
+		reader.read(viewPath, *pView);
+        
+		init(pView, pOriginalView, pTransfView, pos, medianDist, leafSize);
+    }
     
 	int getID() { return m_ID; }
 	void setID(int ID) { m_ID = ID; }
     
     string getName() { return m_Name; }
     void setName(string name) { m_Name = name; }
-
-	float getDownsamplingSize() { return m_LeafSize; }
     
-    pcl::PointXYZ getPosition(int v) const
+    pcl::PointXYZ getPosition(int i) const
 	{
-		return m_Positions[v];
+		return m_Positions[i];
 	}
 
-	int getNumOfPointsInOriginalView(int v)
+	int getNumOfPointsInOriginalView(int i)
 	{
-		return m_OriginalViews[v]->points.size();
+		return m_OriginalViews[i]->points.size();
 	}
 
-	int getNumOfPointsInView(int v)
+	int getNumOfPointsInView(int i)
 	{
-		return m_Views[v]->points.size();
+		return m_Views[i]->points.size();
 	}
 
-	float medianDistToCentroidInView(int v)
+	float medianDistToCentroidInView(int i)
 	{
-		return m_MedianDists[v];
+		return m_MedianDists[i];
 	}
 
     int getNumOfViews() const
@@ -162,9 +161,9 @@ public:
         return m_Views.size();
     }
     
-	PointCloudPtr getView(int v) const
+	PointCloudPtr getView(int i) const
 	{
-		return m_Views[v];
+		return m_Views[i];
 	}
     
     vector<int> getViewIDs() const
@@ -179,6 +178,7 @@ public:
     
     template<typename PointT1, typename PointT2>
 	float euclideanDistance(PointT1 p1, PointT2 p2)
+
 	{
 		return sqrt(powf(p1.x - p2.x, 2) + powf(p1.y - p2.y, 2) + powf(p1.z - p2.z, 2));
 	}
@@ -207,39 +207,21 @@ public:
 		return distances[medianIdx];
 	}
     
-	void downsample(float leafSize)
-	{
-		for (int v = 0; v < m_Views.size(); v++)
-		{
-			PointCloudPtr pDwView (new PointCloud);
-
-			if (leafSize > m_LeafSize)
-				downsampleView( (m_Views[v]->empty() ? m_OriginalViews[v] : m_Views[v]), leafSize, *pDwView );
-			else if (leafSize < m_LeafSize)
-				downsampleView( m_OriginalViews[v], leafSize, *pDwView );
-
-			m_Views[v] = pDwView;
-		}
-        
-        m_LeafSize = leafSize;
-	}
-
 protected:
-
 	// Methods
 
-	void downsampleView(PointCloudPtr pCloud, float leafSize, PointCloud& dwCloud)
+	void downsample(PointCloudPtr pCloud, float leafSize, PointCloud& filteredCloud)
 	{
         if (leafSize == 0.f)
         {
-            dwCloud = *pCloud;
+            filteredCloud = *pCloud;
         }
         else
         {
             pcl::VoxelGrid<PointT> avg;
             avg.setInputCloud(pCloud);
             avg.setLeafSize(leafSize, leafSize, leafSize);
-            avg.filter(dwCloud);
+            avg.filter(filteredCloud);
         }
 	}
 
@@ -249,9 +231,9 @@ protected:
     string m_Name;
     float m_LeafSize;
 
-	vector<int> m_ViewIDs;
 	vector<PointCloudPtr> m_OriginalViews;
 	vector<PointCloudPtr> m_Views;
+    vector<int> m_ViewIDs;
 	vector<pcl::PointXYZ> m_Positions;
 	vector<float> m_MedianDists;
 };
@@ -267,37 +249,21 @@ class LFCloudjectBase : public CloudjectBase<PointT,SignatureT>
 	typedef typename pcl::PointCloud<SignatureT>::Ptr DescriptionPtr;
 
 public:
-	LFCloudjectBase(float leafSize = 0.f)
-        : CloudjectBase<PointT,SignatureT>(leafSize)
-    {
-    
-    }
+	LFCloudjectBase() : CloudjectBase<PointT,SignatureT>() {}
 
-    LFCloudjectBase(PointCloudPtr pView, float leafSize = 0.f)
-        : CloudjectBase<PointT,SignatureT>(pView, leafSize)
-    {
-        m_Descriptions.resize(1);
-    }
-    
-    LFCloudjectBase(string viewFilepath, float leafSize = 0.f)
-        : CloudjectBase<PointT,SignatureT>(viewFilepath, leafSize)
-    {
-        m_Descriptions.resize(1);
-    }
-    
-	LFCloudjectBase(vector<PointCloudPtr> views, float leafSize = 0.f)
+	LFCloudjectBase(vector<PointCloudPtr> views, float leafSize = 0.0)
 		: CloudjectBase<PointT,SignatureT>(views, leafSize)
     {
         m_Descriptions.resize(views.size());
     }
     
-	LFCloudjectBase(vector<string> viewsFilePaths, float leafSize = 0.f)
+	LFCloudjectBase(vector<string> viewsFilePaths, float leafSize = 0.0)
 		: CloudjectBase<PointT,SignatureT>(viewsFilePaths, leafSize)
     {
         m_Descriptions.resize(viewsFilePaths.size());
     }
     
-    LFCloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.f)
+    LFCloudjectBase(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
     : CloudjectBase<PointT,SignatureT>(views, leafSize)
     {
         m_Descriptions.resize(views.size());
@@ -326,9 +292,9 @@ public:
 		m_Descriptions = descriptions;
 	}
 
-	DescriptionPtr getDescription(int v)
+	DescriptionPtr getDescription(int i)
 	{ 
-		return m_Descriptions[v];
+		return m_Descriptions[i];
 	}
     
 protected:
@@ -356,16 +322,9 @@ class LFCloudject<PointT, pcl::FPFHSignature33> : public LFCloudjectBase<PointT,
 	typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
 
 public:
-	LFCloudject(float leafSize = 0.f)
-		: LFCloudjectBase<PointT,pcl::FPFHSignature33>(leafSize)
-    { }
+	LFCloudject() 
+		: LFCloudjectBase<PointT,pcl::FPFHSignature33>() { }
 
-    LFCloudject(PointCloudPtr pView, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::FPFHSignature33>(pView, leafSize) { }
-    
-    LFCloudject(string viewFilepath, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::FPFHSignature33>(viewFilepath, leafSize) { }
-    
 	LFCloudject(vector<PointCloudPtr> views, float leafSize = 0.f)
 		: LFCloudjectBase<PointT,pcl::FPFHSignature33>(views, leafSize) { }
 
@@ -373,7 +332,7 @@ public:
         : LFCloudjectBase<PointT,pcl::FPFHSignature33>(viewFilePaths, leafSize) { }
     
 	LFCloudject(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::FPFHSignature33>(views, leafSize) { }
+    : LFCloudjectBase<PointT,pcl::FPFHSignature33>(views, leafSize) { }
 
 	LFCloudject(const LFCloudject<PointT,pcl::FPFHSignature33>& rhs)
 		: LFCloudjectBase<PointT,pcl::FPFHSignature33>(rhs)
@@ -400,15 +359,23 @@ public:
             if (!pView->empty())
             {
                 LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i] = pcl::PointCloud<pcl::FPFHSignature33>::Ptr (new pcl::PointCloud<pcl::FPFHSignature33>);
-                describeView( pView, normalRadius, fpfhRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]));
+                describeView( pView, normalRadius, fpfhRadius, *(LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_Descriptions[i]), (leafSize > LFCloudjectBase<PointT,pcl::FPFHSignature33>::m_LeafSize) ? leafSize : 0.f);
             }
         }
 	}
 
 	void describeView(PointCloudPtr pView, 
 					  float normalRadius, float fpfhRadius,
-					  pcl::PointCloud<pcl::FPFHSignature33>& descriptor)
+					  pcl::PointCloud<pcl::FPFHSignature33>& descriptor, float leafSize = 0.f)
 	{
+        //
+        // Downsample
+        //
+        
+        PointCloudPtr pViewFiltered (new PointCloud);
+        LFCloudjectBase<PointT, pcl::FPFHSignature33>::downsample(pView, leafSize, *pViewFiltered);
+        pViewFiltered.swap(pView);
+        
 		//
 		// Normals preprocess
 		//
@@ -468,29 +435,23 @@ template<>
 class LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFCloudjectBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>
 {
     typedef pcl::PointXYZRGB PointT;
-    typedef pcl::PointCloud<PointT> PointCloud;
-	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
-    typedef pcl::search::KdTree<PointT> KdTree;
-	typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
+    typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
+	typedef pcl::search::KdTree<pcl::PointXYZRGB>::Ptr KdTreePtr;
 
 public:
-	LFCloudject(float leafSize = 0.f)
-		: LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(leafSize) { }
+	LFCloudject() 
+		: LFCloudjectBase<PointT,pcl::PFHRGBSignature250>() { }
 
-    LFCloudject(PointCloudPtr pView, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(pView, leafSize) { }
+	LFCloudject(vector<PointCloudPtr> views, float leafSize = 0.0)
+    : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(views, leafSize) { }
     
-    LFCloudject(string viewFilepath, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(viewFilepath, leafSize) { }
+    LFCloudject(vector<string> viewsFilePaths, float leafSize = 0.0)
+    : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(viewsFilePaths, leafSize) { }
     
-	LFCloudject(vector<PointCloudPtr> views, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(views, leafSize) { }
-    
-    LFCloudject(vector<string> viewsFilePaths, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(viewsFilePaths, leafSize) { }
-    
-	LFCloudject(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.f)
-        : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(views, leafSize) { }
+	LFCloudject(vector<pair<int,PointCloudPtr> > views, float leafSize = 0.0)
+    : LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(views, leafSize) { }
     
 	LFCloudject(const LFCloudject<PointT,pcl::PFHRGBSignature250>& cloudject) 
 		: LFCloudjectBase<PointT,pcl::PFHRGBSignature250>(cloudject) { }
@@ -502,7 +463,7 @@ public:
 	// Methods
 	//
 
-	void describe(float normalRadius, float pfhrgbRadius)
+	void describe(float normalRadius, float pfhrgbRadius, float leafSize = 0.f)
 	{
         for (int i = 0; i < LFCloudjectBase<PointT,pcl::PFHRGBSignature250>::getNumOfViews(); i++)
         {
@@ -510,21 +471,29 @@ public:
             if (!pView->empty())
             {
                 m_Descriptions[i] = pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr (new  pcl::PointCloud<pcl::PFHRGBSignature250>);
-                describeView(pView, normalRadius, pfhrgbRadius, *(m_Descriptions[i]));
+                describeView(pView, normalRadius, pfhrgbRadius, *(m_Descriptions[i]), (leafSize > m_LeafSize) ? leafSize : 0.f);
             }
         }
 	}
 
 	void describeView(PointCloudPtr pView, 
 					  float normalRadius, float pfhrgbRadius,
-					  pcl::PointCloud<pcl::PFHRGBSignature250>& descriptor)
-	{       
+					  pcl::PointCloud<pcl::PFHRGBSignature250>& descriptor, float leafSize = 0.f)
+	{
+        //
+        // Downsample
+        //
+        
+        PointCloudPtr pViewFiltered (new PointCloud);
+        LFCloudjectBase<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::downsample(pView, leafSize, *pViewFiltered);
+        pViewFiltered.swap(pView);
+        
         //
 		// Normals preprocess
 		//
 
 		// Create the normal estimation class, and pass the input dataset to it
-		typename pcl::NormalEstimation<PointT, pcl::Normal> ne;
+		pcl::NormalEstimation<PointT, pcl::Normal> ne;
 		ne.setInputCloud (pView);
 
 		// Create an empty kdtree representation, and pass it to the normal estimation object.

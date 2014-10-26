@@ -65,6 +65,8 @@ public:
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
     
+    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
+    
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
     
@@ -121,6 +123,8 @@ public:
     
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
+    
+    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
 
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);

@@ -70,6 +70,7 @@ void ScoredDetections::toSparseRepresentation(cv::Mat& positions, cv::Mat& score
     scores.create(scores_.size(), NUM_OF_VIEWS * OD_NUM_OF_OBJECTS, CV_32FC1);
     
     positions.setTo(0);
+    scores.setTo(0);
     
     for (int i = 0; i < vids_.size(); i++)
     {
@@ -126,7 +127,7 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     {
         ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
         orc.setInputDetections(detectionCorrespondences);
-        orc.getScores(scoreds.vids_, scoreds.positions_, scoreds.scores_);
+        //orc.getScores(scoreds.vids_, scoreds.positions_, scoreds.scores_);
     } 
     
     // To proper format and save
@@ -234,7 +235,7 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
 
                 // Threading stuff
                 // ---------------------------------
-                if ((f % NUM_OF_THREADS) == 0)
+                if (f > 0 && (f % NUM_OF_THREADS) == 0)
                 {
                     std::cout << "Processing " << NUM_OF_THREADS << " frames ..";
                     t.restart();

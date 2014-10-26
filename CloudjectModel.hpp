@@ -19,7 +19,10 @@ class CloudjectModelBase
 	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
 
 public:
-	CloudjectModelBase() {}
+	CloudjectModelBase(float leafSize)
+        : m_ID(0), m_Name(""), m_LeafSize(leafSize)
+    {
+    }
 
 	CloudjectModelBase(int ID, string name, float leafSize = 0.0)
 		: m_ID(ID), m_Name(name), m_LeafSize(leafSize)
@@ -27,9 +30,26 @@ public:
 	}
     
     CloudjectModelBase(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0)
-    : m_ID(ID), m_Name(name), m_LeafSize(leafSize)
+        : m_ID(ID), m_Name(name), m_LeafSize(leafSize)
 	{
-        setViews(views);
+        for (int v = 0; v < views.size(); v++)
+        {
+            addView(views[v]);
+        }
+	}
+    
+    CloudjectModelBase(int ID, string name, vector<string> viewsFilepaths, float leafSize = 0.0)
+        : m_ID(ID), m_Name(name), m_LeafSize(leafSize)
+	{
+        for (int v = 0; v < viewsFilepaths.size(); v++)
+        {
+            PointCloudPtr pView (new PointCloud);
+            
+			pcl::PCDReader reader;
+			reader.read(viewsFilepaths[v], *pView);
+            
+            addView(pView);
+        }
 	}
     
     CloudjectModelBase(const CloudjectModelBase& rhs)
@@ -44,74 +64,62 @@ public:
             m_ID = rhs.m_ID;
             m_Name = rhs.m_Name;
             m_LeafSize = rhs.m_LeafSize;
-            m_ViewClouds = rhs.m_ViewClouds;
+            
+            m_OriginalViews = rhs.m_OriginalViews;
+            m_Views = rhs.m_Views;
             m_ViewCentroids = rhs.m_ViewCentroids;
-            m_MedianDistsToViewCentroids = rhs.m_MedianDistsToViewCentroids;
+            m_MedianDistsToCentroids = rhs.m_MedianDistsToCentroids;
         }
         
         return *this;
 	}
-
-	int getID() { return m_ID; }
     
-    string getName() { return m_Name; }
-    
-    int getNumOfViews() { return m_ViewClouds.size(); }
-
-	void addView(PointCloudPtr pView)
+    void addView(PointCloudPtr pView)
 	{
         // Add the view itself
         
-		if (m_LeafSize == 0.f)
-        {
-            PointCloudPtr pViewCpy (new PointCloud);
-			*pViewCpy = *pView;
-            
-			m_ViewClouds.push_back(pViewCpy);
-        }
-        else
-		{
-			PointCloudPtr pViewFiltered (new PointCloud);
-			
-			pcl::ApproximateVoxelGrid<PointT> avg;
-			avg.setInputCloud(pView);
-			avg.setLeafSize(m_LeafSize, m_LeafSize, m_LeafSize);
-			avg.filter(*pViewFiltered);
-
-			m_ViewClouds.push_back(pViewFiltered);
-		}
+		// Get a copy of the view untouched
+		PointCloudPtr pOriginalView (new PointCloud);
+		*pOriginalView = *pView;
         
-        // Add a the cloud's pre-computed centroid position
+		// Get the downsampled version of the view
+        if (m_LeafSize > 0.f)
+			downsampleView(pOriginalView, m_LeafSize, *pView);
         
-		Eigen::Vector4f centroid;
-		pcl::compute3DCentroid(*pView, centroid);
-
-        PointT p;
-        p.getVector4fMap() = centroid;
-		m_ViewCentroids.push_back( p );
-
-        // Add a the cloud's pre-computed median distance to centroid
+        // Get the precomputed view centroid
+		pcl::PointXYZ centroidPt;
+		Eigen::Vector4f centroidVc;
+		pcl::compute3DCentroid(*pView, centroidVc);
+        centroidPt.getVector4fMap() = centroidVc;
         
-		float medianDist = medianDistanceToCentroid(pView, m_ViewCentroids.back());
-		m_MedianDistsToViewCentroids.push_back(medianDist);
+		// Get the precomputed view's median distance to centroid
+		float medianDist = medianDistanceToCentroid(pView, centroidPt);
+        
+        // And... keep it properly
+		m_OriginalViews.push_back(pOriginalView);
+		m_Views.push_back(pView);
+        m_MedianDistsToCentroids.push_back(medianDist);
 	}
+
+	int getID() { return m_ID; }
+    void setID(int id) { m_ID = id; }
     
-    void setViews(vector<PointCloudPtr> views)
-    {
-        for (int v = 0; v < views.size(); v++)
-        {
-            addView(views[v]);
-        }
-    }
+    string getName() { return m_Name; }
+    void setName(string name) { m_Name = name; }
     
-    PointCloudPtr getView(int i) { return m_ViewClouds[i]; }
+    float getDownsamplingSize() { return m_LeafSize; }
     
-	float euclideanDistance(PointT p1, PointT p2)
+    int getNumOfViews() { return m_Views.size(); }
+	   
+    PointCloudPtr getView(int v) { return m_Views[v]; }
+    
+    template<typename PointT1, typename PointT2>
+	float euclideanDistance(PointT1 p1, PointT2 p2)
 	{
 		return sqrt(powf(p1.x - p2.x, 2) + powf(p1.y - p2.y, 2) + powf(p1.z - p2.z, 2));
 	}
 
-	float medianDistanceToCentroid(PointCloudPtr pCloud, PointT centroid)
+	float medianDistanceToCentroid(PointCloudPtr pCloud, pcl::PointXYZ centroid)
 	{
 		vector<float> distances;
 
@@ -141,28 +149,60 @@ public:
 	{
 		float acc = 0.f;
 
-		for (int i = 0; i < m_ViewClouds.size(); i++)
-			acc += m_ViewClouds[i]->points.size();
+		for (int v = 0; v < m_Views.size(); v++)
+			acc += m_Views[v]->points.size();
 
-		return acc / m_ViewClouds.size();
+		return acc / m_Views.size();
 	}
-
 
 	float averageMedianDistanceToCentroids()
 	{
 		float acc = 0.f;
 
-		for (int i = 0; i < m_MedianDistsToViewCentroids.size(); i++)
-			acc += m_MedianDistsToViewCentroids[i];
+		for (int v = 0; v < m_MedianDistsToCentroids.size(); v++)
+			acc += m_MedianDistsToCentroids[v];
 
-		return acc / m_MedianDistsToViewCentroids.size();
+		return acc / m_MedianDistsToCentroids.size();
+	}
+    
+    void downsample(float leafSize)
+	{
+		for (int v = 0; v < m_Views.size(); v++)
+		{
+			PointCloudPtr pDwView (new PointCloud);
+            
+			if (leafSize > m_LeafSize)
+				downsampleView( (m_Views[v]->empty() ? m_OriginalViews[v] : m_Views[v]), leafSize, *pDwView );
+			else if (leafSize < m_LeafSize)
+				downsampleView( m_OriginalViews[v], leafSize, *pDwView );
+            
+			m_Views[v] = pDwView;
+		}
+        
+        m_LeafSize = leafSize;
 	}
 
 protected:
+    
+    void downsampleView(PointCloudPtr pCloud, float leafSize, PointCloud& dwCloud)
+	{
+        if (leafSize == 0.f)
+        {
+            dwCloud = *pCloud;
+        }
+        else
+        {
+            pcl::VoxelGrid<PointT> avg;
+            avg.setInputCloud(pCloud);
+            avg.setLeafSize(leafSize, leafSize, leafSize);
+            avg.filter(dwCloud);
+        }
+	}
 
-	vector<PointCloudPtr> m_ViewClouds;
-	vector<PointT> m_ViewCentroids;
-	vector<float> m_MedianDistsToViewCentroids;
+    vector<PointCloudPtr> m_OriginalViews;
+	vector<PointCloudPtr> m_Views;
+	vector<pcl::PointXYZ> m_ViewCentroids;
+	vector<float> m_MedianDistsToCentroids;
 
 	float m_LeafSize; // in case of downsampling
 
@@ -178,19 +218,19 @@ class LFCloudjectModelBase : public CloudjectModelBase<PointT,SignatureT>
 {
 	typedef typename pcl::PointCloud<PointT> PointCloud;
 	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
-	typedef typename pcl::PointCloud<SignatureT> Descriptor;
-	typedef typename pcl::PointCloud<SignatureT>::Ptr DescriptorPtr;
+	typedef typename pcl::PointCloud<SignatureT> Description;
+	typedef typename pcl::PointCloud<SignatureT>::Ptr DescriptionPtr;
 
 public:
-	LFCloudjectModelBase(void) 
-		: CloudjectModelBase<PointT,SignatureT>() {}
+	LFCloudjectModelBase(float leafSize = 0.f)
+		: CloudjectModelBase<PointT,SignatureT>(leafSize) {}
 
 	LFCloudjectModelBase(int ID, string name, float leafSize = 0.0, int penalty = 2, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
-		: CloudjectModelBase<PointT,SignatureT>(ID, name, leafSize), m_Penalty(penalty), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
+		: CloudjectModelBase<PointT,SignatureT>(ID, name, leafSize), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_Penalty(penalty), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
 	{}
     
     LFCloudjectModelBase(int ID, string name, vector<PointCloudPtr> views, float leafSize = 0.0, int penalty = 2, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
-    : CloudjectModelBase<PointT,SignatureT>(ID, name, views, leafSize), m_Penalty(penalty), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
+    : CloudjectModelBase<PointT,SignatureT>(ID, name, views, leafSize), m_PointRejectionThresh(pointRejectionThresh), m_RatioRejectionThresh(ratioRejectionThresh), m_Penalty(penalty), m_SigmaPenaltyThresh(sigmaPenaltyThresh)
 	{}
     
     LFCloudjectModelBase(const LFCloudjectModelBase& rhs)
@@ -203,16 +243,36 @@ public:
     {
         if (this != &rhs)
         {
-            m_ViewsDescriptors = rhs.m_ViewsDescriptors;
-
-            m_Penalty = rhs.m_Penalty;
+            m_ViewsDescriptions = rhs.m_ViewsDescriptions;
             
             m_PointRejectionThresh = rhs.m_PointRejectionThresh;
             m_RatioRejectionThresh = rhs.m_RatioRejectionThresh;
             m_SigmaPenaltyThresh = rhs.m_SigmaPenaltyThresh;
+            
+            m_Penalty = rhs.m_Penalty;
         }
         
         return *this;
+    }
+    
+    void setPointScoreRejectionThreshold(float pointRejectionThresh)
+    {
+        m_PointRejectionThresh = pointRejectionThresh;
+    }
+    
+    void setPointRatioRejectionThreshold(float ratioRejectionThresh)
+    {
+        m_RatioRejectionThresh = ratioRejectionThresh;
+    }
+    
+    void setSizePenaltyMode(int penalty)
+    {
+        m_Penalty = penalty;
+    }
+    
+    void setSigmaPenaltyThreshold(float sigmaPenaltyThresh)
+    {
+        m_SigmaPenaltyThresh = sigmaPenaltyThresh;
     }
 
 //	int getID() { return CloudjectModelBase<PointT, SignatureT>::getID(); }
@@ -231,179 +291,233 @@ public:
 //	float averageNumOfPointsInModels() { return CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels(); }
 //	float averageMedianDistanceToCentroids() { return CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids(); }
     
-    void addViewDescriptor(DescriptorPtr pDescriptor)
-    { m_ViewsDescriptors.push_back(pDescriptor); }
-    DescriptorPtr getViewDescriptor(int i) { return m_ViewsDescriptors[i]; }
+    void addViewDescription(DescriptionPtr pDescription)
+    { m_ViewsDescriptions.push_back(pDescription); }
+    DescriptionPtr getViewDescription(int i) { return m_ViewsDescriptions[i]; }
 
-    float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject)
+    // Test against this model. Returns distances (in each view) from points to matched model points (wo/ re-match)
+    void getMinimumDistances(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject, vector<vector<float> >& distances)
     {
-        vector<float> penalizedScores (pCloudject->getNumOfViews());
-        
-        float pnlScoreAcc = 0.f;
-        float invDistAcc = 0.f;
-        
+        distances.resize(pCloudject->getNumOfViews());
         for (int v = 0; v < pCloudject->getNumOfViews(); v++)
         {
-            // Compute score and penalty
+            vector<float> viewDistances;
+            getMinimumDistancesToDescription(pCloudject->getDescription(v), viewDistances);
             
-            float score = matchView(pCloudject->getDescription(v));
-            
-            float penalty = 1.f;
-			if (getPenalty() == 0)
-			{
-                float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
-				float ratio = pCloudject->getNumOfPointsInView(v) / avg;
-				float x = (ratio <= 1) ? ratio : 1 + (1 - (1 / ratio));
-                
-				penalty *= (1.0 / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf((x-1)/m_SigmaPenaltyThresh, 2));
-			}
-			else if (getPenalty() == 1)
-			{
-                float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
-				float diff = (pCloudject->medianDistToCentroidInView(v) - avg);
-                
-				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
-			}
-            
-            pcl::PointXYZ pos = pCloudject->getPosition(v);
-            float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
-            
-            pnlScoreAcc += invDist * (score * penalty);
-            invDistAcc += invDist;
+            distances[v] = viewDistances;
         }
-        
-        return pnlScoreAcc / invDistAcc;
     }
     
-    float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject, std::vector<float>& scores)
+    static float distToScore(float dist)
+    {
+        return 1 - dist;
+    }
+    
+    void getScores(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject, vector<float>& scores)
     {
         scores.clear();
         
-        scores.resize(pCloudject->getNumOfViews());
-        vector<float> penalizedScores (pCloudject->getNumOfViews());
+        vector<vector<float> > distances; // #{views} x #{cloudject points}
+        getMinimumDistances(pCloudject, distances);
         
-        float pnlScoreAcc = 0.f;
-        float invDistAcc = 0.f;
-        
-        for (int v = 0; v < pCloudject->getNumOfViews(); v++)
+        // From distances to averaged scores
+        scores.resize(distances.size());
+        for (int v = 0; v < distances.size(); v++)
         {
-            // Compute score and penalty
+            float scoreAcc = 0.f;
+            int inliers = 0;
             
-            scores[v] = matchView(pCloudject->getDescription(v));
+            for (int k = 0; k < distances[v].size(); k++)
+            {
+                float score = distToScore(distances[v][k]);
+                if (score > m_PointRejectionThresh)
+                {
+                    scoreAcc += score;
+                    inliers ++;
+                }
+            }
             
-            float penalty = 1.f;
-			if (getPenalty() == 0)
-			{
-                float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
-				float ratio = pCloudject->getNumOfPointsInView(v) / avg;
-				float x = (ratio <= 1) ? ratio : 1 + (1 - (1 / ratio));
-                
-				penalty *= (1.0 / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf((x-1)/m_SigmaPenaltyThresh, 2));
-			}
-			else if (getPenalty() == 1)
-			{
-                float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
-				float diff = (pCloudject->medianDistToCentroidInView(v) - avg);
-                
-				penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
-			}
-            
-            pcl::PointXYZ pos = pCloudject->getPosition(v);
-            float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
-            
-            pnlScoreAcc += invDist * (scores[v] * penalty);
-            invDistAcc += invDist;
+            scores[v] = scoreAcc / inliers; // do not count on rejections
         }
-        
-        return pnlScoreAcc / invDistAcc;
     }
+    
+//    float getScore(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject)
+//    {
+//        vector<float> penalizedScores (pCloudject->getNumOfViews());
+//
+//        float pnlScoreAcc = 0.f;
+//        float invDistAcc = 0.f;
+//        
+//        for (int v = 0; v < pCloudject->getNumOfViews(); v++)
+//        {
+//            // Compute score and penalty
+//            
+//            float score = matchView(pCloudject->getDescription(v));
+//            
+//            float penalty = 1.f;
+//			if (getPenalty() == 1)
+//			{
+//                float avg = CloudjectModelBase<PointT,SignatureT>::averageNumOfPointsInModels();
+//				float ratio = pCloudject->getNumOfPointsInView(v) / avg;
+//				float x = (ratio <= 1.f) ? ratio : (1.f / ratio);
+//                float b = m_SigmaPenaltyThresh;
+//                
+//                penalty *= 1.f / ( 1.f + expf( -(x-0.5f) * b) );
+//			}
+//			else if (getPenalty() == 2)
+//			{
+//                float avg = CloudjectModelBase<PointT,SignatureT>::averageMedianDistanceToCentroids();
+//                
+//				float ratio = (pCloudject->medianDistToCentroidInView(v) / avg);
+//                float x = (ratio <= 1.f) ? ratio : (1.f / ratio);
+//                float b = m_SigmaPenaltyThresh;
+//                
+//                penalty *= 1.f / ( 1.f + expf( -(x-0.5f) * b) );
+//
+//				//penalty *= (1.f / (m_SigmaPenaltyThresh * sqrtf(2.f * 3.14159))) * expf(-0.5f * powf(diff/m_SigmaPenaltyThresh, 2));
+//			}
+//            
+//            pcl::PointXYZ pos = pCloudject->getPosition(v);
+//            float invDist = 1.f / sqrt(pow(pos.x,2) + pow(pos.y,2) + pow(pos.z,2));
+//            
+//            pnlScoreAcc += invDist * (score * penalty);
+//            invDistAcc += invDist;
+//        }
+//        
+//        return pnlScoreAcc / invDistAcc;
+//    }
 
 protected:
 	// Returns the score of matching a description of a certain cloudject's view against the model views' descriptions
-	float matchView(DescriptorPtr descriptor)
-	{
-		// Auxiliary structures: to not match against a model point more than once
-
-		vector<int> numOfMatches;
-		numOfMatches.resize(m_ViewsDescriptors.size(), 0);
-
-		vector<vector<bool> > matches;
-
-		matches.resize(m_ViewsDescriptors.size());
+    
+    void getMinimumDistancesToDescription(DescriptionPtr pDescription, vector<float>& distances)
+    {
+        // Structure to not re-match against a model point
+        vector<vector<bool> > matches;
+        matches.resize(m_ViewsDescriptions.size());
 		for (int i = 0; i < matches.size(); i++)
-			matches[i].resize(m_ViewsDescriptors[i]->points.size(), false);
-
-		// Match
-
-		float accDistToSig = 0;
-
-		float minDistToP, ndMinDist, dist; // inner-loop vars
-		int minIdxV = -1, minIdxP = -1;
-		int numOfTotalMatches = 0;
-
-		for (int p = 0; p < descriptor->points.size(); p++)
+			matches[i].resize(m_ViewsDescriptions[i]->points.size(), false);
+        
+        // Count the positive matches to each model
+        vector<int> numOfMatches;
+        numOfMatches.resize(m_ViewsDescriptions.size());
+        
+        distances.resize(pDescription->size(), std::numeric_limits<float>::max());
+        
+        for (int i = 0; i < pDescription->size(); i++)
 		{
-			bool freeCorrespondences = false; // there is any point to match against in the views of the model?
-
-			minDistToP = 1; // min distance to other point histogram
-			ndMinDist =  1;
-		
-			for (int i = 0; i < m_ViewsDescriptors.size() && numOfMatches[i] < m_ViewsDescriptors[i]->points.size(); i++) 
+            float minVal = std::numeric_limits<float>::max();
+            int minViewIdx;
+            int minPointIdx;
+            
+            for (int v = 0; v < m_ViewsDescriptions.size(); v++)
 			{
-				for (int j = 0; j < m_ViewsDescriptors[i]->points.size(); j++)
-				{
-					if ( (!(matches[i][j])) ) // A point in a vie)w can only be matched one time against
-					{
-						dist = battacharyyaDistanceSignatures( descriptor->points[p], m_ViewsDescriptors[i]->points[j]/*, minDistToP*/);
-
-						if (dist < minDistToP) // not matched yet and minimum
-						{
-							minDistToP = dist;
-							minIdxV = i;
-							minIdxP = j;
-						}
-						else if (dist < ndMinDist)
-						{
-							ndMinDist = dist;
-						}
-					}
-				}
-			}
-			
-			// if it is not "true", minDist is infinity. Not to accumulate infinity :S
-			// And dealing with another kinds of errors
-			//if ( fereCorrespondences && !(minIdx < 0 || minIdxP < 0) )
+                DescriptionPtr pViewDescription = m_ViewsDescriptions[v];
+                
+                // No points left to be matched in the view, no need to check
+                if (numOfMatches[v] < pViewDescription->size())
+                {
+                    for (int j = 0; j < pViewDescription->size(); j++)
+                    {
+//                        float dist = euclideanDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
+//                        float dist = chisquareDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
+                        float dist = battacharyyaDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
                         
-			if (minDistToP <= m_PointRejectionThresh/* && (minDistToP/ndMinDist) < m_RatioRejectionThresh*/)
-			{
-				accDistToSig += minDistToP;
-				numOfTotalMatches ++;
-				
-				numOfMatches[minIdxV] ++; // aux var: easy way to know when all the points in a model have been matched
-				matches[minIdxV][minIdxP] = true; // aux var: to know when a certain point in a certian model have already matched
-			}
-		}
-
-		// Normalization: to deal with partial occlusions
-		//float factor = (descriptor->points.size() / (float) averageNumOfPointsInModels());
-		
-		float avgDist = accDistToSig / numOfTotalMatches;
-		float score =  1.f - avgDist;
-
-		return score; // / descriptor->points.size());
-	}
+                        if (dist < minVal)
+                        {
+                            minVal = dist;
+                            minViewIdx  = v;
+                            minPointIdx = j;
+                        }
+                    }
+                }
+            }
+            
+            distances[i] = minVal;
+            matches[minViewIdx][minPointIdx];
+            numOfMatches[minViewIdx]++;
+        }
+    }
+    
+//	float matchView(DescriptionPtr Description)
+//	{
+//		// Auxiliary structures: to not match against a model point more than once
+//
+//		vector<int> numOfMatches;
+//		numOfMatches.resize(m_ViewsDescriptions.size(), 0);
+//
+//		vector<vector<bool> > matches;
+//
+//		matches.resize(m_ViewsDescriptions.size());
+//		for (int i = 0; i < matches.size(); i++)
+//			matches[i].resize(m_ViewsDescriptions[i]->points.size(), false);
+//
+//		// Match
+//
+//		float accDistToSig = 0;
+//
+//		int minIdxV = -1, minIdxP = -1;
+//		int numOfTotalMatches = 0;
+//
+//		for (int p = 0; p < Description->points.size(); p++)
+//		{
+//            float minDistToP = 1; // min distance to other point histogram
+//            float ndMinDist = 1; // 2nd min distance
+//            float dist;
+//		
+//			for (int i = 0; i < m_ViewsDescriptions.size() && (numOfMatches[i] < m_ViewsDescriptions[i]->points.size()); i++)
+//			{
+//				for (int j = 0; j < m_ViewsDescriptions[i]->points.size(); j++)
+//				{
+//					if ( (!(matches[i][j])) ) // A point in a vie)w can only be matched one time against
+//					{
+//						float dist = battacharyyaDistanceSignatures( Description->points[p], m_ViewsDescriptions[i]->points[j]);
+//                        
+//						if (dist < minDistToP) // not matched yet and minimum
+//						{
+//							minDistToP = dist;
+//							minIdxV = i;
+//							minIdxP = j;
+//						}
+//						else if (dist < ndMinDist)
+//						{
+//							ndMinDist = dist;
+//						}
+//					}
+//				}
+//			}
+//            
+//			if (minDistToP <= m_PointRejectionThresh/* && (minDistToP/ndMinDist) < m_RatioRejectionThresh*/)
+//			{
+//				accDistToSig += minDistToP;
+//				numOfMatches[minIdxV] ++; // aux var: easy way to know when all the points in a model have been matched
+//				matches[minIdxV][minIdxP] = true; // aux var: to know when a certain point in a certian model have already matched
+//                
+//                numOfTotalMatches++;
+//
+//			}
+//		}
+//
+//		// Normalization: to deal with partial occlusions
+//		//float factor = (Description->points.size() / (float) averageNumOfPointsInModels());
+//		
+//		float avgDist = (numOfTotalMatches > 0) ? (accDistToSig / numOfTotalMatches) : 1;
+//		float score =  1.f - avgDist;
+//
+//		return score; // / Description->points.size());
+//	}
 
 
 	// Returns the battacharyya distance between two fpfh signatures, which are actually histograms.
 	// This is a normalized [0,1] distance
-	float battacharyyaDistanceSignatures(SignatureT s1, SignatureT s2)
+	float battacharyyaDistanceSignatures(SignatureT& s1, SignatureT& s2)
 	{
 		float accSqProd = 0.f;
 		float accS1 = 0.f;
 		float accS2 = 0.f;
         
         int B = sizeof(s1.histogram) / sizeof(s1.histogram[0]);
-		for (int b = 0; b < B ; b++)
+		for (int b = 0; b < B;  b++)
 		{
 			accSqProd += sqrt(s1.histogram[b] * s2.histogram[b]);
 			accS1 += s1.histogram[b];
@@ -415,16 +529,50 @@ protected:
 		return sqrt(1.f - f * accSqProd);
 	}
 
+    float chisquareDistanceSignatures(SignatureT& s1, SignatureT& s2)
+	{
+		float accS1 = 0.f;
+		float accS2 = 0.f;
+        
+        int B = sizeof(s1.histogram) / sizeof(s1.histogram[0]);
+		for (int b = 0; b < B;  b++)
+		{
+			accS1 += s1.histogram[b];
+			accS2 += s2.histogram[b];
+		}
+        
+        float acc = 0.f;
+        for (int b = 0; b < B; b++)
+        {
+            float val1 = s1.histogram[b]/accS1;
+            float val2 = s2.histogram[b]/accS2;
+            
+            float m = (val1 + val2) / 2.f;
+            if (m != 0)
+                acc += powf(val1 - m, 2) / m;
+        }
+        
+		return acc;
+	}
 
 	// Returns the euclidean distance between two fpfh signatures, which are actually histograms
 	float euclideanDistanceSignatures(SignatureT s1, SignatureT s2)
 	{
-		float acc = 0.f;
+        float accS1 = 0.f;
+		float accS2 = 0.f;
         
         int B = sizeof(s1.histogram) / sizeof(s1.histogram[0]);
+		for (int b = 0; b < B;  b++)
+		{
+			accS1 += s1.histogram[b];
+			accS2 += s2.histogram[b];
+		}
+        
+		float acc = 0.f;
+        
 		for (int b = 0; b < B; b++)
 		{
-			acc += powf(s1.histogram[b] - s2.histogram[b], 2.0);
+			acc += powf(s1.histogram[b]/accS1 - s2.histogram[b]/accS2, 2.0);
 		}
 
 		return sqrtf(acc);
@@ -458,7 +606,7 @@ protected:
 	// 
 
 	// The descriptions of the different views
-	vector<DescriptorPtr>		m_ViewsDescriptors;
+	vector<DescriptionPtr>		m_ViewsDescriptions;
 	// A valid best correspondence should be a distance below it (experimentally selected)
 	float       m_PointRejectionThresh;
 	float       m_RatioRejectionThresh;
@@ -485,8 +633,8 @@ class LFCloudjectModel : public LFCloudjectModelBase<PointT,SignatureT>
 template<typename PointT>
 class LFCloudjectModel<PointT, pcl::FPFHSignature33> : public LFCloudjectModelBase<PointT, pcl::FPFHSignature33>
 {
-	typedef pcl::PointCloud<pcl::FPFHSignature33> Descriptor;
-	typedef pcl::PointCloud<pcl::FPFHSignature33>::Ptr DescriptorPtr;
+	typedef pcl::PointCloud<pcl::FPFHSignature33> Description;
+	typedef pcl::PointCloud<pcl::FPFHSignature33>::Ptr DescriptionPtr;
 	typedef pcl::PointCloud<PointT> PointCloud;
 	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     typedef pcl::search::KdTree<PointT> KdTree;
@@ -495,7 +643,10 @@ class LFCloudjectModel<PointT, pcl::FPFHSignature33> : public LFCloudjectModelBa
 	typedef LFCloudject<PointT,pcl::FPFHSignature33> LFCloudject;
 
 public:
-
+    LFCloudjectModel(float leafSize = 0.f)
+        : LFCloudjectModelBase<PointT,pcl::FPFHSignature33>(leafSize)
+    {}
+    
 	LFCloudjectModel(int ID, string name, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
 		: LFCloudjectModelBase<PointT,pcl::FPFHSignature33>(ID, name, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
 	{}
@@ -522,13 +673,13 @@ public:
 	{
 		for (int i = 0; i < LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::getNumOfViews(); i++)
 		{
-			DescriptorPtr pDescriptor (new Descriptor);
+			DescriptionPtr pDescription (new Description);
             PointCloudPtr view = LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::getView(i);
             if (leafSize > LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::m_LeafSize)
-                describeView(view, leafSize, normalRadius, fpfhRadius, *pDescriptor);
+                describeView(view, leafSize, normalRadius, fpfhRadius, *pDescription);
             else
-                describeView(view, normalRadius, fpfhRadius, *pDescriptor);
-			LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::addViewDescriptor(pDescriptor);
+                describeView(view, normalRadius, fpfhRadius, *pDescription);
+			LFCloudjectModelBase<PointT,pcl::FPFHSignature33>::addViewDescription(pDescription);
 		}
 	}
 
@@ -538,7 +689,7 @@ private:
     
 	// Compute the description of a view, performing
 	// a prior downsampling to speed up the process
-	void describeView(PointCloudPtr pView, float leafSize, float normalRadius, float fpfhRadius, Descriptor& descriptor)
+	void describeView(PointCloudPtr pView, float leafSize, float normalRadius, float fpfhRadius, Description& Description)
 	{
 		PointCloudPtr pViewF (new PointCloud);
 
@@ -547,14 +698,14 @@ private:
 		avg.setLeafSize(leafSize, leafSize, leafSize);
 		avg.filter(*pViewF);
 
-		describeView(pViewF, normalRadius, fpfhRadius, descriptor);
+		describeView(pViewF, normalRadius, fpfhRadius, Description);
 	}
 
 
 	// Compute the description of a view, actually
 	void describeView(PointCloudPtr pView, 
 					  float normalRadius, float fpfhRadius,
-					  Descriptor& descriptor)
+					  Description& Description)
 	{
 		//
 		// Normals preprocess
@@ -599,7 +750,7 @@ private:
 		fpfh.setRadiusSearch (fpfhRadius);
 
 		// Compute the features
-		fpfh.compute (descriptor);
+		fpfh.compute (Description);
 	}
 };
 
@@ -609,16 +760,20 @@ class LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFClo
 {
     
     typedef pcl::PointXYZRGB PointT;
-	typedef pcl::PointCloud<pcl::PFHRGBSignature250> Descriptor;
-	typedef pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr DescriptorPtr;
-	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
-	typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
-    typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
-    typedef pcl::search::KdTree<pcl::PointXYZRGB>::Ptr KdTreePtr;
+	typedef pcl::PointCloud<pcl::PFHRGBSignature250> Description;
+	typedef pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr DescriptionPtr;
+	typedef pcl::PointCloud<PointT> PointCloud;
+	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<PointT> KdTree;
+    typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
     
 	typedef LFCloudject<PointT,pcl::PFHRGBSignature250> LFCloudject;
     
 public:
+    
+    LFCloudjectModel(float leafSize = 0.f)
+    : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(leafSize)
+    {}
     
 	LFCloudjectModel(int ID, string name, float leafSize = 0.0, int penalty = 1, float pointRejectionThresh = 1.0, float ratioRejectionThresh = 1.0, float sigmaPenaltyThresh = 0.1)
     : LFCloudjectModelBase<PointT,pcl::PFHRGBSignature250>(ID, name, leafSize, penalty, pointRejectionThresh, ratioRejectionThresh, sigmaPenaltyThresh)
@@ -646,13 +801,13 @@ public:
 	{
 		for (int i = 0; i < getNumOfViews(); i++)
 		{
-			DescriptorPtr pDescriptor (new Descriptor);
+			DescriptionPtr pDescription (new Description);
             PointCloudPtr view = getView(i);
             if (leafSize > m_LeafSize)
-                describeView(view, leafSize, normalRadius, pfhrgbRadius, *pDescriptor);
+                describeView(view, leafSize, normalRadius, pfhrgbRadius, *pDescription);
             else
-                describeView(view, normalRadius, pfhrgbRadius, *pDescriptor);
-			addViewDescriptor(pDescriptor);
+                describeView(view, normalRadius, pfhrgbRadius, *pDescription);
+			addViewDescription(pDescription);
 		}
 	}
     
@@ -662,7 +817,7 @@ private:
     
 	// Compute the description of a view, performing
 	// a prior downsampling to speed up the process
-	void describeView(PointCloudPtr pView, float leafSize, float normalRadius, float pfhrgbRadius, Descriptor& descriptor)
+	void describeView(PointCloudPtr pView, float leafSize, float normalRadius, float pfhrgbRadius, Description& Description)
 	{
 		PointCloudPtr pViewF (new PointCloud);
         
@@ -671,13 +826,13 @@ private:
 		avg.setLeafSize(leafSize, leafSize, leafSize);
 		avg.filter(*pViewF);
         
-		describeView(pViewF, normalRadius, pfhrgbRadius, descriptor);
+		describeView(pViewF, normalRadius, pfhrgbRadius, Description);
 	}
     
     
 	// Compute the description of a view, actually
 	void describeView(PointCloudPtr pView, float normalRadius, float pfhrgbRadius,
-					  Descriptor& descriptor)
+					  Description& Description)
 	{
 		//
 		// Normals preprocess
@@ -722,7 +877,7 @@ private:
 		pfhrgb.setRadiusSearch (pfhrgbRadius);
         
 		// Compute the features
-		pfhrgb.compute (descriptor);
+		pfhrgb.compute (Description);
 	}
 };
 
@@ -735,9 +890,7 @@ template class CloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 template class LFCloudjectModelBase<pcl::PointXYZ,pcl::FPFHSignature33>;
 template class LFCloudjectModelBase<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-//template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
+template class LFCloudjectModelBase<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
 
 template class LFCloudjectModel<pcl::PointXYZ,pcl::FPFHSignature33>;
-template class LFCloudjectModel<pcl::PointXYZ,pcl::PFHRGBSignature250>;
 template class LFCloudjectModel<pcl::PointXYZRGB,pcl::FPFHSignature33>;
-//template class LFCloudjectModel<pcl::PointXYZRGB,pcl::PFHRGBSignature250>;
