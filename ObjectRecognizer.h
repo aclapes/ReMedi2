@@ -58,6 +58,9 @@ public:
     float getCloudjectsPfhRadius() const;
     float getCloudjectModelsPfhRadius() const;
     
+    void setPointScoreRejectionThreshold(float t);
+    float getPointScoreRejectionThreshold() const;
+    
     void create();
     
     void setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections);
@@ -80,6 +83,8 @@ private:
     float m_NormalRadiusModel;
     float m_PfhRadius;
     float m_PfhRadiusModel;
+    
+    float m_PointScoreRejectionThreshold;
     
     int m_RecognitionStrategy;
     
@@ -117,6 +122,9 @@ public:
     float getCloudjectsPfhRadius() const;
     float getCloudjectModelsPfhRadius() const;
     
+    void setPointScoreRejectionThreshold(float t);
+    float getPointScoreRejectionThreshold() const;
+    
     void create();
     
     void setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections);
@@ -139,6 +147,8 @@ private:
     float m_NormalRadiusModel;
     float m_PfhRadius;
     float m_PfhRadiusModel;
+    
+    float m_PointScoreRejectionThreshold;
     
     int m_RecognitionStrategy;
 

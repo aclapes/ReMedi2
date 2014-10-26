@@ -134,7 +134,7 @@ public:
     void setObjectDetectorParameters(float leafSize, float clusterDist, int minClusterSize);
 
     void setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, int descriptionType, int recognitionStrategy);
-    void setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel);
+    void setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel, float ptScrRjtThresh);
 
     void initialize();
     

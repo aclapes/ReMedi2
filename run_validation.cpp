@@ -289,7 +289,8 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     }
     
     pSys->setObjectRecognizerParameters(objectsModels, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
-    pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS);
+    pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS, OR_POINT_REJECTION_THRESH);
+
     
     filterParameters[1] = std::vector<double>(1, 0.15); // 0.15 m
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);

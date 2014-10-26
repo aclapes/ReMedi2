@@ -337,7 +337,7 @@ public:
                 }
             }
             
-            scores[v] = scoreAcc / inliers; // do not count on rejections
+            scores[v] = (inliers > 0) ? (scoreAcc / inliers) : 0.f; // do not count on rejections
         }
     }
     

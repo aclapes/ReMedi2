@@ -253,7 +253,7 @@ void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr>
     }
 }
 
-void ReMedi::setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel)
+void ReMedi::setObjectRecognizerPfhParameters(float leafSize, float leafSizeModel, float normalRadius, float normalRadiusModel, float pfhRadius, float pfhRadiusModel, float ptScrRjtThresh)
 {
     if (m_pObjectRecognizer != NULL)
     {
@@ -266,6 +266,7 @@ void ReMedi::setObjectRecognizerPfhParameters(float leafSize, float leafSizeMode
             pObjectRecognizer->setCloudjectModelsNormalRadius(normalRadiusModel);
             pObjectRecognizer->setCloudjectsPfhRadius(pfhRadius);
             pObjectRecognizer->setCloudjectModelsPfhRadius(pfhRadiusModel);
+            pObjectRecognizer->setPointScoreRejectionThreshold(ptScrRjtThresh);
         }
         else if (m_DescriptionType == DESCRIPTION_PFHRGB)
         {
@@ -276,6 +277,7 @@ void ReMedi::setObjectRecognizerPfhParameters(float leafSize, float leafSizeMode
             pObjectRecognizer->setCloudjectModelsNormalRadius(normalRadiusModel);
             pObjectRecognizer->setCloudjectsPfhRadius(pfhRadius);
             pObjectRecognizer->setCloudjectModelsPfhRadius(pfhRadiusModel);
+            pObjectRecognizer->setPointScoreRejectionThreshold(ptScrRjtThresh);
         }
     }
 }

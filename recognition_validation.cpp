@@ -116,7 +116,6 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     od.getDetectionCorrespondences(detectionCorrespondences, false);
     
     void* recognizer = pSys->getObjectRecognizer();
-    
     if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
     {
         ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
@@ -127,8 +126,8 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     {
         ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
         orc.setInputDetections(detectionCorrespondences);
-        //orc.getScores(scoreds.vids_, scoreds.positions_, scoreds.scores_);
-    } 
+        orc.getScores(scoreds.vids_, scoreds.positions_, scoreds.scores_);
+    }
     
     // To proper format and save
     
@@ -212,6 +211,8 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
     for (int i = 0; i < combsIndices.size(); i++)
     {
         int c = combsIndices[i];
+        std::cout << "Processing combination " << combinations.row(c) << " .." << endl;
+        
         for (int k = 0; k < seqsIndices.size(); k++)
         {
             int s = seqsIndices[k];
@@ -230,14 +231,11 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
-                
-                vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
-
                 // Threading stuff
                 // ---------------------------------
-                if (f > 0 && (f % NUM_OF_THREADS) == 0)
+                if (tg.size() > 0 && (tg.size() % NUM_OF_THREADS) == 0)
                 {
-                    std::cout << "Processing " << NUM_OF_THREADS << " frames ..";
+                    std::cout << "Processing frames [" << f << "," << (f + NUM_OF_THREADS) << "] in seq " << s << " .. ";
                     t.restart();
                     
                     tg.join_all();
@@ -251,19 +249,26 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 }
                 // ---------------------------------
                 
+                vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
+
                 BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS = pSubtractors[bsIndices.at<int>(scoresIndices.at<int>(c,0),0)];
+                
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
+                
+//                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f]);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][s][f]) );
+                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]) );
                 tg.add_thread(pThread);
                 actives.push_back(pThread);
                 // ---------------------------------------
             
                 f++;
             }
+            // -----------------------
             tg.join_all();
+            // -----------------------
         }
     }
 }

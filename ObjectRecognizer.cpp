@@ -42,6 +42,8 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
         m_PfhRadius = rhs.m_PfhRadius;
         m_PfhRadiusModel = rhs.m_PfhRadiusModel;
         
+        m_PointScoreRejectionThreshold = rhs.m_PointScoreRejectionThreshold;
+
         m_RecognitionStrategy = rhs.m_RecognitionStrategy;
         m_CloudjectModels = rhs.m_CloudjectModels;
         
@@ -62,6 +64,8 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
     m_NormalRadiusModel = rhs.getCloudjectModelsNormalRadius();
     m_PfhRadius = rhs.getCloudjectsPfhRadius();
     m_PfhRadiusModel = rhs.getCloudjectModelsPfhRadius();
+    
+    m_PointScoreRejectionThreshold = rhs.getPointScoreRejectionThreshold();
     
     m_RecognitionStrategy = rhs.getRecognitionStrategy();
     
@@ -149,10 +153,23 @@ float ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getCloudjectMode
     return m_PfhRadiusModel;
 }
 
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setPointScoreRejectionThreshold(float t)
+{
+    m_PointScoreRejectionThreshold = t;
+}
+
+float ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getPointScoreRejectionThreshold() const
+{
+    return m_PointScoreRejectionThreshold;
+}
+
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::create()
 {
-    for (int m = 0; m < m_ObjectModels.size(); m++)
+    for (int m = 0; m < m_CloudjectModels.size(); m++)
+    {
         m_CloudjectModels[m]->describe(m_NormalRadiusModel, m_PfhRadiusModel, m_LeafSizeModel);
+        m_CloudjectModels[m]->setPointScoreRejectionThreshold(m_PointScoreRejectionThreshold);
+    }
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections)
@@ -198,7 +215,7 @@ float ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::interviewConsens
             weightsAcc += (1.0 / d);
         }
         
-        return wtValuesAcc / weightsAcc;
+        return (weightsAcc > 0) ? (wtValuesAcc / weightsAcc) : 0;
     }
 }
 
@@ -322,6 +339,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
         m_PfhRadiusModel = rhs.m_PfhRadiusModel;
         
         m_RecognitionStrategy = rhs.m_RecognitionStrategy;
+        
         m_CloudjectModels = rhs.m_CloudjectModels;
         
         m_CloudjectDetections = rhs.m_CloudjectDetections;
@@ -341,6 +359,8 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
     m_NormalRadiusModel = rhs.getCloudjectModelsNormalRadius();
     m_PfhRadius = rhs.getCloudjectsPfhRadius();
     m_PfhRadiusModel = rhs.getCloudjectModelsPfhRadius();
+    
+    m_PointScoreRejectionThreshold = rhs.getPointScoreRejectionThreshold();
     
     m_RecognitionStrategy = rhs.getRecognitionStrategy();
     
@@ -428,10 +448,23 @@ float ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getCloudjectM
     return m_PfhRadiusModel;
 }
 
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setPointScoreRejectionThreshold(float t)
+{
+    m_PointScoreRejectionThreshold = t;
+}
+
+float ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getPointScoreRejectionThreshold() const
+{
+    return m_PointScoreRejectionThreshold;
+}
+
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::create()
 {
-    for (int m = 0; m < m_ObjectModels.size(); m++)
+    for (int m = 0; m < m_CloudjectModels.size(); m++)
+    {
         m_CloudjectModels[m]->describe(m_NormalRadiusModel, m_PfhRadiusModel, m_LeafSizeModel);
+        m_CloudjectModels[m]->setPointScoreRejectionThreshold(m_PointScoreRejectionThreshold);
+    }
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections)
