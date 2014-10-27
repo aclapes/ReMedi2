@@ -11,62 +11,138 @@
 
 boost::mutex g_Mutex;
 
-void loadPrecomputedRecognitionScoresFile(std::string filePath, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& positions, vector<vector<vector<cv::Mat> > >& scores)
+//void loadPrecomputedRecognitionScoresFile(std::string filePath, std::vector<int> combinationsIndices, std::vector<int> sequencesIndices, vector<vector<vector<cv::Mat> > >& positions, vector<vector<vector<cv::Mat> > >& scores)
+//{
+//    combinations.release();
+//    positions.clear();
+//    scores.clear();
+//    
+//    cv::FileStorage fs;
+//    fs.open(filePath, cv::FileStorage::READ);
+//    
+//    fs["bg-sgmt_combinations"] >> combinations;
+//    
+//    positions.resize(combinations.rows);
+//    scores.resize(combinations.rows);
+//    for (int i = 0; i < combinations.rows; i++)
+//    {
+//        std::vector<std::vector<cv::Mat> > positionsComb, scoresComb;
+//        std::vector<cv::Mat> positionsSeq, scoresSeq;
+//        int s = 0;
+//        do
+//        {
+//            cv::Mat positionsFrame, scoresFrame;
+//            int f = 0;
+//            do
+//            {
+//                string id = to_str(i) + "-" + to_str(s) + "-" + to_str(f);
+//                fs["positions_" + id] >> positionsFrame;
+//                fs["scores_" + id] >> scoresFrame;
+//                
+//                if (!scoresFrame.empty())
+//                {
+//                    positionsSeq.push_back(positionsFrame);
+//                    scoresSeq.push_back(scoresFrame);
+//                }
+//                f++;
+//            }
+//            while (!scoresFrame.empty());
+//            
+//            if (!scoresSeq.empty())
+//            {
+//                positionsComb.push_back(positionsSeq);
+//                scoresComb.push_back(scoresSeq);
+//            }
+//            s++;
+//        }
+//        while (!scoresSeq.empty());
+//        
+//        positions[i] = positionsComb;
+//        scores[i] = scoresComb;
+//    }
+//    
+//    fs.release();
+//}
+
+void loadMonitorizationRecognitionPrecomputedScoresFile(std::string filePath, int cid, int sid, std::vector<ScoredDetections>& scoredsFrames)
 {
-    combinations.release();
-    positions.clear();
-    scores.clear();
+    scoredsFrames.clear();
     
     cv::FileStorage fs;
     fs.open(filePath, cv::FileStorage::READ);
     
-    fs["bs-sgmn_combinations"] >> combinations;
+    int f = 0;
+    cv::Mat positionsFrame;
     
-    positions.resize(combinations.rows);
-    scores.resize(combinations.rows);
-    for (int i = 0; i < combinations.rows; i++)
+    do
     {
-        std::vector<std::vector<cv::Mat> > positionsComb, scoresComb;
-        std::vector<cv::Mat> positionsSeq, scoresSeq;
-        int s = 0;
-        do
-        {
-            cv::Mat positionsFrame, scoresFrame;
-            int f = 0;
-            do
-            {
-                string id = to_str(i) + "-" + to_str(s) + "-" + to_str(f);
-                fs["positions_" + id] >> positionsFrame;
-                fs["scores_" + id] >> scoresFrame;
-                
-                if (!scoresFrame.empty())
-                {
-                    positionsSeq.push_back(positionsFrame);
-                    scoresSeq.push_back(scoresFrame);
-                }
-                f++;
-            }
-            while (!scoresFrame.empty());
-            
-            if (!scoresSeq.empty())
-            {
-                positionsComb.push_back(positionsSeq);
-                scoresComb.push_back(scoresSeq);
-            }
-            s++;
-        }
-        while (!scoresSeq.empty());
+        std::string id = to_str(cid) + "-" + to_str(sid) + "-" + to_str(f);
+        fs["positions_" + id] >> positionsFrame;
         
-        positions[i] = positionsComb;
-        scores[i] = scoresComb;
+        if (!positionsFrame.empty())
+        {
+            cv::Mat scoresFrame;
+            fs["scores_" + id] >> scoresFrame;
+            
+            ScoredDetections s (positionsFrame, scoresFrame);
+            scoredsFrames.push_back(s);
+        }
+        
+        f++;
     }
+    while (!positionsFrame.empty());
     
     fs.release();
 }
 
-void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds)
+void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<int> combinationsIds, std::vector<int> sequencesIds, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds)
+{
+    scoreds.resize(combinationsIds.size());
+    for (int i = 0; i < combinationsIds.size(); i++)
+        scoreds[i].resize(sequencesIds.size());
+    
+    for (int i = 0; i < combinationsIds.size(); i++)
+    {
+        for (int j = 0; j < sequencesIds.size(); j++)
+        {
+            std::vector<cv::Mat> positionsSeq;
+            std::vector<cv::Mat> scoresSeq;
+            loadMonitorizationRecognitionPrecomputedScoresFile(filePath, combinationsIds[i], sequencesIds[j], scoreds[i][j]);
+        }
+    }
+}
+
+ScoredDetections::ScoredDetections()
 {
     
+}
+
+ScoredDetections::ScoredDetections(cv::Mat positions, cv::Mat scores)
+{
+    vids_.resize(positions.rows);
+    positions_.resize(positions.rows);
+    scores_.resize(positions.rows);
+//    for (int i = 0; i < positions.rows; i++)
+//    {
+//        vids_[i].resize(positions.cols);
+//        scores_[i].resize(positions.cols, std::vector<float>(OD_NUM_OF_OBJECTS));
+//    }
+    
+    for (int i = 0; i < positions.rows; i++)
+    {
+        for (int j = 0; j < positions.cols; j++)
+        {
+            cv::Vec3f pos = positions.at<cv::Vec3f>(i,j);
+            if ( !(pos[0] == 0 && pos[1] == 0 && pos[2] == 0) )
+            {
+                vids_[i].push_back(j);
+                positions_[i].push_back( pcl::PointXYZ(pos[0], pos[1], pos[2]) );
+                
+                cv::Mat roi (scores, cv::Rect(j*OD_NUM_OF_OBJECTS, i, OD_NUM_OF_OBJECTS, 1));
+                scores_[i].push_back( std::vector<float>(roi.begin<float>(), roi.end<float>()) );
+            }
+        }
+    }
 }
 
 void ScoredDetections::toSparseRepresentation(cv::Mat& positions, cv::Mat& scores)
@@ -153,7 +229,7 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     g_Mutex.unlock();
 }
 
-void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds)
+void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds, int numOfThreads)
 {
     pSys->initialize();
     
@@ -244,9 +320,9 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
 				}
                 // Threading stuff
                 // ---------------------------------
-                if (tg.size() > 0 && (tg.size() % NUM_OF_THREADS) == 0)
+                if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
                 {
-                    std::cout << "Processing frames [" << (f - NUM_OF_THREADS) << "," << f << ") in seq " << s << " .. ";
+                    std::cout << "Processing frames [" << (f - numOfThreads) << "," << f << ") in seq " << s << " .. ";
                     t.restart();
                     
                     tg.join_all();
@@ -279,7 +355,7 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             // -----------------------
             if (tg.size() > 0)
             {
-                std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames()%NUM_OF_THREADS)) << "," << f << ") in seq " << s << " .. ";
+                std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames() % numOfThreads)) << "," << f << ") in seq " << s << " .. ";
 
                 tg.join_all();
                 
@@ -292,6 +368,17 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             // -----------------------
         }
     }
+}
+
+void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> sequencesIndices, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
+{
+    cv::Mat rcgnCombinations;
+    expandParameters<double>(rcgnParameters, rcgnCombinations);
+    
+//    for (int i = 0; i < rcgnCombinations.rows; i++)
+//    {
+//        for (int j = 0)
+//    }
 }
 
 // Faster version

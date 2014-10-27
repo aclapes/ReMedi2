@@ -103,7 +103,7 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
     }
 }
 
-int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
+int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
 {
     vector<string> colorDirNames, depthDirNames;
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
@@ -295,25 +295,29 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     filterParameters[1] = std::vector<double>(1, 0.15); // 0.15 m
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
     
-    vector<vector<vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, "Results/rcgn_results/", "rcgn_scores.yml", scoreds);
-//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", scoreds);
-    
-    vector<vector<double> > mntrRcgnParameters;
-    vector<double> rcgnStrategies;
-    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
-    vector<double> rcgnTempCoherences;
-    rcgnTempCoherences += 0, 1, 2, 3;
-    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
-    
+    std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
+    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
+//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
+//    
+//    vector<vector<double> > mntrRcgnParameters;
+//    vector<double> rcgnStrategies;
+//    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
+//    vector<double> rcgnTempCoherences;
+//    rcgnTempCoherences += 0, 1, 2, 3;
+//    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
+//    
 //    vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-//    validateMonitorizationRecognition(sys, sequences, sgmtBestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
+//    validateMonitorizationRecognition(pSys, sequences, sgmtBestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
     
     return 0;
 }
 
 int main(int argc, char** argv)
 {
+    int numOfThreads = NUM_OF_THREADS;
+    if (pcl::console::find_argument(argc, argv, "-T") > 0)
+        pcl::console::parse(argc, argv, "-T", numOfThreads);
+    
     std::string rcgnModalitiesStr;
     pcl::console::parse(argc, argv, "-Rm", rcgnModalitiesStr);
     
@@ -331,5 +335,5 @@ int main(int argc, char** argv)
     for (it = rcgnSequencesStrL.begin(); it != rcgnSequencesStrL.end(); it++)
         rcgnSequences.push_back( stoi(*it) );
     
-    return validation(rcgnModalities, rcgnSequences);
+    return validation(numOfThreads, rcgnModalities, rcgnSequences);
 }

@@ -27,6 +27,8 @@ using namespace boost::assign;
 class ScoredDetections
 {
 public:
+    ScoredDetections();
+    ScoredDetections(cv::Mat positions, cv::Mat scores);
     void toSparseRepresentation(cv::Mat& positions, cv::Mat& scores);
     
     std::vector<std::vector<int> > vids_;
@@ -37,15 +39,19 @@ public:
 };
 
 // ObjectDetector recognition performance
-void loadPrecomputedRecognitionScoresFile(std::string filePath, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& scores, vector<vector<vector<cv::Mat> > >& positions);
-void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds);
+//void loadPrecomputedRecognitionScoresFile(std::string filePath, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& scores, vector<vector<vector<cv::Mat> > >& positions);
+void loadMonitorizationRecognitionPrecomputedScoresFile(std::string filePath, int cid, int sid, std::vector<ScoredDetections>& scoredsFrames);
+
+void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<int> combinationsIds, std::vector<int> sequencesIds, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds);
 
 void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combinations, int offset, std::string filePath, std::string id, ScoredDetections& scoreds);
-void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds);
+void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds, int numOfThreads = NUM_OF_THREADS);
 
 //void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
 
-void validateMonitorizationRecognition(vector<Sequence<ColorDepthFrame>::Ptr> sequences, vector<vector<vector<cv::Mat> > > positions, vector<vector<vector<cv::Mat> > > scores, vector<vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
+//void validateMonitorizationRecognition(vector<Sequence<ColorDepthFrame>::Ptr> sequences, vector<vector<vector<cv::Mat> > > positions, vector<vector<vector<cv::Mat> > > scores, vector<vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
+
+void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> sequencesIndices, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
 
 void visualizeRecognitions(std::vector<ColorDepthFrame::Ptr> frames, std::vector<std::vector<std::vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, std::vector<std::vector<std::vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius, float lineWidth);
 
