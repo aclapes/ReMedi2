@@ -762,10 +762,10 @@ class LFCloudjectModel<pcl::PointXYZRGB, pcl::PFHRGBSignature250> : public LFClo
     typedef pcl::PointXYZRGB PointT;
 	typedef pcl::PointCloud<pcl::PFHRGBSignature250> Description;
 	typedef pcl::PointCloud<pcl::PFHRGBSignature250>::Ptr DescriptionPtr;
-	typedef pcl::PointCloud<PointT> PointCloud;
-	typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
-    typedef pcl::search::KdTree<PointT> KdTree;
-    typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
+	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
+    typedef pcl::search::KdTree<pcl::PointXYZRGB>::Ptr KdTreePtr;
     
 	typedef LFCloudject<PointT,pcl::PFHRGBSignature250> LFCloudject;
     
