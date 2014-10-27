@@ -312,12 +312,6 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
-				if (s == 10 && f < 88)
-				{
-					vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
-					f++;
-					continue;
-				}
                 // Threading stuff
                 // ---------------------------------
                 if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
