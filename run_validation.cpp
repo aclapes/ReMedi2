@@ -297,6 +297,7 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     
     vector<vector<vector<ScoredDetections> > > scoreds;
     precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, "Results/rcgn_results/", "rcgn_scores.yml", scoreds);
+//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", scoreds);
     
     vector<vector<double> > mntrRcgnParameters;
     vector<double> rcgnStrategies;

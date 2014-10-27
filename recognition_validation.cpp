@@ -64,6 +64,11 @@ void loadPrecomputedRecognitionScoresFile(std::string filePath, cv::Mat& combina
     fs.release();
 }
 
+void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds)
+{
+    
+}
+
 void ScoredDetections::toSparseRepresentation(cv::Mat& positions, cv::Mat& scores)
 {
     positions.create(positions_.size(), NUM_OF_VIEWS, CV_32FC(3));
@@ -235,22 +240,21 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 // ---------------------------------
                 if (tg.size() > 0 && (tg.size() % NUM_OF_THREADS) == 0)
                 {
-                    std::cout << "Processing frames [" << (f - NUM_OF_THREADS) << "," << f << "] in seq " << s << " .. ";
+                    std::cout << "Processing frames [" << (f - NUM_OF_THREADS) << "," << f << ") in seq " << s << " .. ";
                     t.restart();
                     
                     tg.join_all();
 
                     for (int t = 0; t < actives.size(); t++)
                         tg.remove_thread(actives[t]);
-                    
                     actives.clear();
                     
-                    cout << t.elapsed() << " secs." << endl;
+                    std::cout << t.elapsed() << " secs." << std::endl;
                 }
                 // ---------------------------------
                 
                 vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
-
+                
                 BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS = pSubtractors[bsIndices.at<int>(scoresIndices.at<int>(c,0),0)];
                 
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
@@ -267,7 +271,18 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 f++;
             }
             // -----------------------
-            tg.join_all();
+            if (tg.size() > 0)
+            {
+                std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames()%NUM_OF_THREADS)) << "," << f << ") in seq " << s << " .. ";
+
+                tg.join_all();
+                
+                for (int t = 0; t < actives.size(); t++)
+                    tg.remove_thread(actives[t]);
+                actives.clear();
+                
+                std::cout << t.elapsed() << " secs." << std::endl;
+            }
             // -----------------------
         }
     }

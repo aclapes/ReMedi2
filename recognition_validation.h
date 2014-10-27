@@ -38,6 +38,7 @@ public:
 
 // ObjectDetector recognition performance
 void loadPrecomputedRecognitionScoresFile(std::string filePath, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& scores, vector<vector<vector<cv::Mat> > >& positions);
+void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds);
 
 void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combinations, int offset, std::string filePath, std::string id, ScoredDetections& scoreds);
 void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds);
