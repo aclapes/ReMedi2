@@ -57,7 +57,7 @@ public:
     void getDetectionPositions(vector<vector<PointT> >& positions);
 //    void getDetectionCorrespondences(vector<vector<pair<int,PointT> > >& positions, bool bMakeCorrespondences = true);
     void getDetectionCorrespondences(vector<vector<pair<int,ColorPointCloudPtr> > >& correspondences, bool bMakeCorrespondences = true);
-    
+        
     typedef boost::shared_ptr<ObjectDetector> Ptr;
     
 private:

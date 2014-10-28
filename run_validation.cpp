@@ -275,20 +275,28 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
     
     std::string modelsPath = std::string(PARENT_PATH) + std::string(OBJECTMODELS_SUBDIR);
 
-    std::vector<std::string> objectsNames;
-    boost::split(objectsNames, OR_OBJECTS_NAMES, boost::is_any_of(","));
+    std::vector<std::string> objectsNamesStr;
+    boost::split(objectsNamesStr, OR_OBJECTS_NAMES, boost::is_any_of(","));
     
     vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
-    ReMedi::loadObjectModels(modelsPath.c_str(), "PCDs/", objectsNames, objectsViews);
+    ReMedi::loadObjectModels(modelsPath.c_str(), "PCDs/", objectsNamesStr, objectsViews);
     
-    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsNames.size());
+    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsNamesStr.size());
     for (int m = 0; m < objectsModels.size(); m++)
     {
-        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(m, objectsNames[m], objectsViews[m]) );
+        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(m, objectsNamesStr[m], objectsViews[m]) );
         objectsModels[m] = pObjectModel;
     }
     
-    pSys->setObjectRecognizerParameters(objectsModels, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
+    std::vector<std::string> objectsRejectionsStr;
+    boost::split(objectsRejectionsStr, OR_OBJECTS_REJECTIONS, boost::is_any_of(","));
+    
+    std::vector<float> objectsRejections;
+    std::vector<std::string>::iterator it;
+    for (it = objectsRejectionsStr.begin(); it != objectsRejectionsStr.end(); it++)
+        objectsRejections.push_back( stof(*it) );
+    
+    pSys->setObjectRecognizerParameters(objectsModels, objectsRejections, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
     pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS, OR_POINT_REJECTION_THRESH);
 
     
@@ -296,18 +304,19 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
-//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
-//    
-//    vector<vector<double> > mntrRcgnParameters;
-//    vector<double> rcgnStrategies;
-//    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
-//    vector<double> rcgnTempCoherences;
-//    rcgnTempCoherences += 0, 1, 2, 3;
-//    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
-//    
-//    vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
+//    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
+    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
+
+    vector<vector<double> > mntrRcgnParameters;
+    vector<double> rcgnStrategies;
+    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
+    vector<double> rcgnTempCoherences;
+    rcgnTempCoherences += 0, 1, 2, 3;
+    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
+    
+    vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
 //    validateMonitorizationRecognition(pSys, sequences, sgmtBestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
+    validateMonitorizationRecognition(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, false);
     
     return 0;
 }

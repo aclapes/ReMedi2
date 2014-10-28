@@ -20,6 +20,9 @@
 *.out
 *.app
 
+# OSX
+.DS_Store
+
 CMakeLists.txt
 
 # Directories

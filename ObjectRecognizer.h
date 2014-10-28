@@ -44,6 +44,8 @@ public:
     
     void setInputObjectModels(vector<ObjectModel<ColorPointT>::Ptr> models);
     vector<ObjectModel<ColorPointT>::Ptr> getInputObjectModels() const;
+    void setInputObjectRejections(vector<float> rejections);
+    vector<float> getInputObjectRejections() const;
 
     void setCloudjectsLeafSize(float leafSize);
     void setCloudjectModelsLeafSize(float leafSize);
@@ -68,14 +70,19 @@ public:
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
     
-    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
-    
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
+    void recognize(std::vector<std::vector< int > > vids,
+                   std::vector<std::vector< pcl::PointXYZ > > positions,
+                   std::vector<std::vector< std::vector<float> > > scores,
+                   vector<vector<vector<pcl::PointXYZ> > >& recognitions);
     
 private:
+    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
+
     vector<ObjectModel<ColorPointT>::Ptr> m_ObjectModels;
     vector<LFCloudjectModel<ColorPointT,FPFHSignatureT>::Ptr> m_CloudjectModels;
+    vector<float> m_ObjectRejections;
     
     float m_LeafSize;
     float m_LeafSizeModel;
@@ -108,6 +115,8 @@ public:
     
     void setInputObjectModels(vector<ObjectModel<ColorPointT>::Ptr> models);
     vector<ObjectModel<ColorPointT>::Ptr> getInputObjectModels() const;
+    void setInputObjectRejections(vector<float> rejections);
+    vector<float> getInputObjectRejections() const;
 
     void setCloudjectsLeafSize(float leafSize);
     void setCloudjectModelsLeafSize(float leafSize);
@@ -131,15 +140,20 @@ public:
     
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
-    
-    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
 
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
+    void recognize(std::vector<std::vector< int > > vids,
+                   std::vector<std::vector< pcl::PointXYZ > > positions,
+                   std::vector<std::vector< std::vector<float> > > scores,
+                   vector<vector<vector<pcl::PointXYZ> > >& recognitions);
     
 private:
+    float interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values);
+
     vector<ObjectModel<ColorPointT>::Ptr> m_ObjectModels;
     vector<LFCloudjectModel<ColorPointT,PFHRGBSignatureT>::Ptr> m_CloudjectModels;
+    vector<float> m_ObjectRejections;
     
     float m_LeafSize;
     float m_LeafSizeModel;

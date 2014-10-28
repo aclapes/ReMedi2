@@ -21,7 +21,7 @@
 #define SEQUENCES_SUBDIR                    "Sequences/"
 #define KINECT_SUBSUBDIR                    "Kinects/"
 #define OBJECTLABELS_SUBDIR                 "ObjectLabels/"
-#define OBJECTMODELS_SUBDIR                 "ObjectModels/"
+#define OBJECTMODELS_SUBDIR                 "ObjectModels2/"
 
 #define NUM_OF_VIEWS                        2
 #define DELAYS_FILENAME                     "delays.txt"
@@ -81,7 +81,8 @@
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
 
 // ... recognition-related ones (computed in an independent dataset)
-#define OR_OBJECTS_NAMES                    "book,cup,dish,pillbox,tetrabrick"
+#define OR_OBJECTS_NAMES                    "dish,pillbox,book,tetrabrick,cup" //"book,cup,dish,pillbox,tetrabrick"
+#define OR_OBJECTS_REJECTIONS               "0,0,0,0,0" //0.85,0.75,0.85,0.80,0.80"
 
 #define OR_PFHDESC_LEAFSIZE                 0.01
 #define OR_PFHDESC_MODEL_LEAFSIZE           0.01
@@ -91,11 +92,7 @@
 #define OR_PFHDESC_MODEL_PFH_RADIUS         0.15
 #define OR_POINT_REJECTION_THRESH           0.60
 
-#define OR_BOOK_REJECTION_THRESH            0.85
-#define OR_CUP_REJECTION_THRESH             0.75
-#define OR_DISH_REJECTION_THRESH            0.85
-#define OR_PILLBOX_REJECTION_THRESH         0.80
-#define OR_TETRABRICK_REJECTION_THRESH      0.80
+
 
 // Marker colors (as many as objects at least)
 static float g_Colors[][3] = {

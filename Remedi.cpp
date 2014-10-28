@@ -219,7 +219,7 @@ void ReMedi::setObjectDetectorParameters(float leafSize, float clusterDist, int 
     m_pObjectDetector->setMinClusterSize(minClusterSize);
 }
 
-void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, int descriptionType, int strategy)
+void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr> objectModels, vector<float> objectRejections, int descriptionType, int strategy)
 {
     m_DescriptionType = descriptionType;
 
@@ -241,6 +241,7 @@ void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr>
     {
         ObjectRecognizer<ColorPointT,FPFHSignature>* pObjectRecognizer = new ObjectRecognizer<ColorPointT,FPFHSignature>();
         pObjectRecognizer->setInputObjectModels(objectModels);
+        pObjectRecognizer->setInputObjectRejections(objectRejections);
         pObjectRecognizer->setRecognitionStrategy(strategy);
         m_pObjectRecognizer = pObjectRecognizer;
     }
@@ -248,6 +249,7 @@ void ReMedi::setObjectRecognizerParameters(vector<ObjectModel<ColorPointT>::Ptr>
     {
         ObjectRecognizer<ColorPointT,PFHRGBSignature>* pObjectRecognizer = new ObjectRecognizer<ColorPointT,PFHRGBSignature>();
         pObjectRecognizer->setInputObjectModels(objectModels);
+        pObjectRecognizer->setInputObjectRejections(objectRejections);
         pObjectRecognizer->setRecognitionStrategy(strategy);
         m_pObjectRecognizer = pObjectRecognizer;
     }

@@ -706,7 +706,8 @@ void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vec
         for (int o = 0; o < annotations.size(); o++)
         {
             int otp, ofn, ofp;
-            getFrameObjectRecognitionResults(annotations[o], recognitions[v][o], matches[v][o], rejections[v][o], otp, ofn, ofp);
+            std::vector<std::vector<pcl::PointXYZ> > aux = recognitions[v];
+            getFrameObjectRecognitionResults(annotations[o], aux[o], matches[v][o], rejections[v][o], otp, ofn, ofp);
             
             errors.at<cv::Vec3i>(v,0) += cv::Vec3i(otp, ofn, ofp);
         }
@@ -715,14 +716,11 @@ void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vec
 
 void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> groundtruth, vector<pcl::PointXYZ>recognitions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& matches, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp)
 {
-    vector<vector<float> > distances;
+    vector<vector<float> > distances (recognitions.size());
     for (int k = 0; k < recognitions.size(); k++)
     {
-        vector<float> row;
         for (int o = 0; o < groundtruth.size(); o++)
-            row.push_back( distance(recognitions[k], groundtruth[o]) );
-        
-        distances.push_back(row);
+            distances[k].push_back( distance(recognitions[k], groundtruth[o]) );
     }
     
     cv::Mat D;
@@ -734,10 +732,20 @@ void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> gro
         fn = fp = 0;
         
         for (int o = 0; o < groundtruth.size(); o++)
+        {
             fn++;
+            
+            std::pair<pcl::PointXYZ,pcl::PointXYZ> rejection (pcl::PointXYZ(0,0,0), groundtruth[o]);
+            rejections.push_back(rejection);
+        }
         
         for (int k = 0; k < recognitions.size(); k++)
+        {
             fp++;
+            
+            std::pair<pcl::PointXYZ,pcl::PointXYZ> rejection (recognitions[k], pcl::PointXYZ(0,0,0));
+            rejections.push_back(rejection);
+        }
     }
     else
     {

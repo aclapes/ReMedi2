@@ -23,7 +23,7 @@ SequenceBase<FrameT>::SequenceBase(int numOfViews)
 {
     m_Paths.resize(numOfViews);
     m_Streams.resize(numOfViews);
-    m_FrameIndices.resize(numOfViews);
+    m_FrameIndices.resize(numOfViews, -1);
     m_Delays.resize(numOfViews, 0);
 }
 
@@ -93,7 +93,7 @@ template<typename FrameT>
 void SequenceBase<FrameT>::setNumOfViews(int n)
 {
     m_Paths.resize(n);
-    m_FrameIndices.resize(n);
+    m_FrameIndices.resize(n, -1);
     m_Delays.resize(n,0);
 }
 
