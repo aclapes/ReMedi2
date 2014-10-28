@@ -304,8 +304,8 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-//    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
-    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
+    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
+//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
 
     vector<vector<double> > mntrRcgnParameters;
     vector<double> rcgnStrategies;
@@ -315,8 +315,7 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
     mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
     
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-//    validateMonitorizationRecognition(pSys, sequences, sgmtBestCombinations, mntrRcgnParameters, detectionGroundtruths, "mntr_results/", "mntr_recognition.yml", mntrRcgnErrors, true);
-    validateMonitorizationRecognition(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, false);
+//    validateMonitorizationRecognition(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, false);
     
     return 0;
 }

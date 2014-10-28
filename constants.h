@@ -21,7 +21,7 @@
 #define SEQUENCES_SUBDIR                    "Sequences/"
 #define KINECT_SUBSUBDIR                    "Kinects/"
 #define OBJECTLABELS_SUBDIR                 "ObjectLabels/"
-#define OBJECTMODELS_SUBDIR                 "ObjectModels2/"
+#define OBJECTMODELS_SUBDIR                 "ObjectModels/"
 
 #define NUM_OF_VIEWS                        2
 #define DELAYS_FILENAME                     "delays.txt"

@@ -248,7 +248,7 @@ void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::ve
     }
 }
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, vector<vector<pcl::PointXYZ> >& detectionsPositions)
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, std::vector<std::vector<pcl::PointXYZ> >& detectionsPositions)
 {
     pSys->getRegisterer()->setInputFrames(frames);
     pSys->getRegisterer()->registrate(frames);
@@ -388,19 +388,23 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             {
                 // Threading stuff
                 // ---------------------------------
-//                if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
-//                {
-//                    std::cout << "Processing frames [" << (f - numOfThreads) << "," << f << ") in seq " << s << " .. ";
-//                    t.restart();
-//                    
-//                    tg.join_all();
-//
-//                    for (int t = 0; t < actives.size(); t++)
-//                        tg.remove_thread(actives[t]);
-//                    actives.clear();
-//                    
-//                    std::cout << t.elapsed() << " secs." << std::endl;
-//                }
+                if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
+                {
+                    std::cout << "Processing frames [" << (f - numOfThreads) << "," << f << ") in seq " << s << " .. ";
+                    t.restart();
+                    
+                    tg.join_all();
+
+                    for (int t = 0; t < actives.size(); t++)
+                    {
+                        tg.remove_thread(actives[t]);
+                        actives[t]->interrupt();
+                        delete actives[t];
+                    }
+                    actives.clear();
+                    
+                    std::cout << t.elapsed() << " secs." << std::endl;
+                }
                 // ---------------------------------
                 
                 vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
@@ -409,39 +413,38 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
                 
-                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
 
-                std::vector<std::vector<pcl::PointXYZ> > detectionPositions;
-                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
+                std::vector<std::vector<pcl::PointXYZ> > detectionsPositions; // *** dbg ***
                 
-//                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
-//                cv::Mat frameErrors;
-//                std::vector<int> frameCounters = pSeq->getFrameCounters();
-//                detectionGroundtruths[s].getFrameSegmentationResults(frameCounters, detectionPositions, matches, rejections, frameErrors);
-//                visualizeSegmentations(frames, matches, rejections, 0.02, 3);
+//                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
+//                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-//                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]) );
-//                tg.add_thread(pThread);
-//                actives.push_back(pThread);
+                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]), boost::ref(detectionsPositions) );
+                tg.add_thread(pThread);
+                actives.push_back(pThread);
                 // ---------------------------------------
             
                 f++;
             }
             // -----------------------
-//            if (tg.size() > 0)
-//            {
-//                std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames() % numOfThreads)) << "," << f << ") in seq " << s << " .. ";
-//
-//                tg.join_all();
-//                
-//                for (int t = 0; t < actives.size(); t++)
-//                    tg.remove_thread(actives[t]);
-//                actives.clear();
-//                
-//                std::cout << t.elapsed() << " secs." << std::endl;
-//            }
+            if (tg.size() > 0)
+            {
+                std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames() % numOfThreads)) << "," << f << ") in seq " << s << " .. ";
+
+                tg.join_all();
+                
+                for (int t = 0; t < actives.size(); t++)
+                {
+                    tg.remove_thread(actives[t]);
+                    actives[t]->interrupt();
+                    delete actives[t];
+                }
+                actives.clear();
+                
+                std::cout << t.elapsed() << " secs." << std::endl;
+            }
             // -----------------------
         }
     }
