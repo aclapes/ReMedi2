@@ -23,7 +23,7 @@
 #define OBJECTLABELS_SUBDIR                 "ObjectLabels/"
 #define OBJECTMODELS_SUBDIR                 "ObjectModels/"
 
-#define NUM_OF_SUBJECTS                     15 // LOSOCV
+#define NUM_OF_SUBJECTS                     14 // LOSOCV
 
 #define NUM_OF_VIEWS                        2
 #define DELAYS_FILENAME                     "delays.txt"

@@ -27,8 +27,6 @@ using namespace boost::assign;
 // Background subtraction validation and performance
 int loadBackgroundSubtractionValidationFile(string filePath, cv::Mat& combinations, vector<cv::Mat>& overlaps);
 void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr > sequences, vector< vector<double> > parameters, vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename, cv::Mat& combinations, std::vector<cv::Mat>& overlaps);
-void summarizeBackgroundSubtractionValidation(cv::Mat combinations, vector<cv::Mat> overlaps, cv::Mat& means, cv::Mat& stddevs);
-//void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename);
-//void getBsParametersPerformance(cv::Mat overlaps, cv::Mat& means, cv::Mat& stddevs);
+void summarizeBackgroundSubtractionValidation(vector<Sequence<Frame>::Ptr> foregroundMasksSequences, std::vector<int> subjectsIds, cv::Mat combinations, vector<cv::Mat> overlaps, std::vector<cv::Mat>& summaries); // summary for each view
 
 #endif /* defined(__remedi2__bgsubtraction_validation__) */

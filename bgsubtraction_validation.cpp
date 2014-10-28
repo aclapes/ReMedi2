@@ -206,103 +206,40 @@ void validateBackgroundSubtraction(ReMedi::Ptr pSys, vector<Sequence<ColorDepthF
         boost::filesystem::remove(fileBakPath);
 }
 
-void summarizeBackgroundSubtractionValidation(cv::Mat combinations, vector<cv::Mat> overlaps, cv::Mat& means, cv::Mat& stddevs)
+void summarizeBackgroundSubtractionValidation(vector<Sequence<Frame>::Ptr> foregroundMasksSequences, std::vector<int> subjectsIds, cv::Mat combinations, vector<cv::Mat> overlaps, std::vector<cv::Mat>& summaries)
 {
     assert (combinations.rows == overlaps.size());
     
-    means.create(overlaps.size(), overlaps[0].rows, cv::DataType<float>::type);
-    stddevs.create(overlaps.size(), overlaps[0].rows, cv::DataType<float>::type);
-    for (int c = 0; c < overlaps.size(); c++)
+    summaries.clear();
+    
+    for (int v = 0; v < NUM_OF_VIEWS; v++)
     {
-        assert (overlaps[0].rows == overlaps[c].rows);
-        for (int v = 0; v < overlaps[c].rows; v++)
+        // A matrix per view. Each matrix has as many rows as combinations, and
+        // as many columns as #{sequences} x #{foreground masks in each sequence}.
+        // In other words is a concenation of the v-th rows of "overlaps" matrices
+        cv::Mat overlapsView (overlaps.size(), overlaps[0].cols, overlaps[0].type());
+        for (int i = 0; i < overlaps.size(); i++)
         {
-            cv::Scalar m, s;
-            cv::meanStdDev(overlaps[c].row(v), m, s);
-            means.at<float>(c,v) = m.val[0];
-            stddevs.at<float>(c,v) = s.val[0];
+            assert (overlaps[i].cols == overlaps[0].cols);
+            
+            overlaps[i].row(v).copyTo(overlapsView.row(i));
         }
+        
+        // Reduce the columns of the same sequence, averaging them in one
+        // This results to as many colums as sequences. These are the mean overlap
+        // in each sequence;
+        
+        cv::Mat overlapsViewSeqsSmry (overlaps.size(), foregroundMasksSequences.size(), overlapsView.type());
+        
+        int seqstart = 0;
+        for (int i = 0; i < foregroundMasksSequences.size(); i++)
+        {
+            cv::Mat roi (overlapsView, cv::Rect(seqstart, 0, foregroundMasksSequences[i]->getMinNumOfFrames(), overlapsView.rows));
+            cv::reduce(roi, overlapsViewSeqsSmry.col(i), 1, CV_REDUCE_AVG);
+            
+            seqstart += foregroundMasksSequences[i]->getMinNumOfFrames();
+        }
+        
+        summaries.push_back(overlapsViewSeqsSmry);
     }
-}
-
-void showBsParametersPerformance(vector<Sequence<Frame>::Ptr> fgMasksSequences, string path, string filename)
-{
-    //    cv::Mat combinations, overlaps;
-    //
-    //    cv::FileStorage fs;
-    //    fs.open(path + filename, cv::FileStorage::READ);
-    //    fs["combinations"] >> combinations;
-    //    fs["overlaps"] >> overlaps;
-    //    fs.release();
-    //
-    //    int numOfFrames = overlaps.cols / m_pBgSeq->getNumOfViews();
-    //    for (int v = 0; v < m_pBgSeq->getNumOfViews(); v++)
-    //    {
-    //        cv::Rect roi (v * numOfFrames, 0, numOfFrames, combinations.rows);
-    //        cv::Mat overlapsView (overlaps, roi);
-    //
-    //        cv::Mat overlapAvgView;
-    //        cv::reduce(overlapsView, overlapAvgView, 1, CV_REDUCE_AVG);
-    //
-    //        cv::Mat I;
-    //        cv::sortIdx(overlapAvgView, I, cv::SORT_EVERY_COLUMN | cv::SORT_DESCENDING);
-    //
-    //        int best = 10;
-    //        for (int i = 0; i < best; i++)
-    //        {
-    //            int idx = I.at<int>(0,i);
-    //            cout << i << "/" << best << combinations.row(idx) << "\t" << overlapAvgView.row(idx) << endl;
-    //
-    //            for (int s = 3; s < 4 /*fgMasksSequences.size()*/; s++)
-    //            {
-    //                string seqPath = path + to_str(s+1) + "/";
-    //                string maskPath = seqPath + "ForegroundMasks" + to_str(v+1) + "/";
-    //
-    //                Sequence<Frame>::Ptr pFgGtSeq = fgMasksSequences[s];
-    //                pFgGtSeq->restart();
-    //                //while (pFgGtSeq->hasNextFrames())
-    //                //{
-    //                vector<Frame::Ptr> frames = pFgGtSeq->nextFrames();
-    //                vector<string> filenames = pFgGtSeq->getFramesFilenames();
-    //
-    //                cout << v << " " << i << " " << s << " " << filenames[v] << endl;
-    //
-    //                string filename = filenames[v] + "-"; // then concantenated with params combination
-    //                filename += to_string_with_precision(combinations.at<double>(idx,0), 4);
-    //                for (int p = 1; p < combinations.cols; p++)
-    //                    filename += "_" + to_string_with_precision(combinations.at<double>(idx,p), 4);
-    //
-    //                cv::Mat maskedPrediction;
-    //                maskedPrediction = cv::imread(maskPath + filename + ".png", CV_LOAD_IMAGE_ANYCOLOR | CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_UNCHANGED);
-    //
-    //                cv::imshow("loaded", maskedPrediction);
-    //                cv::waitKey(0);
-    //                //}
-    //            }
-    //        }
-    //        cout << endl;
-    //    }
-    //    cout << endl;
-}
-
-void getBsParametersPerformance(cv::Mat overlaps, cv::Mat& means, cv::Mat& stddevs)
-{
-    //        BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBs = pSys->getBackgroundSubtractor();
-    //    means.create(overlaps.rows, m_pBgSeq->getNumOfViews(), cv::DataType<float>::type);
-    //    stddevs.create(overlaps.rows, m_pBgSeq->getNumOfViews(), cv::DataType<float>::type);
-    //
-    //    int numOfFrames = overlaps.cols / m_pBgSeq->getNumOfViews();
-    //    for (int v = 0; v < m_pBgSeq->getNumOfViews(); v++)
-    //    {
-    //        cv::Rect roi (v * numOfFrames, 0, numOfFrames, overlaps.rows);
-    //        cv::Mat overlapsView (overlaps, roi);
-    //
-    //        for (int i = 0; i < overlaps.rows; i++)
-    //        {
-    //            cv::Scalar m, s;
-    //            cv::meanStdDev(overlapsView.row(i), m, s);
-    //            means.at<float>(i,v) = m.val[0];
-    //            stddevs.at<float>(i,v) = s.val[0];
-    //        }
-    //    }
 }

@@ -26,6 +26,10 @@ using namespace boost::assign;
 
 #include <pcl/console/parse.h>
 
+// Global variables
+
+int g_NumOfThreads = NUM_OF_THREADS;
+
 // Declarations
 
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
@@ -33,6 +37,74 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
 int validation();
 
 // Implementations
+
+void f(vector<cv::Mat> performances, std::vector<int> subjectsIds, cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat& means, cv::Mat& stddevs)
+{
+    cv::Mat fcombinations;
+    expandParameters<double>(parameters, fcombinations);
+    
+    means.create(fcombinations.rows, NUM_OF_VIEWS, cv::DataType<float>::type);
+    stddevs.create(fcombinations.rows, NUM_OF_VIEWS, cv::DataType<float>::type);
+    
+    for (int v = 0; v < NUM_OF_VIEWS; v++)
+    {
+        // Performances at sequence level
+        cv::Mat perfsViewSeqsSmry = performances[v];
+        
+        // Summarize even more: sequence level to subject level
+        cv::Mat perfsViewSbjsSmry (perfsViewSeqsSmry.rows, NUM_OF_SUBJECTS, perfsViewSeqsSmry.type());
+        int sbjstart = 0;
+        int sbjId = 0;
+        for (int i = 0; i < perfsViewSeqsSmry.cols; i++) // iterate the sequences
+        {
+            if (sbjId != subjectsIds[i])
+            {
+                cv::Mat roi (perfsViewSeqsSmry, cv::Rect(sbjstart, 0, (i - sbjstart), perfsViewSeqsSmry.rows));
+                cv::reduce(roi, perfsViewSbjsSmry.col(sbjId), 1, CV_REDUCE_AVG); // average sequences of same subject
+                
+                sbjstart = i;
+                sbjId++;
+            }
+        }
+        
+        // The rest of the work: to use all but one subject to estimate the best combination,
+        // and finally test it in that one subject
+        
+        for (int c = 0; c < fcombinations.rows; c++)
+        {
+            cv::Mat mask (combinations.rows, 1, cv::DataType<uchar>::type, cv::Scalar(255));
+            cv::Mat aux;
+            for (int p = 0; p < fcombinations.cols; p++)
+            {
+                aux = ( combinations.col(indices[p]) == fcombinations.at<double>(c,p) );
+                mask &= aux;
+            }
+            
+            cv::Mat perfsSubjects (NUM_OF_SUBJECTS, 1, cv::DataType<float>::type);
+            
+            for (int i = 0; i < NUM_OF_SUBJECTS; i++)
+            {
+                // Tricky piece of code: the mean of combinations' perfs except the subject ones,
+                // is got by summing all of them, minus the subject ones, divided by the cardinality
+                // of subjects-1
+                cv::Mat sum;
+                cv::reduce(perfsViewSbjsSmry, sum, 1, CV_REDUCE_SUM);
+                cv::Mat sumExceptSbj = (sum - perfsViewSbjsSmry.col(i)) / (NUM_OF_SUBJECTS - 1);
+                
+                double minVal, maxVal;
+                cv::Point minIdx, maxIdx;
+                cv::minMaxLoc(sumExceptSbj, &minVal, &maxVal, &minIdx, &maxIdx, mask);
+                
+                perfsSubjects.at<float>(i,0) = perfsViewSbjsSmry.at<float>(maxIdx.y,i);
+            }
+            
+            cv::Scalar mean, stddev;
+            cv::meanStdDev(perfsSubjects, mean, stddev);
+            means.at<float>(c,v) = mean.val[0];
+            stddevs.at<float>(c,v) = stddev.val[0];
+        }
+    }
+}
 
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize)
 {
@@ -103,7 +175,7 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
     }
 }
 
-int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
+int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
 {
     vector<string> colorDirNames, depthDirNames;
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
@@ -218,14 +290,25 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
 //    validateBackgroundSubtraction(sys, sequences, bsParameters, foregroundMasksSequences, "bs-mog2_results/", "bs_validation.yml", bsCombinations, bsOverlaps);
     loadBackgroundSubtractionValidationFile("Results/bs-mog2_results/bs_validation.yml", bsCombinations, bsOverlaps);
     
-    cv::Mat bsMeans, bsStddevs;
-    summarizeBackgroundSubtractionValidation(bsCombinations, bsOverlaps, bsMeans, bsStddevs);
-
     vector<vector<double> > filterParameters;
     filterParameters += modalities; // we do not want the best global result, but the best for each modality
     vector<int> filterIndices;
     filterIndices += 0; // modality is the 0-th parameter in "combinations"
-    showValidationSummary(bsCombinations, filterParameters, filterIndices, bsMeans, bsStddevs);
+    
+    std::vector<cv::Mat> bsPerformanceSummaries;
+    summarizeBackgroundSubtractionValidation(foregroundMasksSequences, sequencesSids, bsCombinations, bsOverlaps, bsPerformanceSummaries);
+    
+    cv::Mat bsMeans, bsStddevs;
+    f(bsPerformanceSummaries, sequencesSids, bsCombinations, filterParameters, filterIndices, bsMeans, bsStddevs);
+    
+    std::cout << bsMeans << std::endl;
+    std::cout << bsStddevs << std::endl;
+
+//    vector<vector<double> > filterParameters;
+//    filterParameters += modalities; // we do not want the best global result, but the best for each modality
+//    vector<int> filterIndices;
+//    filterIndices += 0; // modality is the 0-th parameter in "combinations"
+//    showValidationSummary(bsCombinations, filterParameters, filterIndices, bsMeans, bsStddevs);
 
     // *---------------------------------------------*
     // | Validation of ObjectDetector (segmentation) |
@@ -304,7 +387,7 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
     getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, numOfThreads);
+    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads);
 //    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
 
     vector<vector<double> > mntrRcgnParameters;
@@ -322,9 +405,8 @@ int validation(int numOfThreads, std::vector<int> rcgnCombsIndices, std::vector<
 
 int main(int argc, char** argv)
 {
-    int numOfThreads = NUM_OF_THREADS;
     if (pcl::console::find_argument(argc, argv, "-T") > 0)
-        pcl::console::parse(argc, argv, "-T", numOfThreads);
+        pcl::console::parse(argc, argv, "-T", g_NumOfThreads); // global variable modified
     
     std::string rcgnModalitiesStr;
     pcl::console::parse(argc, argv, "-Rm", rcgnModalitiesStr);
@@ -343,5 +425,5 @@ int main(int argc, char** argv)
     for (it = rcgnSequencesStrL.begin(); it != rcgnSequencesStrL.end(); it++)
         rcgnSequences.push_back( stoi(*it) );
     
-    return validation(numOfThreads, rcgnModalities, rcgnSequences);
+    return validation(rcgnModalities, rcgnSequences);
 }

@@ -344,12 +344,15 @@ void ReMedi::loadSequences(std::string parent, std::vector<std::string>& names, 
                 
                 std::vector<string> nameStrL;
                 boost::split(nameStrL, nameStr, boost::is_any_of("_"));
-                if (nameStrL[1] != sid)
+                if (nameStrL[1] != "bs")
                 {
-                    i++;
-                    sid = nameStrL[1];
+                    if (nameStrL[1] != sid)
+                    {
+                        i++;
+                        sid = nameStrL[1];
+                    }
+                    indices.push_back(i);
                 }
-                indices.push_back(i);
             }
         }
     }
