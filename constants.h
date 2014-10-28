@@ -9,8 +9,6 @@
 #ifndef remedi2_constants_h
 #define remedi2_constants_h
 
-#define NUM_OF_THREADS                      4
-
 // KinectReader's constants
 #ifdef __APPLE__
 #define PARENT_PATH                         "../../../Data/"
@@ -18,10 +16,14 @@
 #define PARENT_PATH                         "../../Data/"
 #endif
 
+#define NUM_OF_THREADS                      4
+
 #define SEQUENCES_SUBDIR                    "Sequences/"
 #define KINECT_SUBSUBDIR                    "Kinects/"
 #define OBJECTLABELS_SUBDIR                 "ObjectLabels/"
 #define OBJECTMODELS_SUBDIR                 "ObjectModels/"
+
+#define NUM_OF_SUBJECTS                     15 // LOSOCV
 
 #define NUM_OF_VIEWS                        2
 #define DELAYS_FILENAME                     "delays.txt"
