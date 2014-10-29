@@ -422,8 +422,6 @@ void ReMedi::loadObjectModels(const char* path, const char* pcdDir, vector<strin
             {
                 if ( !boost::filesystem::is_directory( *iter ) && iter->path().extension().string().compare(".pcd") == 0)
                 {
-                    stringstream ss;
-                    
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr object (new pcl::PointCloud<pcl::PointXYZRGB>);
                     reader.read( iter->path().string(), *object );
                     

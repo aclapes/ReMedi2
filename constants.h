@@ -83,8 +83,8 @@
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
 
 // ... recognition-related ones (computed in an independent dataset)
-#define OR_OBJECTS_NAMES                    "dish, pillbox, book, tetrabrick,  cup"
-#define OR_OBJECTS_REJECTIONS               "   0,       0,    0,          0,    0" //"0.85,    0.80, 0.85,        0.8, 0.75"
+#define OR_OBJECTS_NAMES                    "dish,pillbox,book,tetrabrick,cup"
+#define OR_OBJECTS_REJECTIONS               "0,0,0,0,0" //"0.85,0.80,0.85,0.8,0.75"
 
 #define OR_PFHDESC_LEAFSIZE                 0.01
 #define OR_PFHDESC_MODEL_LEAFSIZE           0.01

@@ -337,7 +337,7 @@ public:
                 }
             }
             
-            scores[v] = (inliers > 0) ? (scoreAcc / inliers) : 0.f; // do not count on rejections
+            scores[v] = ((inliers > 0) ? (scoreAcc / inliers) : 0.f); // do not count on rejections
         }
     }
     
@@ -393,49 +393,44 @@ protected:
     void getMinimumDistancesToDescription(DescriptionPtr pDescription, vector<float>& distances)
     {
         // Structure to not re-match against a model point
-        vector<vector<bool> > matches;
-        matches.resize(m_ViewsDescriptions.size());
-		for (int i = 0; i < matches.size(); i++)
-			matches[i].resize(m_ViewsDescriptions[i]->points.size(), false);
+        vector<vector<bool> > matches (m_ViewsDescriptions.size());
+		for (int v = 0; v < m_ViewsDescriptions.size(); v++)
+			matches[v].resize(m_ViewsDescriptions[v]->points.size(), false);
         
         // Count the positive matches to each model
-        vector<int> numOfMatches;
-        numOfMatches.resize(m_ViewsDescriptions.size());
+        vector<int> numOfMatches (m_ViewsDescriptions.size(), 0);
         
-        distances.resize(pDescription->size(), std::numeric_limits<float>::max());
-        
-        for (int i = 0; i < pDescription->size(); i++)
+        distances.resize(pDescription->size());
+        for (int i = 0; i < pDescription->size(); i++) // test view
 		{
-            float minVal = std::numeric_limits<float>::max();
-            int minViewIdx;
-            int minPointIdx;
+            float minDistVal = std::numeric_limits<float>::max();
+            int minDistViewIdx;
+            int minDistPointIdx;
             
-            for (int v = 0; v < m_ViewsDescriptions.size(); v++)
+            for (int v = 0; v < m_ViewsDescriptions.size(); v++) // views of the model
 			{
-                DescriptionPtr pViewDescription = m_ViewsDescriptions[v];
-                
-                // No points left to be matched in the view, no need to check
-                if (numOfMatches[v] < pViewDescription->size())
+                // No points left to be matched in this model view, no need to go further with it
+                if (numOfMatches[v] < m_ViewsDescriptions[v]->size())
                 {
-                    for (int j = 0; j < pViewDescription->size(); j++)
+                    for (int j = 0; j < m_ViewsDescriptions[v]->size(); j++)
                     {
-//                        float dist = euclideanDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
-//                        float dist = chisquareDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
-                        float dist = battacharyyaDistanceSignatures( pDescription->points[i], pViewDescription->points[j]);
+//                        float dist = euclideanDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
+//                        float dist = chisquareDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
+                        float dist = battacharyyaDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
                         
-                        if (dist < minVal)
+                        if (dist < minDistVal)
                         {
-                            minVal = dist;
-                            minViewIdx  = v;
-                            minPointIdx = j;
+                            minDistViewIdx  = v;
+                            minDistPointIdx = j;
+                            minDistVal = dist;
                         }
                     }
                 }
             }
             
-            distances[i] = minVal;
-            matches[minViewIdx][minPointIdx];
-            numOfMatches[minViewIdx]++;
+            distances[i] = minDistVal;
+            matches[minDistViewIdx][minDistPointIdx] = true;
+            numOfMatches[minDistViewIdx] ++;
         }
     }
     
