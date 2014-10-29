@@ -321,7 +321,7 @@ void loadMonitorizationSegmentationValidationFile2(string filePath, cv::Mat& com
 //}
 
 // Faster version
-void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, cv::Mat& combinations, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
+void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, vector<int> seqsIndices, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, cv::Mat& combinations, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
     pSys->initialize();
     
@@ -330,8 +330,8 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
     // Some consistency checks
     // -------------------------------------------------
     int numOfViews = pBgSeq->getNumOfViews();
-    for (int s = 0; s < sequences.size(); s++)
-        assert (numOfViews == sequences[s]->getNumOfViews());
+    for (int k = 0; k < seqsIndices.size(); k++)
+        assert (numOfViews == sequences[seqsIndices[k]]->getNumOfViews());
     // -------------------------------------------------
     
     cv::Mat mntrCombinations;
@@ -358,10 +358,12 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             errors.resize(combinations.rows);
             for (int i = 0; i < combinations.rows; i++)
             {
-                errors[i].resize(sequences.size());
-                for (int s = 0; s < sequences.size(); s++)
+                errors[i].resize(seqsIndices.size());
+                for (int k = 0; k < seqsIndices.size(); k++)
                 {
-                    errors[i][s].create(sequences[s]->getNumOfViews(), sequences[s]->getMinNumOfFrames(), CV_32SC3);
+                    errors[i][k].create(sequences[seqsIndices[k]]->getNumOfViews(),
+                                        sequences[seqsIndices[k]]->getMinNumOfFrames(),
+                                        CV_32SC3);
                 }
             }
         }
@@ -396,19 +398,21 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             errors.resize(offset + pendingCombinations.rows);
             for (int i = 0; i < offset + pendingCombinations.rows; i++)
             {
-                errors[i].resize(sequences.size());
-                for (int s = 0; s < sequences.size(); s++)
+                errors[i].resize(seqsIndices.size());
+                for (int k = 0; k < seqsIndices.size(); k++)
                 {
-                    errors[i][s].create(sequences[s]->getNumOfViews(), sequences[s]->getMinNumOfFrames(), CV_32SC3);
+                    errors[i][k].create(sequences[seqsIndices[k]]->getNumOfViews(),
+                                        sequences[seqsIndices[k]]->getMinNumOfFrames(),
+                                        CV_32SC3);
                 }
             }
             
-            for (int i = 0; i < offset; i++) for (int s = 0; s < sequences.size(); s++)
+            for (int i = 0; i < offset; i++) for (int k = 0; k < sequences.size(); k++)
             {
-                errors[i][s] = errorsTmp[i][s];
+                errors[i][k] = errorsTmp[i][k];
                 
-                string id = "combination_" + to_str(i) + "-" + to_str(s);
-                fs << id << errorsTmp[i][s];
+                string id = "combination_" + to_str(i) + "-" + to_str(seqsIndices[k]);
+                fs << id << errorsTmp[i][k];
             }
             
             fs.release();
@@ -448,15 +452,17 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
         
         // Calculate the errors
         
-        for (int s = 0; s < sequences.size(); s++)
+        for (int k = 0; k < seqsIndices.size(); k++)
         {
-            Sequence<ColorDepthFrame>::Ptr pSeq = sequences[s];
+            Sequence<ColorDepthFrame>::Ptr pSeq = sequences[seqsIndices[k]];
             
             int f = 0;
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
                 boost::timer t;
+                cout << "Processing frame " << f << " in seq " << seqsIndices[k] << " .. ";
+                
                 vector<ColorDepthFrame::Ptr> frames = pSeq->nextFrames();
                 
                 pSys->getRegisterer()->setInputFrames(frames);
@@ -494,20 +500,20 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
                         pObjectDetector->getDetectionPositions(detectionPositions);
                     }
                     
-                    detectionGroundtruths[s].setTolerance(combinations.at<double>(i,bsCombinations.cols + 3));
+                    detectionGroundtruths[seqsIndices[k]].setTolerance(combinations.at<double>(i,bsCombinations.cols + 3));
                     
                     vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
                     cv::Mat frameErrors;
-                    detectionGroundtruths[s].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
+                    detectionGroundtruths[seqsIndices[k]].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
                     
                     if (bQualitativeEvaluation)
                         visualizeSegmentations(frames, matches, rejections, 0.02, 3);
                     else
-                        frameErrors.copyTo(errors[i+offset][s].col(f));
+                        frameErrors.copyTo(errors[i+offset][k].col(f));
                 }
                 
                 f++;
-                cout << "Processing the frame took " << t.elapsed() << " secs." << endl;
+                std::cout << t.elapsed() << " secs." << std::endl;
             }
         }
     }
@@ -516,10 +522,10 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
     {
         cv::FileStorage fs;
         fs.open(path + filename, cv::FileStorage::APPEND);
-        for (int i = 0; i < combinations.rows; i++) for (int s = 0; s < sequences.size(); s++)
+        for (int i = 0; i < combinations.rows; i++) for (int k = 0; k < seqsIndices.size(); k++)
         {
-            string id = "combination_" + to_str(i+offset) + "-" + to_str(s);
-            fs << id << errors[i+offset][s];
+            string id = "combination_" + to_str(i+offset) + "-" + to_str(seqsIndices[k]);
+            fs << id << errors[i+offset][k];
         }
         fs.release();
         
@@ -527,6 +533,41 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
         boost::filesystem::path fileBakPath (path + filePath.stem().string() + ".bak" + filePath.extension().string());
         if (boost::filesystem::exists(fileBakPath))
             boost::filesystem::remove(fileBakPath);
+    }
+}
+
+void summarizeMonitorizationSegmentationValidation2(std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<cv::Mat> > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), std::vector<cv::Mat>& scoresSummaries, std::vector<cv::Mat>& errorsSummaries)
+{
+    assert( combinations.rows == errors.size() );
+    
+    scoresSummaries.clear();
+    errorsSummaries.clear();
+    
+    for (int v = 0; v < NUM_OF_VIEWS; v++)
+    {
+        // Summarize the sequences' errors
+        cv::Mat errorsViewSeqsSmry (errors.size(), sequences.size(), CV_32SC3, cv::Scalar(0,0,0));
+
+        for (int i = 0; i < errors.size(); i++)
+        {
+            assert ( errors[i].size() == sequences.size() );
+            for (int j = 0; j < errors[i].size(); j++)
+            {
+                cv::Mat seqerrors = errors[i][j].row(v);
+                for (int k = 0; k < seqerrors.cols; k++)
+                    errorsViewSeqsSmry.at<cv::Vec3i>(i,j) += seqerrors.at<cv::Vec3i>(0,k);
+            }
+        }
+                
+        // Get summarized F-scores from summaries of sequences' errors
+        vector<cv::Mat> errorChannels;
+        cv::split(errorsViewSeqsSmry, errorChannels);
+        
+        cv::Mat scoresViewSeqsSmry;
+        (*f)(errorChannels[0], errorChannels[1], errorChannels[2], scoresViewSeqsSmry);
+        
+        errorsSummaries.push_back(errorsViewSeqsSmry);
+        scoresSummaries.push_back(scoresViewSeqsSmry);
     }
 }
 

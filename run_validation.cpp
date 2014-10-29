@@ -33,7 +33,7 @@ int g_NumOfThreads = NUM_OF_THREADS;
 // Declarations
 
 void showValidationSummary(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, cv::Mat meanScores, cv::Mat sdScores, bool bMinimize = false);
-void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, int k, cv::Mat scores, cv::Mat& bestCombinations, bool bMinimize = false);
+void getBestCombinations(cv::Mat combinations, std::vector<cv::Mat> performances, vector<vector<double> > parameters, vector<int> indices, int k, cv::Mat& bestCombinations, bool bMinimize = false);
 int validation();
 
 // Implementations
@@ -144,10 +144,23 @@ void showValidationSummary(cv::Mat combinations, vector<vector<double> > paramet
     }
 }
 
-void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameters, vector<int> indices, int k, cv::Mat scores, cv::Mat& bestCombinations, bool bMinimize)
+void getBestCombinations(cv::Mat combinations, std::vector<cv::Mat> performances, vector<vector<double> > parameters, vector<int> indices, int k, cv::Mat& bestCombinations, bool bMinimize)
 {
-    cv::Mat means;
-    cvx::harmonicMean(scores, means, 1);
+    cv::Mat performancesViews (performances[0].rows, performances.size(), cv::DataType<float>::type);
+    for (int v = 0; v < performances.size(); v++)
+        cv::reduce(performances[v], performancesViews.col(v), 1, CV_REDUCE_AVG);
+    
+    cv::Mat performancesHMean;
+    cvx::harmonicMean(performancesViews, performancesHMean, 1);
+    
+    // DEBUG: print
+    // ------------------------------------------
+//    cv::Mat aux;
+//    cv::Mat combinationsTmp;
+//    combinations.convertTo(combinationsTmp, performancesHMean.type());
+//    cv::hconcat(combinationsTmp, performancesHMean, aux);
+//    std::cout << aux << std::endl;
+    // ------------------------------------------
     
     cv::Mat fcombinations;
     expandParameters<double>(parameters, fcombinations);
@@ -165,7 +178,7 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
         
         cv::Mat indexedCombinations, indexedMeans;
         cvx::indexMat(combinations, indexedCombinations, mask);
-        cvx::indexMat(means, indexedMeans, mask);
+        cvx::indexMat(performancesHMean, indexedMeans, mask);
         
         cv::Mat I;
         cv::sortIdx( indexedMeans, I, (bMinimize ? CV_SORT_ASCENDING : CV_SORT_DESCENDING) | CV_SORT_EVERY_COLUMN );
@@ -175,7 +188,7 @@ void getBestCombinations(cv::Mat combinations, vector<vector<double> > parameter
     }
 }
 
-int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndices)
+int validation(std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndices)
 {
     vector<string> colorDirNames, depthDirNames;
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
@@ -303,12 +316,11 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     
     std::cout << bsMeans << std::endl;
     std::cout << bsStddevs << std::endl;
-
-//    vector<vector<double> > filterParameters;
-//    filterParameters += modalities; // we do not want the best global result, but the best for each modality
-//    vector<int> filterIndices;
-//    filterIndices += 0; // modality is the 0-th parameter in "combinations"
-//    showValidationSummary(bsCombinations, filterParameters, filterIndices, bsMeans, bsStddevs);
+    
+    cv::Mat bsBestCombinations;
+    getBestCombinations(bsCombinations, bsPerformanceSummaries, filterParameters, filterIndices, 1, bsBestCombinations);
+    
+    std::cout << bsBestCombinations << std::endl;
 
     // *---------------------------------------------*
     // | Validation of ObjectDetector (segmentation) |
@@ -332,28 +344,33 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     detecionTolerances += 0.05, 0.10, 0.15, 0.20;
     mntrParameters += leafSizes, clusterIntradists, minClusterSizes, detecionTolerances;
     
-    cv::Mat bsBestCombinations;
-    getBestCombinations(bsCombinations, filterParameters, filterIndices, 1, bsMeans, bsBestCombinations);
-    
     cv::Mat sgmtCombinations;
     vector<vector<cv::Mat> > sgmtErrors;
-//    validateMonitorizationSegmentation2(sys, sequences, bsBestCombinations, mntrParameters, detectionGroundtruths, "sgmt_results/", "sgmt_validation.yml", sgmtCombinations, sgmtErrors, false);
+//    validateMonitorizationSegmentation2(pSys, sequences, seqsIndices, bsBestCombinations, mntrParameters, detectionGroundtruths, "Results/sgmt_results/", "sgmt_validation.yml", sgmtCombinations, sgmtErrors, false);
     loadMonitorizationSegmentationValidationFile2("Results/sgmt_results/sgmt_validation.yml", sgmtCombinations, sgmtErrors);
 
-    cv::Mat sgmtMeans, sgmtStddevs;
-    summarizeMonitorizationSegmentationValidation(sgmtCombinations, sgmtErrors, computeF1Score, sgmtMeans, sgmtStddevs);
+    std::vector<cv::Mat> sgmtPerformanceSummaries, sgmtErrorsSummaries; // F-scores, errors (TP,FN,FP)
+    summarizeMonitorizationSegmentationValidation2(sequences, sgmtCombinations, sgmtErrors, computeF1Score, sgmtPerformanceSummaries, sgmtErrorsSummaries);
 
     filterParameters += detecionTolerances;
     filterIndices += (bsParameters.size() + mntrParameters.size() - 1);
-    showValidationSummary(sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
+
+//    showValidationSummary(sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
+    cv::Mat sgmtMeans, sgmtStddevs;
+    f(sgmtPerformanceSummaries, sequencesSids, sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
     
+    std::cout << sgmtMeans << std::endl;
+    std::cout << sgmtStddevs << std::endl;
+
     cv::Mat sgmtBestCombinations;
-    getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
+    getBestCombinations(sgmtCombinations, sgmtPerformanceSummaries, filterParameters, filterIndices, 1, sgmtBestCombinations);
     
     // *------------------------*
     // | Recognition validation |
     // *------------------------*
     
+    std::cout << "Validation of ObjectRecognizer (object recognition)" << std::endl;
+
     // Load objects models
     
     std::string modelsPath = std::string(PARENT_PATH) + std::string(OBJECTMODELS_SUBDIR);
@@ -382,23 +399,31 @@ int validation(std::vector<int> rcgnCombsIndices, std::vector<int> rcgnSeqsIndic
     pSys->setObjectRecognizerParameters(objectsModels, objectsRejections, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
     pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS, OR_POINT_REJECTION_THRESH);
 
-    
     filterParameters[1] = std::vector<double>(1, 0.15); // 0.15 m
-    getBestCombinations(sgmtCombinations, filterParameters, filterIndices, 1, sgmtMeans, sgmtBestCombinations);
+    f(sgmtPerformanceSummaries, sequencesSids, sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
+    
+    std::cout << sgmtMeans << std::endl;
+    std::cout << sgmtStddevs << std::endl;
+    
+    getBestCombinations(sgmtCombinations, sgmtPerformanceSummaries, filterParameters, filterIndices, 1, sgmtBestCombinations);
+    
+    std::cout << sgmtBestCombinations << std::endl;
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads);
-//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnCombsIndices, rcgnSeqsIndices, scoreds);
+//    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads);
+    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnModalitiesIndices, seqsIndices, scoreds);
 
     vector<vector<double> > mntrRcgnParameters;
     vector<double> rcgnStrategies;
     rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
+    vector<double> rcgnConsensus;
+    rcgnStrategies += (double) RECOGNITION_INTERVIEW_AVG, (double) RECOGNITION_INTERVIEW_DISTWEIGHTED;
     vector<double> rcgnTempCoherences;
     rcgnTempCoherences += 0, 1, 2, 3;
     mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
     
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-//    validateMonitorizationRecognition(pSys, sequences, rcgnSeqsIndices, sgmtBestCombinations, rcgnCombsIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, false);
+    validateMonitorizationRecognition(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, false);
     
     return 0;
 }
@@ -408,22 +433,31 @@ int main(int argc, char** argv)
     if (pcl::console::find_argument(argc, argv, "-T") > 0)
         pcl::console::parse(argc, argv, "-T", g_NumOfThreads); // global variable modified
     
-    std::string rcgnModalitiesStr;
-    pcl::console::parse(argc, argv, "-Rm", rcgnModalitiesStr);
+    std::vector<int> rcgnModalitiesIndices;
+    if (pcl::console::find_argument(argc, argv, "-Rm") > 0)
+    {
+        std::string rcgnModalitiesIndicesStr;
+        pcl::console::parse(argc, argv, "-Rm", rcgnModalitiesIndicesStr);
     
-    std::string rcgnSequencesStr;
-    pcl::console::parse(argc, argv, "-Rs", rcgnSequencesStr);
+        std::vector<std::string> rcgnModalitiesIndicesStrL;
+        boost::split(rcgnModalitiesIndicesStrL, rcgnModalitiesIndicesStr, boost::is_any_of(","));
 
-    std::vector<std::string> rcgnModalitiesStrL, rcgnSequencesStrL;
-    boost::split(rcgnModalitiesStrL, rcgnModalitiesStr, boost::is_any_of(","));
-    boost::split(rcgnSequencesStrL, rcgnSequencesStr, boost::is_any_of(","));
+        for (std::vector<std::string>::iterator it = rcgnModalitiesIndicesStrL.begin(); it != rcgnModalitiesIndicesStrL.end(); it++)
+            rcgnModalitiesIndices.push_back( stoi(*it) );
+    }
     
-    std::vector<int> rcgnModalities, rcgnSequences;
-    std::vector<std::string>::iterator it;
-    for (it = rcgnModalitiesStrL.begin(); it != rcgnModalitiesStrL.end(); it++)
-        rcgnModalities.push_back( stoi(*it) );
-    for (it = rcgnSequencesStrL.begin(); it != rcgnSequencesStrL.end(); it++)
-        rcgnSequences.push_back( stoi(*it) );
+    std::vector<int> sequencesIndices;
+    if (pcl::console::find_argument(argc, argv, "-Rs") > 0)
+    {
+        std::string sequencesIndicesStr;
+        pcl::console::parse(argc, argv, "-Rs", sequencesIndicesStr);
+
+        std::vector<std::string> rcgnModalitiesIndicesStrL, sequencesIndicesStrL;
+        boost::split(sequencesIndicesStrL, sequencesIndicesStr, boost::is_any_of(","));
+        
+        for (std::vector<std::string>::iterator it = sequencesIndicesStrL.begin(); it != sequencesIndicesStrL.end(); it++)
+            sequencesIndices.push_back( stoi(*it) );
+    }
     
-    return validation(rcgnModalities, rcgnSequences);
+    return validation(rcgnModalitiesIndices, sequencesIndices);
 }

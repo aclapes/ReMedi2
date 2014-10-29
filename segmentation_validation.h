@@ -28,8 +28,10 @@ using namespace boost::assign;
 //void loadMonitorizationSegmentationValidationFile(std::string filePath, cv::Mat& bsCombinations, cv::Mat& mntrCombinations, vector<vector<vector<cv::Mat> > >& errors);
 void loadMonitorizationSegmentationValidationFile2(std::string filePath, cv::Mat& combinations, vector<vector<cv::Mat> >& errors);
 //void validateMonitorizationSegmentation(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, cv::Mat& combinations, vector<vector<vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);
-void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, cv::Mat& combinations, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation = false);
+void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, vector<int> seqsIndices, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, cv::Mat& combinations, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation = false);
 void summarizeMonitorizationSegmentationValidation(cv::Mat combinations, vector<vector<cv::Mat> > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), cv::Mat& meanScores, cv::Mat& sdScores);
+void summarizeMonitorizationSegmentationValidation2(std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, vector<vector<cv::Mat> > errors, void (*f)(cv::Mat, cv::Mat, cv::Mat, cv::Mat&), std::vector<cv::Mat>& scoresSummaries, std::vector<cv::Mat>& errorsSummaries);
+
 
 void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > rejections, float markersRadius, float lineWidth);
 
