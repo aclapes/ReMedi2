@@ -452,16 +452,16 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
 
 void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat sgmtCombinations, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
-    cv::Mat rcgnCombinationsTmp;
-    expandParameters<double>(rcgnParameters, rcgnCombinationsTmp);
+    cv::Mat rcgnCombinations;
+    expandParameters<double>(rcgnParameters, rcgnCombinations);
     
-    cv::Mat rcgnCombinations; // #{sgmt combs} * #{rcgn combs}
-    cvx::combine(sgmtCombinations, rcgnCombinationsTmp, 1, rcgnCombinations);
+    cv::Mat combinations; // #{sgmt combs} * #{rcgn combs}
+    cvx::combine(sgmtCombinations, rcgnCombinations, 1, combinations);
     
     if (!bQualitativeEvaluation)
     {
-        errors.resize(rcgnCombinations.rows); // recognition combinations
-        for (int i = 0; i < rcgnCombinations.rows; i++)
+        errors.resize(combinations.rows);
+        for (int i = 0; i < combinations.rows; i++)
         {
             errors[i].resize(seqsIndices.size()); // sequences (indexed)
             for (int j = 0; j < seqsIndices.size(); j++)
@@ -475,16 +475,14 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoredsAux = scoreds; // debug
     
-    for (int i = 0; i < rcgnCombinations.rows; i++)
+    for (int i = 0; i < combinations.rows; i++)
     {
-        cv::Mat rcgnCombination = rcgnCombinations.row(i);
-        
         for (int j = 0; j < seqsIndices.size(); j++)
         {
             int sid = seqsIndices[j];
             
             Sequence<ColorDepthFrame>::Ptr pSeq = sequences[sid];
-            detectionGroundtruths[sid].setTolerance(rcgnCombinations.at<double>(i, sgmtCombinations.cols-1)); // TODO: check detec gt var index, instead of 9
+            detectionGroundtruths[sid].setTolerance(combinations.at<double>(i, sgmtCombinations.cols-1)); // TODO: check detec gt var index, instead of 9
             
             int f = 0;
             
@@ -505,13 +503,15 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                 if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
                 {
                     ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
-                    orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,0));
-                    orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
+                    orc.setRecognitionStrategy(combinations.at<double>(i, sgmtCombinations.cols + 0));
+                    orc.setRecognitionConsensus(combinations.at<double>(i, sgmtCombinations.cols + 1));
                     orc.recognize(vids, positions, scores, recognitions);
                 }
                 else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)
                 {
                     ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
+                    orc.setRecognitionStrategy(combinations.at<double>(i, sgmtCombinations.cols + 0));
+                    orc.setRecognitionConsensus(combinations.at<double>(i, sgmtCombinations.cols + 1));
                     orc.recognize(vids, positions, scores, recognitions);
                 }
                 
@@ -539,22 +539,16 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
         cv::FileStorage fs;
         fs.open(path + filename, cv::FileStorage::WRITE);
         fs << "seqs_indices" << seqsIndices;
+        fs << "sgmt_combinations" << sgmtCombinations;
         fs << "rcgn_combinations" << rcgnCombinations;
-        fs << "bs-sgmt_combinations" << combinations;
-        fs << "bs-sgmt_indices" << combsIndices;
+        fs << "combinations" << combinations;
         
-        for (int i = 0; i < rcgnCombinations.rows; i++)
+        for (int i = 0; i < combinations.rows; i++) for (int k = 0; k < seqsIndices.size(); k++)
         {
-            for (int j = 0; j < combsIndices.size(); j++)
-            {
-                for (int k = 0; k < seqsIndices.size(); k++)
-                {
-                    string id = "combination_" + to_str(i) + "-" + to_str(combsIndices[j]) + "-" + to_str(seqsIndices[k]);
-                    // errors[i][j][k] is a #{NUM_OF_VIEWS} x #{number of frames in sequence 'seqsIndices[k]'}
-                    // mat with 3-channels, representing TP,FN,FP.
-                    fs << id << errors[i][j][k];
-                }
-            }
+            string id = "combination_" + to_str(i) + "-" + to_str(seqsIndices[k]);
+            // errors[i][k] is a #{NUM_OF_VIEWS} x #{number of frames in sequence 'seqsIndices[k]'}
+            // mat with 3-channels, representing TP,FN,FP.
+            fs << id << errors[i][k];
         }
         fs.release();
     }
