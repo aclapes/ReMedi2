@@ -70,8 +70,11 @@ public:
 //    void getFrameRecognitionResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
     void getFrameObjectRecognitionResults(vector<pcl::PointXYZ> groundtruth, vector<pcl::PointXYZ> recognitions, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& correspondences, vector<pair<pcl::PointXYZ, pcl::PointXYZ> >& rejections, int& tp, int& fn, int& fp);
     
+    void getRecognitionGroundtruth(vector<int> indices, vector<vector<vector< pcl::PointXYZ > > > recognitions, vector<vector<vector< int > > >& groundtruth);
+    
 private:
     float distance(pcl::PointXYZ p1, pcl::PointXYZ p2);
+    void getDetectionsGroundtruth(vector<pcl::PointXYZ> predictions, vector<vector<pcl::PointXYZ> > groundtruth, vector<int>& matchedgts);
     
 //    void getSegmentationFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);
 //    void getRecognitionFrameResults(vector<vector<pcl::PointXYZ> > groundtruth, vector<vector<pcl::PointXYZ> > predictions, int& tp, int& fn, int& fp);

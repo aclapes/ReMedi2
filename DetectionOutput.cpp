@@ -805,3 +805,100 @@ void DetectionOutput::getFrameObjectRecognitionResults(vector<pcl::PointXYZ> gro
     
     return;
 }
+
+void DetectionOutput::getDetectionsGroundtruth(vector<pcl::PointXYZ> predictions, vector<vector<pcl::PointXYZ> > groundtruth, vector<int>& matchedgts)
+{
+    matchedgts.clear();
+    matchedgts.resize(predictions.size(), 0);
+    
+    vector<vector<float> > distances;
+    vector<pair<int,pcl::PointXYZ> > srlgroundtruth; // easier to index later
+    
+    for (int o = 0; o < groundtruth.size(); o++) for (int i = 0; i < groundtruth[o].size(); i++)
+        srlgroundtruth.push_back(pair<int,pcl::PointXYZ>(o,groundtruth[o][i]));
+    
+    distances.resize(predictions.size());
+    for (int k = 0; k < predictions.size(); k++)
+    {
+        distances[k].resize(srlgroundtruth.size());
+        for (int o = 0; o < srlgroundtruth.size(); o++)
+            distances[k][o] = distance(predictions[k],srlgroundtruth[o].second);
+    }
+    
+    cv::Mat D;
+    cvx::convert<float>(distances, D);
+    
+    if (!D.empty())
+    {
+        cv::Mat M (D.size(), CV_8U, cv::Scalar(0)); // matches
+        cv::Mat A = M.clone(); // assignations
+        
+        bool bRemain = true;
+        for (int i = 0; i < D.rows && i < D.cols && bRemain; i++)
+        {
+            double minVal, maxVal;
+            cv::Point minIdx, maxIdx;
+            cv::minMaxLoc(D, &minVal, &maxVal, &minIdx, &maxIdx, ~A);
+            
+            if (minIdx.x == -1 && minIdx.y == -1)
+            {
+                bRemain = false;
+            }
+            else
+            {
+                M.at<uchar>(minIdx.y, minIdx.x) = 255;
+                A.col(minIdx.x) = 255;
+                A.row(minIdx.y) = 255;
+            }
+        }
+        
+        // Get the matches indices
+        std::vector<cv::Point> matchesIndices;
+        cv::findNonZero(M, matchesIndices);
+        
+        // and determine which are the ones below the threshold
+        cv::Mat d (D <= m_Tol);
+        
+        for (int i = 0; i < matchesIndices.size(); i++)
+            if ( d.at<uchar>(matchesIndices[i].y, matchesIndices[i].x) )
+                matchedgts[matchesIndices[i].y] = srlgroundtruth[matchesIndices[i].x].first;
+    }
+    
+    return;
+}
+
+
+void DetectionOutput::getRecognitionGroundtruth(vector<int> indices, vector<vector<vector< pcl::PointXYZ > > > recognitionsOF, vector<vector<vector< int > > >& groundtruthOF)
+{
+    groundtruthOF.resize(recognitionsOF.size());
+    for (int v = 0; v < recognitionsOF.size(); v++)
+    {
+        groundtruthOF[v].resize(recognitionsOF[v].size());
+        for (int o = 0; o < recognitionsOF[v].size(); o++)
+            groundtruthOF[v][o].resize(recognitionsOF[v][o].size(), 0);
+    }
+    
+    for (int v = 0; v < indices.size(); v++)
+    {
+        vector< pair<int,int> > srlcoordinates;
+        vector< pcl::PointXYZ > srlrecognitions;
+        for (int o = 0; o < recognitionsOF[v].size(); o++) for (int i = 0; i < recognitionsOF[v][o].size(); i++)
+        {
+            srlcoordinates.push_back(pair<int,int>(o,i));
+            srlrecognitions.push_back(recognitionsOF[v][o][i]);
+        }
+        
+        vector<vector<pcl::PointXYZ> > annotations = m_Positions[v][indices[v]];
+        
+        vector<int> g;
+        getDetectionsGroundtruth(srlrecognitions, annotations, g);
+        
+        assert (srlrecognitions.size() == g.size());
+        
+        for (int i = 0; i < g.size(); i++)
+        {
+            groundtruthOF[v][srlcoordinates[i].first][srlcoordinates[i].second] = g[i];
+        }
+    }
+}
+
