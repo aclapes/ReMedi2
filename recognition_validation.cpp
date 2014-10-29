@@ -457,13 +457,13 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     
     if (!bQualitativeEvaluation)
     {
-        errors.resize(rcgnCombinations.rows);
+        errors.resize(rcgnCombinations.rows); // recognition combinations
         for (int i = 0; i < rcgnCombinations.rows; i++)
         {
-            errors[i].resize(combsIndices.size());
+            errors[i].resize(combsIndices.size()); // inherited combinations (indexed)
             for (int j = 0; j < combsIndices.size(); j++)
             {
-                errors[i][j].resize(seqsIndices.size());
+                errors[i][j].resize(seqsIndices.size()); // sequences (indexed)
                 for (int k = 0; k < seqsIndices.size(); k++)
                 {
                     errors[i][j][k] = cv::Mat(sequences[seqsIndices[k]]->getNumOfViews(),
@@ -473,6 +473,8 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
             }
         }
     }
+    
+    std::vector<std::vector<std::vector<ScoredDetections> > > scoredsAux = scoreds; // debug
     
     for (int i = 0; i < rcgnCombinations.rows; i++)
     {
@@ -507,6 +509,8 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                     if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
                     {
                         ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
+                        orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,0));
+                        orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
                         orc.recognize(vids, positions, scores, recognitions);
                     }
                     else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)

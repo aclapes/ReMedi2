@@ -46,6 +46,8 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
         m_PointScoreRejectionThreshold = rhs.m_PointScoreRejectionThreshold;
 
         m_RecognitionStrategy = rhs.m_RecognitionStrategy;
+        m_RecognitionConsensus = rhs.m_RecognitionConsensus;
+        
         m_CloudjectModels = rhs.m_CloudjectModels;
         
         m_CloudjectDetections = rhs.m_CloudjectDetections;
@@ -70,6 +72,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
     m_PointScoreRejectionThreshold = rhs.getPointScoreRejectionThreshold();
     
     m_RecognitionStrategy = rhs.getRecognitionStrategy();
+    m_RecognitionConsensus = rhs.getRecognitionConsensus();
     
     return *this;
 }
@@ -204,6 +207,16 @@ int ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getRecognitionStra
     return m_RecognitionStrategy;
 }
 
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setRecognitionConsensus(int consensus)
+{
+    m_RecognitionConsensus = consensus;
+}
+
+int ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::getRecognitionConsensus() const
+{
+    return m_RecognitionConsensus;
+}
+
 float ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values)
 {
     if (m_RecognitionStrategy == 0)
@@ -315,44 +328,60 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(std::ve
 {
     recognitions.clear();
     recognitions.resize(NUM_OF_VIEWS, std::vector<std::vector<pcl::PointXYZ> >(OD_NUM_OF_OBJECTS + 1));
-    
+
     int ni = vids.size(); // num of instances
     for (int i = 0; i < ni; i++)
     {
-        std::vector<float> scoresAccs (OD_NUM_OF_OBJECTS, 0.f);
-        float wAcc = 0.f;
+        int nv = vids[i].size(); // num of views
         
-        int nj = vids[i].size(); // num of views
-        for (int j = 0; j < nj; j++)
-        {
-            float w = 1.f / sqrtf(powf(positions[i][j].x,2) + powf(positions[i][j].y,2) + powf(positions[i][j].z,2));
-            
-            for (int m = 0; m < scores[i][j].size(); m++)
-                scoresAccs[m] += (scores[i][j][m] * (m_RecognitionStrategy == RECOGNITION_MONOCULAR ? 1 : w));
-            
-            wAcc += w;
-        }
+        // If multiocular consensus, first consensuate the scores and overwrite the individual scores
         
-        int maxIdx   = -1;
-        float maxVal =  0;
-        for (int m = 0; m < scoresAccs.size(); m++)
+        if (m_RecognitionStrategy == RECOGNITION_MULTIOCULAR)
         {
-            scoresAccs[m] /= (m_RecognitionStrategy == RECOGNITION_MONOCULAR ? nj : wAcc);
+            // Accmulate weighted scores for each model
+            std::vector<float> scoresAccs (OD_NUM_OF_OBJECTS, 0.f); // [#{models} x 1]
+            float wAcc = 0.f; // keep the weight accumulation (for normalization)
             
-            if (scoresAccs[m] > m_ObjectRejections[m] && scoresAccs[m] > maxVal)
+            for (int j = 0; j < nv; j++)
             {
-                maxIdx = m;
-                maxVal = scoresAccs[m];
-            }
+                float w = 1.f / sqrtf(powf(positions[i][j].x,2) + powf(positions[i][j].y,2) + powf(positions[i][j].z,2));
+                
+                for (int m = 0; m < scores[i][j].size(); m++)
+                    scoresAccs[m] += (scores[i][j][m] * (m_RecognitionStrategy == RECOGNITION_INTERVIEW_AVG ? 1 : w));
+                    
+                    wAcc += w;
+                    }
+            
+            // Normalize the accumulated weighted scores
+            for (int m = 0; m < scoresAccs.size(); m++)
+                scoresAccs[m] /= (m_RecognitionStrategy == RECOGNITION_INTERVIEW_AVG ? nv : wAcc);
+                
+                // Overwrite the individual scores
+                for (int j = 0; j < nv; j++) for (int m = 0; m < scoresAccs.size(); m++)
+                {
+                    scores[i][j][m] = scoresAccs[m];
+                }
         }
         
-        for (int j = 0; j < nj; j++)
+        // Perform independently of the strategy/consenus
+        
+        for (int j = 0; j < nv; j++)
         {
+            int maxIdx   = -1;
+            float maxVal =  0;
+            for (int m = 0; m < scores[i][j].size(); m++)
+            {
+                if (scores[i][j][m] >= m_ObjectRejections[m] && scores[i][j][m] > maxVal)
+                {
+                    maxIdx = m;
+                    maxVal = scores[i][j][m];
+                }
+            }
+            
             recognitions[vids[i][j]][maxIdx+1].push_back(positions[i][j]);
         }
     }
 }
-
 
 //
 // <ColorPointT, PFHRGBSignatureT>
@@ -388,6 +417,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
         m_PfhRadiusModel = rhs.m_PfhRadiusModel;
         
         m_RecognitionStrategy = rhs.m_RecognitionStrategy;
+        m_RecognitionConsensus = rhs.m_RecognitionConsensus;
         
         m_CloudjectModels = rhs.m_CloudjectModels;
         
@@ -413,6 +443,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
     m_PointScoreRejectionThreshold = rhs.getPointScoreRejectionThreshold();
     
     m_RecognitionStrategy = rhs.getRecognitionStrategy();
+    m_RecognitionConsensus = rhs.getRecognitionConsensus();
     
     return *this;
 }
@@ -545,6 +576,16 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setRecognition
 int ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getRecognitionStrategy() const
 {
     return m_RecognitionStrategy;
+}
+
+void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setRecognitionConsensus(int consensus)
+{
+    m_RecognitionConsensus = consensus;
+}
+
+int ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getRecognitionConsensus() const
+{
+    return m_RecognitionConsensus;
 }
 
 float ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::interviewConsensus(std::vector<pcl::PointXYZ> positions, std::vector<float> values)
@@ -695,35 +736,52 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(std:
     int ni = vids.size(); // num of instances
     for (int i = 0; i < ni; i++)
     {
-        std::vector<float> scoresAccs (OD_NUM_OF_OBJECTS, 0.f);
-        float wAcc = 0.f;
+        int nv = vids[i].size(); // num of views
         
-        int nj = vids[i].size(); // num of views
-        for (int j = 0; j < nj; j++)
-        {
-            float w = 1.f / sqrtf(powf(positions[i][j].x,2) + powf(positions[i][j].y,2) + powf(positions[i][j].z,2));
-            
-            for (int m = 0; m < scores[i][j].size(); m++)
-                scoresAccs[m] += (scores[i][j][m] * (m_RecognitionStrategy == RECOGNITION_MONOCULAR ? 1 : w));
-            
-            wAcc += w;
-        }
+        // If multiocular consensus, first consensuate the scores and overwrite the individual scores
         
-        int maxIdx   = -1;
-        float maxVal =  0;
-        for (int m = 0; m < scoresAccs.size(); m++)
+        if (m_RecognitionStrategy == RECOGNITION_MULTIOCULAR)
         {
-            scoresAccs[m] /= (m_RecognitionStrategy == RECOGNITION_MONOCULAR ? nj : wAcc);
+            // Accmulate weighted scores for each model
+            std::vector<float> scoresAccs (OD_NUM_OF_OBJECTS, 0.f); // [#{models} x 1]
+            float wAcc = 0.f; // keep the weight accumulation (for normalization)
             
-            if (scoresAccs[m] >= m_ObjectRejections[m] && scoresAccs[m] > maxVal)
+            for (int j = 0; j < nv; j++)
             {
-                maxIdx = m;
-                maxVal = scoresAccs[m];
+                float w = 1.f / sqrtf(powf(positions[i][j].x,2) + powf(positions[i][j].y,2) + powf(positions[i][j].z,2));
+                
+                for (int m = 0; m < scores[i][j].size(); m++)
+                    scoresAccs[m] += (scores[i][j][m] * (m_RecognitionStrategy == RECOGNITION_INTERVIEW_AVG ? 1 : w));
+                
+                wAcc += w;
+            }
+            
+            // Normalize the accumulated weighted scores
+            for (int m = 0; m < scoresAccs.size(); m++)
+                scoresAccs[m] /= (m_RecognitionStrategy == RECOGNITION_INTERVIEW_AVG ? nv : wAcc);
+            
+            // Overwrite the individual scores
+            for (int j = 0; j < nv; j++) for (int m = 0; m < scoresAccs.size(); m++)
+            {
+                scores[i][j][m] = scoresAccs[m];
             }
         }
         
-        for (int j = 0; j < nj; j++)
+        // Perform independently of the strategy/consenus
+        
+        for (int j = 0; j < nv; j++)
         {
+            int maxIdx   = -1;
+            float maxVal =  0;
+            for (int m = 0; m < scores[i][j].size(); m++)
+            {
+                if (scores[i][j][m] >= m_ObjectRejections[m] && scores[i][j][m] > maxVal)
+                {
+                    maxIdx = m;
+                    maxVal = scores[i][j][m];
+                }
+            }
+            
             recognitions[vids[i][j]][maxIdx+1].push_back(positions[i][j]);
         }
     }

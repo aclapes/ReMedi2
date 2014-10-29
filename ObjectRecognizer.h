@@ -69,6 +69,8 @@ public:
     
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
+    void setRecognitionConsensus(int consensus);
+    int getRecognitionConsensus() const;
     
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
@@ -94,6 +96,7 @@ private:
     float m_PointScoreRejectionThreshold;
     
     int m_RecognitionStrategy;
+    int m_RecognitionConsensus;
     
     vector<LFCloudject<ColorPointT,FPFHSignatureT>::Ptr> m_CloudjectDetections;
 };
@@ -140,6 +143,8 @@ public:
     
     void setRecognitionStrategy(int strategy);
     int getRecognitionStrategy() const;
+    void setRecognitionConsensus(int consensus);
+    int getRecognitionConsensus() const;
 
     void getScores(vector<vector<int> >& vids, vector<vector<pcl::PointXYZ> >& positions, vector<vector<vector<float> > >& scores);
     void recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions);
@@ -165,6 +170,7 @@ private:
     float m_PointScoreRejectionThreshold;
     
     int m_RecognitionStrategy;
+    int m_RecognitionConsensus;
 
     vector<LFCloudject<ColorPointT,PFHRGBSignatureT>::Ptr> m_CloudjectDetections;
 };
