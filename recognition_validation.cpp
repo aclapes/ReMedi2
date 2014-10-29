@@ -450,26 +450,25 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
     }
 }
 
-void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation)
+void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat sgmtCombinations, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
-    cv::Mat rcgnCombinations;
-    expandParameters<double>(rcgnParameters, rcgnCombinations);
+    cv::Mat rcgnCombinationsTmp;
+    expandParameters<double>(rcgnParameters, rcgnCombinationsTmp);
+    
+    cv::Mat rcgnCombinations; // #{sgmt combs} * #{rcgn combs}
+    cvx::combine(sgmtCombinations, rcgnCombinationsTmp, 1, rcgnCombinations);
     
     if (!bQualitativeEvaluation)
     {
         errors.resize(rcgnCombinations.rows); // recognition combinations
         for (int i = 0; i < rcgnCombinations.rows; i++)
         {
-            errors[i].resize(combsIndices.size()); // inherited combinations (indexed)
-            for (int j = 0; j < combsIndices.size(); j++)
+            errors[i].resize(seqsIndices.size()); // sequences (indexed)
+            for (int j = 0; j < seqsIndices.size(); j++)
             {
-                errors[i][j].resize(seqsIndices.size()); // sequences (indexed)
-                for (int k = 0; k < seqsIndices.size(); k++)
-                {
-                    errors[i][j][k] = cv::Mat(sequences[seqsIndices[k]]->getNumOfViews(),
-                                              sequences[seqsIndices[k]]->getMinNumOfFrames(),
-                                              CV_32SC3, cv::Scalar(0));
-                }
+                errors[i][j] = cv::Mat(sequences[seqsIndices[j]]->getNumOfViews(),
+                                          sequences[seqsIndices[j]]->getMinNumOfFrames(),
+                                          CV_32SC3, cv::Scalar(0));
             }
         }
     }
@@ -480,61 +479,57 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     {
         cv::Mat rcgnCombination = rcgnCombinations.row(i);
         
-        for (int j = 0; j < combsIndices.size(); j++)
+        for (int j = 0; j < seqsIndices.size(); j++)
         {
-            int cid = combsIndices[j];
-            for (int k = 0; k < seqsIndices.size(); k++)
+            int sid = seqsIndices[j];
+            
+            Sequence<ColorDepthFrame>::Ptr pSeq = sequences[sid];
+            detectionGroundtruths[sid].setTolerance(rcgnCombinations.at<double>(i, sgmtCombinations.cols-1)); // TODO: check detec gt var index, instead of 9
+            
+            int f = 0;
+            
+            pSeq->restart();
+            while (pSeq->hasNextFrames())
             {
-                int sid = seqsIndices[k];
+                pSeq->next();
                 
-                Sequence<ColorDepthFrame>::Ptr pSeq = sequences[sid];
-                detectionGroundtruths[sid].setTolerance(combinations.at<double>(cid, combinations.cols-1)); // TODO: check detec gt var index, instead of 9
+                std::vector<std::vector< int > > vids;
+                std::vector<std::vector< pcl::PointXYZ > > positions;
+                std::vector<std::vector< std::vector<float> > > scores;
+
+                scoreds[i/sgmtCombinations.rows][j][f].get(vids, positions, scores);
+
+                std::vector<std::vector<std::vector<pcl::PointXYZ> > > recognitions;
                 
-                int f = 0;
-                
-                pSeq->restart();
-                while (pSeq->hasNextFrames())
+                void* recognizer = pSys->getObjectRecognizer();
+                if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
                 {
-                    pSeq->next();
-                    
-                    std::vector<std::vector< int > > vids;
-                    std::vector<std::vector< pcl::PointXYZ > > positions;
-                    std::vector<std::vector< std::vector<float> > > scores;
-
-                    scoreds[j][k][f].get(vids, positions, scores);
-
-                    std::vector<std::vector<std::vector<pcl::PointXYZ> > > recognitions;
-                    
-                    void* recognizer = pSys->getObjectRecognizer();
-                    if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
-                    {
-                        ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
-                        orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,0));
-                        orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
-                        orc.recognize(vids, positions, scores, recognitions);
-                    }
-                    else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)
-                    {
-                        ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
-                        orc.recognize(vids, positions, scores, recognitions);
-                    }
-                    
-                    vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
-                    cv::Mat frameErrors;
-                    detectionGroundtruths[sid].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
-                    
-                    if (bQualitativeEvaluation)
-                    {
-                        vector<ColorDepthFrame::Ptr> frames = pSeq->getFrames(f);
-                        visualizeRecognitions(frames, matches, rejections, 0.02, 3);
-                    }
-                    else
-                    {
-                        frameErrors.copyTo(errors[i][j][sid].col(f));
-                    }
-                    
-                    f++;
+                    ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
+                    orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,0));
+                    orc.setRecognitionStrategy(rcgnCombinations.at<double>(i,1));
+                    orc.recognize(vids, positions, scores, recognitions);
                 }
+                else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)
+                {
+                    ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
+                    orc.recognize(vids, positions, scores, recognitions);
+                }
+                
+                vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
+                cv::Mat frameErrors;
+                detectionGroundtruths[sid].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitions, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
+                
+                if (bQualitativeEvaluation)
+                {
+                    vector<ColorDepthFrame::Ptr> frames = pSeq->getFrames(f);
+                    visualizeRecognitions(frames, matches, rejections, 0.02, 3);
+                }
+                else
+                {
+                    frameErrors.copyTo(errors[i][j].col(f));
+                }
+                
+                f++;
             }
         }
     }

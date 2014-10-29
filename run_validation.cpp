@@ -423,7 +423,7 @@ int validation(std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndi
     mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
     
     vector<vector<vector<cv::Mat> > > mntrRcgnErrors;
-    validateMonitorizationRecognition(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices,  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, true);
+    validateMonitorizationRecognition(pSys, sequences, seqsIndices, sgmtBestCombinations.row(2),  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, true);
     
     return 0;
 }
