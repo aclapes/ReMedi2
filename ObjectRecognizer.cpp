@@ -83,7 +83,9 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setInputObjectMod
 {
     m_ObjectModels = models;
     
+    m_CloudjectModels.clear();
     m_CloudjectModels.resize(models.size());
+    
     for (int m = 0; m < models.size(); m++)
     {
         int oid = models[m]->getID();
@@ -201,7 +203,9 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::create()
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections)
 {
+    m_CloudjectDetections.clear();
     m_CloudjectDetections.resize(detections.size());
+    
     for (int i = 0; i < detections.size(); i++)
     {
         LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::FPFHSignature33>( detections[i]) );
@@ -340,6 +344,7 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>::recognize(std::ve
 {
     recognitionsOF.clear();
     scoresOF.clear();
+    
     recognitionsOF.resize(NUM_OF_VIEWS, std::vector<std::vector<pcl::PointXYZ> >(OD_NUM_OF_OBJECTS + 1));
     scoresOF.resize(NUM_OF_VIEWS, std::vector<std::vector<std::vector<float> > >(OD_NUM_OF_OBJECTS + 1));
     
@@ -469,7 +474,9 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setInputObject
 {
     m_ObjectModels = models;
     
+    m_CloudjectModels.clear();
     m_CloudjectModels.resize(models.size());
+    
     for (int m = 0; m < models.size(); m++)
     {
         int oid = models[m]->getID();
@@ -587,7 +594,9 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::create()
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::setInputDetections(vector<vector<pair<int,ColorPointCloud::Ptr> > > detections)
 {
+    m_CloudjectDetections.clear();
     m_CloudjectDetections.resize(detections.size());
+    
     for (int i = 0; i < detections.size(); i++)
     {
         LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::Ptr pCloudject ( new LFCloudject<pcl::PointXYZRGB, pcl::PFHRGBSignature250>( detections[i]) );
@@ -740,8 +749,8 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vect
     // Cloudjects to output format
     
     recognitions.clear();
-    
     recognitions.resize(NUM_OF_VIEWS);
+    
     for (int v = 0; v < recognitions.size(); v++)
         recognitions[v].resize(OD_NUM_OF_OBJECTS + 1);
     
@@ -760,6 +769,7 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(std:
 {
     recognitionsOF.clear();
     scoresOF.clear();
+    
     recognitionsOF.resize(NUM_OF_VIEWS, std::vector<std::vector<pcl::PointXYZ> >(OD_NUM_OF_OBJECTS + 1));
     scoresOF.resize(NUM_OF_VIEWS, std::vector<std::vector<std::vector<float> > >(OD_NUM_OF_OBJECTS + 1));
 

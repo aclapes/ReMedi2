@@ -155,6 +155,7 @@ void TableModeler::maskTabletop(vector<DepthFrame::Ptr>& frames)
 
 void TableModeler::getTabletopMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& tops)
 {
+    tops.clear();
     tops.resize(frames.size());
     for (int v = 0; v < frames.size(); v++)
         getTabletopMask(frames[v], tops[v]);
@@ -162,6 +163,7 @@ void TableModeler::getTabletopMask(vector<DepthFrame::Ptr> frames, vector<cv::Ma
 
 void TableModeler::getTabletopMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& tops)
 {
+    tops.clear();
     tops.resize(frames.size());
     for (int v = 0; v < frames.size(); v++)
         getTabletopMask(frames[v], tops[v]);
@@ -236,6 +238,7 @@ void TableModeler::maskInteraction(vector<DepthFrame::Ptr>& frames)
 
 void TableModeler::getInteractionMask(vector<DepthFrame::Ptr> frames, vector<cv::Mat>& interactions)
 {
+    interactions.clear();
     interactions.resize(frames.size());
     for (int v = 0; v < frames.size(); v++)
         getInteractionMask(frames[v], interactions[v]);
@@ -243,6 +246,7 @@ void TableModeler::getInteractionMask(vector<DepthFrame::Ptr> frames, vector<cv:
 
 void TableModeler::getInteractionMask(vector<ColorDepthFrame::Ptr> frames, vector<cv::Mat>& interactions)
 {
+    interactions.clear();
     interactions.resize(frames.size());
     for (int v = 0; v < frames.size(); v++)
         getInteractionMask(frames[v], interactions[v]);

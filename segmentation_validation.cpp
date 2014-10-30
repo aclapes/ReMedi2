@@ -355,6 +355,7 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             fs << "combinations" << combinations;
             fs.release();
             
+            errors.clear();
             errors.resize(combinations.rows);
             for (int i = 0; i < combinations.rows; i++)
             {
@@ -395,6 +396,7 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             }
             
             // Data structures
+            errors.clear();
             errors.resize(offset + pendingCombinations.rows);
             for (int i = 0; i < offset + pendingCombinations.rows; i++)
             {

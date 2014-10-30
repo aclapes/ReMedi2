@@ -807,6 +807,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>::model()
 {
     if (m_bRecompute)
     {
+        m_Subtractors.clear();
         m_Subtractors.resize(m_pSeq->getNumOfViews());
         for (int v = 0; v < m_pSeq->getNumOfViews(); v++)
         {
@@ -844,6 +845,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>::model()
 
 void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorFrame>::subtract(vector<cv::Mat>& fgMasks)
 {
+    fgMasks.clear();
     fgMasks.resize(m_InputFrames.size());
 	for (int v = 0; v < m_InputFrames.size(); v++)
         subtract(m_Subtractors[v], m_InputFrames[v], fgMasks[v]);
@@ -917,6 +919,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>::model()
 {
     if (m_bRecompute)
     {
+        m_Subtractors.clear();
         m_Subtractors.resize(m_pSeq->getNumOfViews());
         for (int v = 0; v < m_pSeq->getNumOfViews(); v++)
         {
@@ -951,6 +954,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>::model()
 
 void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, DepthFrame>::subtract(vector<cv::Mat>& fgMasks)
 {
+    fgMasks.clear();
     fgMasks.resize(m_InputFrames.size());
 	for (int v = 0; v < m_InputFrames.size(); v++)
         subtract(m_Subtractors[v], m_InputFrames[v], fgMasks[v]);
@@ -1156,6 +1160,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::_model
 {
     if (m_bRecompute)
     {
+        m_Subtractors.clear();
         m_Subtractors.resize(m_pSeq->getNumOfViews());
         for (int v = 0; v < m_pSeq->getNumOfViews(); v++)
         {
@@ -1202,6 +1207,7 @@ void BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::subtra
     }
     else if ( m_Modality == 3 )
     {
+        fgMasks.clear();
         fgMasks.resize(m_InputFrames.size());
         for (int v = 0; v < m_InputFrames.size(); v++)
             subtract( m_Subtractors[v], m_InputFrames[v], fgMasks[v] );

@@ -352,7 +352,7 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
     fs.release();
     
     // Data structures
-    
+    scoreds.clear();
     scoreds.resize(combsIndices.size());
     for (int i = 0; i < combsIndices.size(); i++)
     {
@@ -500,6 +500,7 @@ void trainObjectRejectionThresholds(std::vector<std::vector<float> > S,
     rjtValues.pop_back(); // value == 1 is a non-sense
     
     // Find the best threshold for each model. As many models as columns of Sm
+    bestRjtValues.clear();
     bestRjtValues.resize(Sm.cols);
     for (int i = 0; i < Sm.cols; i++)
     {
@@ -530,6 +531,7 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     
     if (!bQualitativeEvaluation)
     {
+        errors.clear();
         errors.resize(combinations.rows);
         for (int c = 0; c < combinations.rows; c++)
         {
@@ -609,6 +611,16 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                             G.push_back(groundtruthOF[v][o][i]);
                         }
                     }
+                }
+                
+                vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
+                cv::Mat frameErrors;
+                detectionGroundtruths[sid].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitionsOF, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
+
+                if (bQualitativeEvaluation)
+                {
+                  vector<ColorDepthFrame::Ptr> frames = pSeq->getFrames(f);
+                  visualizeRecognitions(frames, matches, rejections, 0.02, 3);
                 }
                 
                 f++;

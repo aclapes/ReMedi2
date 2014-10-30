@@ -360,6 +360,7 @@ void ReMedi::loadSequences(std::string parent, std::vector<std::string>& names, 
 
 void ReMedi::loadDirPaths(string parent, vector<string> seqNames, string subdir, vector<string> viewsDirs, vector< vector<string> >& paths)
 {
+    paths.clear();
  	paths.resize(seqNames.size());
     for (int s = 0; s < seqNames.size(); s++)
     {
@@ -405,6 +406,8 @@ void ReMedi::loadDelaysFile(string parent, string filename, vector<vector<int> >
 void ReMedi::loadObjectModels(const char* path, const char* pcdDir, vector<string> modelsNames,
                      vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >& views)
 {
+    views.clear();
+    
     pcl::PCDReader reader; // to read pcd files containing point clouds
     
     views.resize(modelsNames.size());

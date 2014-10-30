@@ -93,8 +93,13 @@ void DetectionOutput::setPositions(vector<vector<vector<vector<pcl::PointXYZ > >
     
     // Set important variables
     m_NumOfViews = m_Positions.size();
+    
+    m_NumOfFrames.clear();
+    m_Annotations.clear();
+
     m_NumOfFrames.resize(m_NumOfViews);
     m_Annotations.resize(m_NumOfViews);
+    
     for (int v = 0; v < m_NumOfViews; v++)
     {
         m_NumOfFrames[v] = m_Positions[v].size();
@@ -457,9 +462,13 @@ void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<ve
 
 void DetectionOutput::getFrameSegmentationResults(vector<int> indices, vector<vector<pcl::PointXYZ> > predictions, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& matches, vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > >& rejections, cv::Mat& errors)
 {
+    matches.clear();
+    rejections.clear();
+    
     matches.resize(indices.size());
     rejections.resize(indices.size());
     errors.create(indices.size(), 1, CV_32SC(3));
+    errors.setTo(0);
     
     for (int v = 0; v < indices.size(); v++)
     {
@@ -692,8 +701,12 @@ void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vec
 
 void DetectionOutput::getFrameRecognitionResults(vector<int> indices, vector<vector<vector<pcl::PointXYZ> > >recognitions, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > >& rejections, cv::Mat& errors)
 {
+    matches.clear();
+    rejections.clear();
+    
     matches.resize(indices.size());
     rejections.resize(indices.size());
+    
     errors.create(indices.size(), 1, CV_32SC(3));
     errors.setTo(0);
     
@@ -811,13 +824,12 @@ void DetectionOutput::getDetectionsGroundtruth(vector<pcl::PointXYZ> predictions
     matchedgts.clear();
     matchedgts.resize(predictions.size(), 0);
     
-    vector<vector<float> > distances;
     vector<pair<int,pcl::PointXYZ> > srlgroundtruth; // easier to index later
     
     for (int o = 0; o < groundtruth.size(); o++) for (int i = 0; i < groundtruth[o].size(); i++)
         srlgroundtruth.push_back(pair<int,pcl::PointXYZ>(o,groundtruth[o][i]));
     
-    distances.resize(predictions.size());
+    vector<vector<float> > distances (predictions.size());
     for (int k = 0; k < predictions.size(); k++)
     {
         distances[k].resize(srlgroundtruth.size());
@@ -870,6 +882,8 @@ void DetectionOutput::getDetectionsGroundtruth(vector<pcl::PointXYZ> predictions
 
 void DetectionOutput::getRecognitionGroundtruth(vector<int> indices, vector<vector<vector< pcl::PointXYZ > > > recognitionsOF, vector<vector<vector< int > > >& groundtruthOF)
 {
+    groundtruthOF.clear();
+    
     groundtruthOF.resize(recognitionsOF.size());
     for (int v = 0; v < recognitionsOF.size(); v++)
     {

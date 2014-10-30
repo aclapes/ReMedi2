@@ -70,6 +70,8 @@ void InteractiveRegisterer::setVisualizerParameters(int wndHeight, int wndWidth,
 void InteractiveRegisterer::setCorrespondencesManually()
 {
     // Init some cloud structures with empty clouds
+    m_pClouds.clear();
+    m_pMarkers.clear();
     
     m_pClouds.resize(m_pFrames.size());
     m_pMarkers.resize(m_pFrames.size());
@@ -91,6 +93,9 @@ void InteractiveRegisterer::setCorrespondencesManually()
     m_Pendents = m_pFrames.size();
     
     // Transformation
+    m_Transformations.clear();
+    m_ITransformations.clear();
+    
     m_Transformations.resize( m_pFrames.size() );
     m_ITransformations.resize( m_pFrames.size() );
     
@@ -137,6 +142,7 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
 {
     pcl::PCDReader reader;
     
+    m_pMarkers.clear();
     m_pMarkers.resize(m_pFrames.size());
     for (int v = 0; v < m_pFrames.size(); v++)
     {
@@ -144,6 +150,9 @@ void InteractiveRegisterer::loadCorrespondences(string filename, string extensio
         reader.read(filename + "-" + to_str(v) + "." + extension, *pMarkers);
         m_pMarkers[v] = pMarkers;
     }
+    
+    m_Transformations.clear();
+    m_ITransformations.clear();
     
     m_Transformations.resize( m_pFrames.size() );
     m_ITransformations.resize( m_pFrames.size() );
@@ -244,6 +253,7 @@ void InteractiveRegisterer::registrate(vector<ColorDepthFrame::Ptr> pUnregFrames
  */
 void InteractiveRegisterer::registrate(vector<PointCloudPtr> pUnregClouds, vector<PointCloudPtr>& pRegClouds)
 {
+    pRegClouds.clear();
     pRegClouds.resize(pUnregClouds.size());
     
     for (int v = 0; v < pUnregClouds.size(); v++)

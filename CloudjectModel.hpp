@@ -298,6 +298,8 @@ public:
     // Test against this model. Returns distances (in each view) from points to matched model points (wo/ re-match)
     void getMinimumDistances(typename LFCloudject<PointT,SignatureT>::Ptr pCloudject, vector<vector<float> >& distances)
     {
+        distances.clear();
+        
         distances.resize(pCloudject->getNumOfViews());
         for (int v = 0; v < pCloudject->getNumOfViews(); v++)
         {
@@ -392,6 +394,8 @@ protected:
     
     void getMinimumDistancesToDescription(DescriptionPtr pDescription, vector<float>& distances)
     {
+        distances.clear();
+        
         // Structure to not re-match against a model point
         vector<vector<bool> > matches (m_ViewsDescriptions.size());
 		for (int v = 0; v < m_ViewsDescriptions.size(); v++)

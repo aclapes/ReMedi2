@@ -650,6 +650,10 @@ Sequence<ColorDepthFrame>::Sequence(int numOfViews)
 
 Sequence<ColorDepthFrame>::Sequence(vector<vector< pair<string,string> > > paths)
 {
+    m_Paths.clear();
+    m_FrameIndices.clear();
+    m_Delays.clear();
+    
     m_Paths = paths;
     
     m_Streams.resize(m_Paths.size());
@@ -707,6 +711,10 @@ int Sequence<ColorDepthFrame>::getNumOfViews() const
 
 void Sequence<ColorDepthFrame>::setNumOfViews(int n)
 {
+    m_Paths.clear();
+    m_FrameIndices.clear();
+    m_Delays.clear();
+    
     m_Paths.resize(n);
     m_FrameIndices.resize(n);
     m_Delays.resize(n,0);
@@ -727,6 +735,8 @@ vector<vector< pair<string,string> > > Sequence<ColorDepthFrame>::getFramesPaths
 
 void Sequence<ColorDepthFrame>::addStream(vector<ColorDepthFrame::Ptr> stream)
 {
+    m_Delays.clear();
+    
     m_Streams.push_back(stream);
     m_FrameIndices.push_back(-1);
     
@@ -743,6 +753,9 @@ void Sequence<ColorDepthFrame>::setStream(vector<ColorDepthFrame::Ptr> stream, i
 
 void Sequence<ColorDepthFrame>::setStreams(vector<vector<ColorDepthFrame::Ptr> > streams)
 {
+    m_Delays.clear();
+    m_FrameIndices.clear();
+    
     m_Streams = streams;
     
     m_FrameIndices.resize(m_Streams.size(), -1);
@@ -899,6 +912,7 @@ vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(vector<string>
 
 vector<ColorDepthFrame::Ptr> Sequence<ColorDepthFrame>::getFrames(vector<string> filenames, vector<int>& indices)
 {
+    indices.clear();
     assert (filenames.size() == m_Paths.size());
     
     vector<ColorDepthFrame::Ptr> frames (m_Paths.size());
@@ -1044,6 +1058,7 @@ void Sequence<ColorDepthFrame>::restart()
 
 void Sequence<ColorDepthFrame>::allocate()
 {
+    m_Streams.clear();
     m_Streams.resize(m_Paths.size());
     
     for (int v = 0; v < m_Paths.size(); v++)

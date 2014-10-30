@@ -686,6 +686,8 @@ void cvx::harmonicMean(cv::InputArray src, cv::OutputArray dst, int dim)
 template<typename T>
 void cvx::convert(cv::Mat mat, std::vector<std::vector<T> >& vv)
 {
+    vv.clear();
+    
     vv.resize(mat.rows);
     for (int i = 0; i < mat.rows; i++)
     {
