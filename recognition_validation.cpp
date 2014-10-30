@@ -455,7 +455,7 @@ float computeAccuracy(std::vector<int> groundtruth, std::vector<int> predictions
     std::map<std::string,int> instancesMap;
     
     for (int i = 0; i < groundtruth.size(); ++i)
-        instancesMap[std::to_string(groundtruth[i])]++;
+        instancesMap[std::to_string((long long) groundtruth[i])]++;
     
     std::map<std::string,int> hitsMap;
     
@@ -465,7 +465,7 @@ float computeAccuracy(std::vector<int> groundtruth, std::vector<int> predictions
     
     for (int i = 0; i < groundtruth.size(); ++i)
         if (groundtruth[i] == predictions[i])
-            hitsMap[std::to_string(groundtruth[i])]++;
+            hitsMap[std::to_string((long long) groundtruth[i])]++;
     
     instancesIt = instancesMap.begin();
     std::map<std::string,int>::iterator hitsIt = hitsMap.begin();
