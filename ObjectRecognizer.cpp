@@ -679,17 +679,12 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getScores(vect
     positions.clear();
     scores.clear();
     
-    boost::timer t;
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
         m_CloudjectDetections[i]->downsample(m_LeafSize);
-    std::cout << t.elapsed() << " " << std::endl;
     
-    t.restart();
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
         m_CloudjectDetections[i]->describe(m_NormalRadius, m_PfhRadius);
-    std::cout << t.elapsed() << " " << std::endl;
 
-    t.restart();
     for (int i = 0; i < m_CloudjectDetections.size(); i++)
     {
         vector<int> detectionViews = m_CloudjectDetections[i]->getViewIDs();
@@ -712,7 +707,6 @@ void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::getScores(vect
         }
         scores.push_back(detectionScores);
     }
-    std::cout << t.elapsed() << " " << std::endl;
 }
 
 void ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>::recognize(vector<vector<vector<pcl::PointXYZ> > >& recognitions)
