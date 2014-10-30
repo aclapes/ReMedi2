@@ -86,13 +86,13 @@
 #define OR_OBJECTS_NAMES                    "dish,pillbox,book,tetrabrick,cup"
 #define OR_OBJECTS_REJECTIONS               "0,0,0,0,0" //"0.85,0.80,0.85,0.8,0.75"
 
-#define OR_PFHDESC_LEAFSIZE                 0.01
-#define OR_PFHDESC_MODEL_LEAFSIZE           0.01
-#define OR_PFHDESC_NORMAL_RADIUS            0.02
-#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.02
-#define OR_PFHDESC_PFH_RADIUS               0.15
-#define OR_PFHDESC_MODEL_PFH_RADIUS         0.15
-#define OR_POINT_REJECTION_THRESH           0.60
+#define OR_PFHDESC_LEAFSIZE                 0.015
+#define OR_PFHDESC_MODEL_LEAFSIZE           0.015
+#define OR_PFHDESC_NORMAL_RADIUS            0.08
+#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.08
+#define OR_PFHDESC_PFH_RADIUS               0.09
+#define OR_PFHDESC_MODEL_PFH_RADIUS         0.09
+#define OR_POINT_REJECTION_THRESH           0.0
 
 
 
