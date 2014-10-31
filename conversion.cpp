@@ -399,6 +399,12 @@ void enclosure(cv::Mat src, cv::Mat& dst, int size)
 void biggestEuclideanCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float clusterTol,
 	pcl::PointCloud<pcl::PointXYZ>& cluster)
 {
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pNanFreeCloud (new pcl::PointCloud<pcl::PointXYZ>);
+
+	std::vector< int > indices;
+	pcl::removeNaNFromPointCloud(*cloud,*pNanFreeCloud,indices);
+	cloud.swap(pNanFreeCloud);
+
 	// Creating the KdTree object for the search method of the extraction
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
 	tree->setInputCloud (cloud);
@@ -409,6 +415,7 @@ void biggestEuclideanCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float cl
 	ec.setMinClusterSize (100);
 	ec.setMaxClusterSize (25000);
 	ec.setSearchMethod (tree);
+
 	ec.setInputCloud (cloud);
 	ec.extract (clusterIndices);
 

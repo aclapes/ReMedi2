@@ -66,7 +66,9 @@ void f(vector<cv::Mat> performances, std::vector<int> subjectsIds, cv::Mat combi
                 sbjId++;
             }
         }
-        
+		cv::Mat roi (perfsViewSeqsSmry, cv::Rect(sbjstart, 0, ((perfsViewSeqsSmry.cols - 1) - sbjstart), perfsViewSeqsSmry.rows));
+        cv::reduce(roi, perfsViewSbjsSmry.col(sbjId), 1, CV_REDUCE_AVG); // average sequences of same subject
+
         // The rest of the work: to use all but one subject to estimate the best combination,
         // and finally test it in that one subject
         
@@ -88,12 +90,13 @@ void f(vector<cv::Mat> performances, std::vector<int> subjectsIds, cv::Mat combi
                 // is got by summing all of them, minus the subject ones, divided by the cardinality
                 // of subjects-1
                 cv::Mat sum;
-                cv::reduce(perfsViewSbjsSmry, sum, 1, CV_REDUCE_SUM);
-                cv::Mat sumExceptSbj = (sum - perfsViewSbjsSmry.col(i)) / (NUM_OF_SUBJECTS - 1);
-                
+                cv::reduce(perfsViewSbjsSmry, sum, 1, CV_REDUCE_AVG);
+
+				cv::Mat avgExceptSbj = (sum - perfsViewSbjsSmry.col(i) / (NUM_OF_SUBJECTS - 1));
+
                 double minVal, maxVal;
                 cv::Point minIdx, maxIdx;
-                cv::minMaxLoc(sumExceptSbj, &minVal, &maxVal, &minIdx, &maxIdx, mask);
+                cv::minMaxLoc(avgExceptSbj, &minVal, &maxVal, &minIdx, &maxIdx, mask);
                 
                 perfsSubjects.at<float>(i,0) = perfsViewSbjsSmry.at<float>(maxIdx.y,i);
             }

@@ -23,8 +23,12 @@
 # OSX
 .DS_Store
 
+# CMake
 CMakeLists.txt
 
 # Directories
 xbuild/
 build/
+
+# PCL
+*.pcd

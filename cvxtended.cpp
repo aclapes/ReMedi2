@@ -816,7 +816,7 @@ void cvx::unique(cv::Mat M, int dim, cv::Mat& U, cv::Mat& I)
     for (int i = 0; i < elements.size(); i++)
         elements[i].copyTo( ((dim == 0) ? U.row(i) : U.col(i)) );
     for (int i = 0; i < indices.size(); i++)
-        I.at<int>((dim == 0) ? 0 : i, (dim == 0) ? i : 0) = indices[i];
+        I.at<int>((dim == 0) ? i : 0, (dim == 0) ? 0 : i) = indices[i];
 }
 
 void cvx::findRowsToColsAssignation(cv::Mat scores, cv::Mat& matches)
