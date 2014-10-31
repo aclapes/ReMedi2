@@ -51,7 +51,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::FPFHSignature33>& ObjectRecognizer<pcl::
         
         m_CloudjectModels = rhs.m_CloudjectModels;
         
-        m_CloudjectDetections = rhs.m_CloudjectDetections;
+//        m_CloudjectDetections = rhs.m_CloudjectDetections;
     }
     
     return *this;
@@ -442,7 +442,7 @@ ObjectRecognizer<pcl::PointXYZRGB, pcl::PFHRGBSignature250>& ObjectRecognizer<pc
         
         m_CloudjectModels = rhs.m_CloudjectModels;
         
-        m_CloudjectDetections = rhs.m_CloudjectDetections;
+//        m_CloudjectDetections = rhs.m_CloudjectDetections;
     }
     
     return *this;

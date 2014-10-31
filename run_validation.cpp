@@ -413,21 +413,21 @@ int validation(std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndi
     std::cout << sgmtBestCombinations << std::endl;
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-//    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
+    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
     
-    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnModalitiesIndices, seqsIndices, scoreds);
-
-    vector<vector<double> > mntrRcgnParameters;
-    vector<double> rcgnStrategies;
-    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
-    vector<double> rcgnConsensus;
-    rcgnStrategies += (double) RECOGNITION_INTERVIEW_AVG, (double) RECOGNITION_INTERVIEW_DISTWEIGHTED;
-    vector<double> rcgnTempCoherences;
-    rcgnTempCoherences += 0, 1, 2, 3;
-    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
-    
-    std::vector<std::vector<cv::Mat> > mntrRcgnErrors;
-    validateMonitorizationRecognition(pSys, sequences, seqsIndices, sgmtBestCombinations.row(2),  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, true);
+//    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnModalitiesIndices, seqsIndices, scoreds);
+//
+//    vector<vector<double> > mntrRcgnParameters;
+//    vector<double> rcgnStrategies;
+//    rcgnStrategies += (double) RECOGNITION_MONOCULAR, (double) RECOGNITION_MULTIOCULAR;
+//    vector<double> rcgnConsensus;
+//    rcgnStrategies += (double) RECOGNITION_INTERVIEW_AVG, (double) RECOGNITION_INTERVIEW_DISTWEIGHTED;
+//    vector<double> rcgnTempCoherences;
+//    rcgnTempCoherences += 0, 1, 2, 3;
+//    mntrRcgnParameters += rcgnStrategies, rcgnTempCoherences;
+//    
+//    std::vector<std::vector<cv::Mat> > mntrRcgnErrors;
+//    validateMonitorizationRecognition(pSys, sequences, seqsIndices, sgmtBestCombinations.row(2),  scoreds, mntrRcgnParameters, detectionGroundtruths, "Results/rcgn_results/", "rcgn_validation.yml", mntrRcgnErrors, true);
     
     return 0;
 }

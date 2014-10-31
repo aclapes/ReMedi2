@@ -248,14 +248,18 @@ void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::ve
     }
 }
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, std::vector<std::vector<pcl::PointXYZ> >& detectionsPositions)
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds)
 {
+    g_Mutex.lock();
     pSys->getRegisterer()->setInputFrames(frames);
     pSys->getRegisterer()->registrate(frames);
+    g_Mutex.unlock();
     
+    g_Mutex.lock();
     vector<cv::Mat> foregroundMasks;
     pBS->setInputFrames(frames);
     pBS->subtract(foregroundMasks);
+    g_Mutex.unlock();
     
     vector<cv::Mat> tabletopMasks;
     pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
@@ -272,7 +276,7 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     od.setInterviewCorrepondenceDistance(combination.at<double>(0, offset + 3));
     
     od.detect();
-    od.getDetectionPositions(detectionsPositions);
+//    od.getDetectionPositions(detectionsPositions);
     
     vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionsCorrespondences;
     od.getDetectionCorrespondences(detectionsCorrespondences, true);
@@ -281,16 +285,15 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     vector<vector< pcl::PointXYZ > > _detectionsPositions;
     vector<vector< vector<float> > > detectionsScores;
     
-    void* recognizer = pSys->getObjectRecognizer();
     if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
     {
-        ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
+        ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) pSys->getObjectRecognizer()) );
         orc.setInputDetections(detectionsCorrespondences);
         orc.getScores(detectionsVids, _detectionsPositions, detectionsScores);
     }
     else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)
     {
-        ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
+        ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) pSys->getObjectRecognizer()) );
         orc.setInputDetections(detectionsCorrespondences);
         orc.getScores(detectionsVids, _detectionsPositions, detectionsScores);
     }
@@ -378,7 +381,7 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             // Threading variables
             // ---------------------------------
             boost::thread_group tg;
-            std::vector<boost::thread*> actives;
+//            std::vector<boost::thread*> actives;
             // ---------------------------------
             
             boost::timer t;
@@ -395,13 +398,13 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                     
                     tg.join_all();
 
-                    for (int t = 0; t < actives.size(); t++)
-                    {
-                        tg.remove_thread(actives[t]);
-                        actives[t]->interrupt();
-                        delete actives[t];
-                    }
-                    actives.clear();
+//                    for (int t = 0; t < actives.size(); t++)
+//                    {
+//                        tg.remove_thread(actives[t]);
+//                        actives[t]->interrupt();
+//                        delete actives[t];
+//                    }
+//                    actives.clear();
                     
                     std::cout << t.elapsed() << " secs." << std::endl;
                 }
@@ -413,17 +416,15 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
                 
-
-                std::vector<std::vector<pcl::PointXYZ> > detectionsPositions; // *** dbg ***
-                
 //                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
 //                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]), boost::ref(detectionsPositions) );
-                tg.add_thread(pThread);
-                actives.push_back(pThread);
+                tg.add_thread( new boost::thread(_precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f])) );
+//                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]), boost::ref(detectionsPositions) );
+//                tg.add_thread(pThread);
+//                actives.push_back(pThread);
                 // ---------------------------------------
             
                 f++;
@@ -435,13 +436,13 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
 
                 tg.join_all();
                 
-                for (int t = 0; t < actives.size(); t++)
-                {
-                    tg.remove_thread(actives[t]);
-                    actives[t]->interrupt();
-                    delete actives[t];
-                }
-                actives.clear();
+//                for (int t = 0; t < actives.size(); t++)
+//                {
+//                    tg.remove_thread(actives[t]);
+//                    actives[t]->interrupt();
+//                    delete actives[t];
+//                }
+//                actives.clear();
                 
                 std::cout << t.elapsed() << " secs." << std::endl;
             }

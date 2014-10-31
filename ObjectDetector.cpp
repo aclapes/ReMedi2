@@ -34,7 +34,7 @@ ObjectDetector& ObjectDetector::operator=(const ObjectDetector& rhs)
 {
     if (this != &rhs)
     {
-        m_InputFrames = rhs.m_InputFrames;
+//        m_InputFrames = rhs.m_InputFrames;
         
         m_LeafSize = rhs.m_LeafSize;
         m_ClusterIdF = rhs.m_ClusterIdF;
@@ -43,7 +43,7 @@ ObjectDetector& ObjectDetector::operator=(const ObjectDetector& rhs)
         
         m_bRegistration = rhs.m_bRegistration;
         
-        m_Detections = rhs.m_Detections;
+//        m_Detections = rhs.m_Detections;
     }
     return *this;
 }
