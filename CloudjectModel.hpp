@@ -408,8 +408,8 @@ protected:
         for (int i = 0; i < pDescription->size(); i++) // test view
 		{
             float minDistVal = std::numeric_limits<float>::max();
-            int minDistViewIdx;
-            int minDistPointIdx;
+            int minDistViewIdx = -1;
+            int minDistPointIdx = -1;
             
             for (int v = 0; v < m_ViewsDescriptions.size(); v++) // views of the model
 			{
@@ -418,23 +418,28 @@ protected:
                 {
                     for (int j = 0; j < m_ViewsDescriptions[v]->size(); j++)
                     {
-                        //                        float dist = euclideanDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
-                        float dist = chisquareDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
-                        //                        float dist = battacharyyaDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
-                        
-                        if (dist < minDistVal)
-                        {
-                            minDistViewIdx  = v;
-                            minDistPointIdx = j;
-                            minDistVal = dist;
-                        }
+						if (!matches[v][j])
+						{
+//                        float dist = euclideanDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
+							float dist = chisquareDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
+//                        float dist = battacharyyaDistanceSignatures( pDescription->points[i], m_ViewsDescriptions[v]->points[j]);
+							if (dist < minDistVal)
+							{
+								minDistViewIdx  = v;
+								minDistPointIdx = j;
+								minDistVal = dist;
+							}
+						}
                     }
                 }
             }
             
-            distances[i] = minDistVal;
-            matches[minDistViewIdx][minDistPointIdx] = true;
-            numOfMatches[minDistViewIdx] ++;
+			if (minDistViewIdx > 0 && minDistPointIdx > 0)
+			{
+				distances[i] = minDistVal;
+				matches[minDistViewIdx][minDistPointIdx] = true;
+				numOfMatches[minDistViewIdx] ++;
+			}
         }
     }
     
