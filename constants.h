@@ -33,6 +33,8 @@
 #define DEPTH_DIRNAME_1                     "Depth1/"
 #define DEPTH_DIRNAME_2                     "Depth2/"
 
+#define DEFAULT_RCGN_SCORES_FILENAME        "rcgn_scores.yml"
+
 #define DEFAULT_FRAME                       2
 
 #define Y_RESOLUTION                        480
@@ -88,8 +90,8 @@
 
 #define OR_PFHDESC_LEAFSIZE                 0.015
 #define OR_PFHDESC_MODEL_LEAFSIZE           0.015
-#define OR_PFHDESC_NORMAL_RADIUS            0.08
-#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.08
+#define OR_PFHDESC_NORMAL_RADIUS            0.04
+#define OR_PFHDESC_MODEL_NORMAL_RADIUS      0.04
 #define OR_PFHDESC_PFH_RADIUS               0.09
 #define OR_PFHDESC_MODEL_PFH_RADIUS         0.09
 #define OR_POINT_REJECTION_THRESH           0.0

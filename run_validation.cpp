@@ -191,7 +191,7 @@ void getBestCombinations(cv::Mat combinations, std::vector<cv::Mat> performances
     }
 }
 
-int validation(std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndices)
+int validation(std::string rcgnScoresFilename, std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndices)
 {
     vector<string> colorDirNames, depthDirNames;
     colorDirNames += COLOR_DIRNAME_1, COLOR_DIRNAME_2;
@@ -413,7 +413,7 @@ int validation(std::vector<int> rcgnModalitiesIndices, std::vector<int> seqsIndi
     std::cout << sgmtBestCombinations << std::endl;
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", "rcgn_scores.yml", scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
+    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", rcgnScoresFilename, scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
     
 //    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores.yml", rcgnModalitiesIndices, seqsIndices, scoreds);
 //
@@ -463,5 +463,11 @@ int main(int argc, char** argv)
             sequencesIndices.push_back( stoi(*it) );
     }
     
-    return validation(rcgnModalitiesIndices, sequencesIndices);
+    std::string rcgnScoresFilename = DEFAULT_RCGN_SCORES_FILENAME;
+    if (pcl::console::find_argument(argc, argv, "-O") > 0)
+    {
+        pcl::console::parse(argc, argv, "-O", rcgnScoresFilename);
+    }
+    
+    return validation(rcgnScoresFilename, rcgnModalitiesIndices, sequencesIndices);
 }

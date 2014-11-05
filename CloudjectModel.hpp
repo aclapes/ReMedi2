@@ -332,7 +332,7 @@ public:
             for (int k = 0; k < distances[v].size(); k++)
             {
                 float score = distToScore(distances[v][k]);
-                if (score > m_PointRejectionThresh)
+                if (score >= m_PointRejectionThresh)
                 {
                     scoreAcc += score;
                     inliers ++;
