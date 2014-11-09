@@ -122,8 +122,8 @@ void visualizeDetections(std::vector<std::vector<pcl::PointCloud<pcl::PointXYZRG
     {
         for (int i = 0; i < detections[v].size(); i++)
         {
-            pVis->addPointCloud(detections[v][i], "detection_" + std::to_string(v) + "-" + std::to_string(i), viewports[v]);
-            pVis->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, g_Colors[i%14][0], g_Colors[i%14][1], g_Colors[i%14][2], "detection_" + std::to_string(v) + "-" + std::to_string(i), viewports[v]);
+            pVis->addPointCloud(detections[v][i], "detection_" + to_str(v) + "-" + to_str(i), viewports[v]);
+            pVis->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, g_Colors[i%14][0], g_Colors[i%14][1], g_Colors[i%14][2], "detection_" + to_str(v) + "-" + to_str(i), viewports[v]);
         }
     }
     
