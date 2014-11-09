@@ -328,7 +328,7 @@ void perform(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in, float r, float a, 
     table_out = *cloud_in;
 }
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, std::vector<std::vector<pcl::PointXYZ> >& detectionPositions)
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds/*, std::vector<std::vector<pcl::PointXYZ> >& detectionPositions*/)
 {
     g_Mutex.lock();
     pSys->getRegisterer()->setInputFrames(frames);
@@ -362,8 +362,8 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     
     od.detect();
     
-    detectionPositions.clear();
-    od.getDetectionPositions(detectionPositions);
+//    detectionPositions.clear();
+//    od.getDetectionPositions(detectionPositions);
     
     vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionsCorrespondences;
     od.getDetectionCorrespondences(detectionsCorrespondences, true);
@@ -387,7 +387,7 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     
     // To proper format and save
     scoreds.set(detectionsVids, _detectionsPositions, detectionsScores);
-   
+    
     g_Mutex.lock();
     cv::Mat positionsSparse, scoresSparse;
     scoreds.getSparseRepresentation(positionsSparse, scoresSparse);
@@ -481,12 +481,6 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
-//                if (f < 23)
-//                {
-//                    pSeq->next();
-//                    f++;
-//                    continue;
-//                }
                 // Threading stuff
                 // ---------------------------------
                 if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
@@ -506,19 +500,19 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
                 
-                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
-                std::vector<std::vector<pcl::PointXYZ> > detectionPositions;
-                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
+//                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
+//                std::vector<std::vector<pcl::PointXYZ> > detectionPositions;
+//                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
                 
-                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
-                cv::Mat frameErrors;
-                detectionGroundtruths[seqsIndices[k]].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
-                //visualizeSegmentations(frames, matches, rejections, 0.02, 3);
-                visualizeScored(frames, scoreds[i][k][f], 0.02);
+//                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
+//                cv::Mat frameErrors;
+//                detectionGroundtruths[seqsIndices[k]].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
+//                visualizeSegmentations(frames, matches, rejections, 0.02, 3);
+//                visualizeScored(frames, scoreds[i][k][f], 0.02);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-//                tg.add_thread( new boost::thread(_precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f])) );
+                tg.add_thread( new boost::thread(_precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]) ) );
                 // ---------------------------------------
             
                 f++;

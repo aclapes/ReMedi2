@@ -64,7 +64,7 @@ void loadMonitorizationRecognitionPrecomputedScoresFile(std::string filePath, in
 
 void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<int> combinationsIds, std::vector<int> sequencesIds, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds);
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combinations, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, vector<vector<pcl::PointXYZ> >& detectionPositions);
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combinations, int offset, std::string filePath, std::string id, ScoredDetections& scoreds/*, vector<vector<pcl::PointXYZ> >& detectionPositions*/);
 void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat combinations, std::vector<int> combsIndices, std::vector<DetectionOutput> detectionGroundtruths, string path, string filename, vector<vector<vector<ScoredDetections> > >& scoreds, int numOfThreads = NUM_OF_THREADS);
 
 //void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, cv::Mat combinations, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<std::vector<cv::Mat> > >& errors, bool bQualitativeEvaluation = false);

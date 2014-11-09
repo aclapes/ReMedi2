@@ -369,52 +369,52 @@ int validation(std::string rcgnScoresFilename, std::vector<int> rcgnModalitiesIn
     cv::Mat sgmtBestCombinations;
     getBestCombinations(sgmtCombinations, sgmtPerformanceSummaries, filterParameters, filterIndices, 1, sgmtBestCombinations);
     
-//    // *------------------------*
-//    // | Recognition validation |
-//    // *------------------------*
-//    
-//    std::cout << "Validation of ObjectRecognizer (object recognition)" << std::endl;
-//
-//    // Load objects models
-//    
-//    std::string modelsPath = std::string(PARENT_PATH) + std::string(OBJECTMODELS_SUBDIR);
-//
-//    std::vector<std::string> objectsNamesStr;
-//    boost::split(objectsNamesStr, OR_OBJECTS_NAMES, boost::is_any_of(","));
-//    
-//    vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
-//    ReMedi::loadObjectModels(modelsPath.c_str(), "PCDs/", objectsNamesStr, objectsViews);
-//    
-//    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsNamesStr.size());
-//    for (int m = 0; m < objectsModels.size(); m++)
-//    {
-//        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(m, objectsNamesStr[m], objectsViews[m]) );
-//        objectsModels[m] = pObjectModel;
-//    }
-//    
-//    std::vector<std::string> objectsRejectionsStr;
-//    boost::split(objectsRejectionsStr, OR_OBJECTS_REJECTIONS, boost::is_any_of(","));
-//    
-//    std::vector<float> objectsRejections;
-//    std::vector<std::string>::iterator it;
-//    for (it = objectsRejectionsStr.begin(); it != objectsRejectionsStr.end(); it++)
-//        objectsRejections.push_back( stof(*it) );
-//    
-//    pSys->setObjectRecognizerParameters(objectsModels, objectsRejections, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
-//    pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS, OR_POINT_REJECTION_THRESH);
-//
-//    filterParameters[1] = std::vector<double>(1, 0.125); // 2nd param: meters
-//    f(sgmtPerformanceSummaries, sequencesSids, sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
-//    
-//    std::cout << sgmtMeans << std::endl;
-//    std::cout << sgmtStddevs << std::endl;
-//    
-//    getBestCombinations(sgmtCombinations, sgmtPerformanceSummaries, filterParameters, filterIndices, 1, sgmtBestCombinations);
-//    
-//    std::cout << sgmtBestCombinations << std::endl;
-//    
-//    std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
-//    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", rcgnScoresFilename, scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
+    // *------------------------*
+    // | Recognition validation |
+    // *------------------------*
+    
+    std::cout << "Validation of ObjectRecognizer (object recognition)" << std::endl;
+
+    // Load objects models
+    
+    std::string modelsPath = std::string(PARENT_PATH) + std::string(OBJECTMODELS_SUBDIR);
+
+    std::vector<std::string> objectsNamesStr;
+    boost::split(objectsNamesStr, OR_OBJECTS_NAMES, boost::is_any_of(","));
+    
+    vector<vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > objectsViews;
+    ReMedi::loadObjectModels(modelsPath.c_str(), "PCDs/", objectsNamesStr, objectsViews);
+    
+    vector<ObjectModel<pcl::PointXYZRGB>::Ptr> objectsModels (objectsNamesStr.size());
+    for (int m = 0; m < objectsModels.size(); m++)
+    {
+        ObjectModel<pcl::PointXYZRGB>::Ptr pObjectModel ( new ObjectModel<pcl::PointXYZRGB>(m, objectsNamesStr[m], objectsViews[m]) );
+        objectsModels[m] = pObjectModel;
+    }
+    
+    std::vector<std::string> objectsRejectionsStr;
+    boost::split(objectsRejectionsStr, OR_OBJECTS_REJECTIONS, boost::is_any_of(","));
+    
+    std::vector<float> objectsRejections;
+    std::vector<std::string>::iterator it;
+    for (it = objectsRejectionsStr.begin(); it != objectsRejectionsStr.end(); it++)
+        objectsRejections.push_back( stof(*it) );
+    
+    pSys->setObjectRecognizerParameters(objectsModels, objectsRejections, DESCRIPTION_PFHRGB, RECOGNITION_MULTIOCULAR);
+    pSys->setObjectRecognizerPfhParameters(OR_PFHDESC_LEAFSIZE, OR_PFHDESC_MODEL_LEAFSIZE, OR_PFHDESC_NORMAL_RADIUS, OR_PFHDESC_MODEL_NORMAL_RADIUS, OR_PFHDESC_PFH_RADIUS, OR_PFHDESC_MODEL_PFH_RADIUS, OR_POINT_REJECTION_THRESH);
+
+    filterParameters[1] = std::vector<double>(1, 0.125); // 2nd param: meters
+    f(sgmtPerformanceSummaries, sequencesSids, sgmtCombinations, filterParameters, filterIndices, sgmtMeans, sgmtStddevs);
+    
+    std::cout << sgmtMeans << std::endl;
+    std::cout << sgmtStddevs << std::endl;
+    
+    getBestCombinations(sgmtCombinations, sgmtPerformanceSummaries, filterParameters, filterIndices, 1, sgmtBestCombinations);
+    
+    std::cout << sgmtBestCombinations << std::endl;
+    
+    std::vector<std::vector<std::vector<ScoredDetections> > > scoreds;
+    precomputeRecognitionScores(pSys, sequences, seqsIndices, sgmtBestCombinations, rcgnModalitiesIndices, detectionGroundtruths, "Results/rcgn_results/", rcgnScoresFilename, scoreds, g_NumOfThreads); // TODO: remove detectionGroundtruths from function call
     
 //    loadMonitorizationRecognitionScoredDetections("Results/rcgn_results/rcgn_scores_m2.yml", rcgnModalitiesIndices, seqsIndices, scoreds);
 //
