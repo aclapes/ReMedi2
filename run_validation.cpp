@@ -237,6 +237,10 @@ int validation(std::string rcgnScoresFilename, std::vector<int> rcgnModalitiesIn
     }
     if (seqsIndices.empty()) cvx::linspace(0, 31, seqsIndices);
     
+    std::string seqsStr = to_str(seqsIndices[0]);
+    for (int i = 1; i < seqsIndices.size(); i++)
+        seqsStr += "-" + to_str(seqsIndices[i]);
+    
     // *-----------------------------------*
     // | Create and parametrize the system |
     // *-----------------------------------*
@@ -350,8 +354,8 @@ int validation(std::string rcgnScoresFilename, std::vector<int> rcgnModalitiesIn
     
     cv::Mat sgmtCombinations;
     vector<vector<cv::Mat> > sgmtErrors;
-    validateMonitorizationSegmentation2(pSys, sequences, seqsIndices, bsBestCombinations, mntrParameters, detectionGroundtruths, "Results/sgmt_results/", "sgmt-c_validation.yml", sgmtCombinations, sgmtErrors, false);
-    loadMonitorizationSegmentationValidationFile2("Results/sgmt-c_results/sgmt_validation.yml", sgmtCombinations, sgmtErrors);
+    validateMonitorizationSegmentation2(pSys, sequences, seqsIndices, bsBestCombinations, mntrParameters, detectionGroundtruths, "Results/sgmt_results/", "sgmt-c_validation_" + seqsStr + ".yml", sgmtCombinations, sgmtErrors, false);
+    loadMonitorizationSegmentationValidationFile2("Results/sgmt_results/sgmt-c_validation_" + seqsStr + ".yml", sgmtCombinations, sgmtErrors);
 
     std::vector<cv::Mat> sgmtPerformanceSummaries, sgmtErrorsSummaries; // F-scores, errors (TP,FN,FP)
     summarizeMonitorizationSegmentationValidation2(sequences, sgmtCombinations, sgmtErrors, computeF1Score, sgmtPerformanceSummaries, sgmtErrorsSummaries);
