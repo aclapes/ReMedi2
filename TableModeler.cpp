@@ -267,11 +267,24 @@ void TableModeler::getInteractionMask(DepthFrame::Ptr pFrame, cv::Mat& interacti
     PointCloudToMat(pTopCloud, pFrame->getResY(), pFrame->getResX(), aux);
     
     cvx::close(aux > 0, 1, interaction);
+    
+    cv::Mat interactionCanny;
+    cv::Canny(interaction, interactionCanny, 50, 150);
+    cvx::dilate(interactionCanny, 1, interactionCanny); // important, cause findcontours uses an structural element of 3x3 (size 1)
+    
+    vector< vector<cv::Point> > contours;
+    cv::findContours(interactionCanny, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    
+    cv::Mat interactionContourMask (interaction.size(), CV_8UC1, cv::Scalar(0));
+    for (int c = 0; c < contours.size(); c++) // keep all the blobs (filled)
+        cv::drawContours(interactionContourMask, contours, c, cv::Scalar(255), CV_FILLED);
+    
+    interaction = interactionContourMask;
 }
 
 void TableModeler::segmentInteractionCloud(PointCloudPtr pCloud, PointCloud& interaction)
 {
-    PointT min (m_Min.x - m_InteractionBorder, m_Min.y, m_Min.z - m_InteractionBorder); // 5 mm
+    PointT min (m_Min.x - m_InteractionBorder, m_Min.y - 0.02, m_Min.z - m_InteractionBorder); // 5 mm
     PointT max (m_Max.x + m_InteractionBorder, m_Max.y + m_YOffset, m_Max.z + m_InteractionBorder);
     
     minMaxSegmentation(pCloud, min, max, interaction);

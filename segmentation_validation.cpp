@@ -320,6 +320,8 @@ void loadMonitorizationSegmentationValidationFile2(string filePath, cv::Mat& com
 //    }
 //}
 
+
+
 // Faster version
 void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFrame>::Ptr> sequences, vector<int> seqsIndices, cv::Mat bsCombinations, vector<vector<double> > mntrParameters, vector<DetectionOutput> detectionGroundtruths, string path, string filename, cv::Mat& combinations, vector<vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
@@ -462,6 +464,13 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
+//                if (f < 75)
+//                {
+//                    std::cout << pSeq->getFrameCounters()[0] << std::endl;
+//                    pSeq->next();
+//                    f++;
+//                    continue;
+//                }
                 boost::timer t;
                 cout << "Processing frame " << f << " in seq " << seqsIndices[k] << " .. ";
                 
@@ -487,22 +496,25 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
                         pSubtractors[bsPendingIndices.at<int>(i,0)]->setInputFrames(frames);
                         pSubtractors[bsPendingIndices.at<int>(i,0)]->subtract(foregroundMasks);
                         
-                        vector<cv::Mat> tabletopMasks;
-                        pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
+                        for (int v = 0; v < frames.size(); v++)
+                            frames[v]->setMask(foregroundMasks[v]);
                         
-                        for (int v = 0; v < pSeq->getNumOfViews(); v++)
-                            frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
+                        vector<cv::Mat> tabletopMasks, interactionMasks;
+                        pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
+                        pSys->getTableModeler()->getInteractionMask(frames, interactionMasks);
                         
                         pObjectDetector->setDownsamplingSize(combinations.at<double>(i,bsCombinations.cols + 0));
                         pObjectDetector->setClusteringIntradistanceFactor(combinations.at<double>(i,bsCombinations.cols + 1));
                         pObjectDetector->setMinClusterSize(combinations.at<double>(i,bsCombinations.cols + 2));
                         
                         pObjectDetector->setInputFrames(frames);
+                        pObjectDetector->setActorMasks(tabletopMasks);
+                        pObjectDetector->setInteractionMasks(interactionMasks);
                         pObjectDetector->detect();
                         pObjectDetector->getDetectionPositions(detectionPositions);
                     }
                     
-                    detectionGroundtruths[seqsIndices[k]].setTolerance(combinations.at<double>(i,bsCombinations.cols + 3));
+                    detectionGroundtruths[seqsIndices[k]].setTolerance(combinations.at<double>(i, combinations.cols - 1));
                     
                     vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
                     cv::Mat frameErrors;
@@ -646,14 +658,20 @@ void visualizeSegmentations(vector<ColorDepthFrame::Ptr> frames, vector<vector<p
             p = rejections[v][i].first;
             q = rejections[v][i].second;
             
-            pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_str(v) + to_str(i), viewports[v]);
+            if (!(p.x == 0 && p.y == 0 && p.z == 0))
+                pVis->addSphere(p, markersRadius, 1, 0, 0, "rejections_prediction_" + to_str(v) + to_str(i), viewports[v]);
             
-            pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
+            if (!(q.x == 0 && q.y == 0 && q.z == 0))
+            {
+                pVis->addCube(q.x - markersRadius, q.x + markersRadius, q.y - markersRadius, q.y + markersRadius, q.z - markersRadius, q.z + markersRadius, 1, 1, 1, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
+                pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_groundtruth_" + to_str(v) + to_str(i), viewports[v]);
+            }
             
-            pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
-            pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
-            
+            if (!(p.x == 0 && p.y == 0 && p.z == 0) && !(q.x == 0 && q.y == 0 && q.z == 0))
+            {
+                pVis->addLine(p, q, 1, 0, 0, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
+                pVis->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, "rejections_line_" + to_str(v) + to_str(i), viewports[v]);
+            }
         }
     }
     

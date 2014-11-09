@@ -9,6 +9,8 @@
 #include "recognition_validation.h"
 #include "segmentation_validation.h"
 #include <boost/thread.hpp>
+#include <iostream>     // std::cout
+#include <iterator>     // std::ostream_iterator
 
 boost::mutex g_Mutex;
 
@@ -83,28 +85,28 @@ bool ScoredDetections::empty()
     return m_Positions.empty();
 }
 
-void ScoredDetections::append(std::string filePath, std::string name)
-{
-    cv::Mat positionsSparse, scoresSparse;
-    getSparseRepresentation(positionsSparse, scoresSparse);
-    
-    cv::FileStorage fs (filePath, cv::FileStorage::APPEND);
-    fs << ("positions_" + name) << positionsSparse;
-    fs << ("scores_" + name) << scoresSparse;
-    fs.release();
-}
-
-void ScoredDetections::load(std::string filePath, std::string name)
-{
-    cv::Mat positionsSparse, scoresSparse;
-    
-    cv::FileStorage fs (filePath, cv::FileStorage::READ);
-    fs["positions_" + name] >> positionsSparse;
-    fs["scores_" + name] >> scoresSparse;
-    fs.release();
-    
-    setSparseRepresentation(positionsSparse, scoresSparse);
-}
+//void ScoredDetections::append(std::string filePath, std::string name)
+//{
+//    cv::Mat positionsSparse, scoresSparse;
+//    getSparseRepresentation(positionsSparse, scoresSparse);
+//    
+//    cv::FileStorage fs (filePath, cv::FileStorage::APPEND);
+//    fs << ("positions_" + name) << positionsSparse;
+//    fs << ("scores_" + name) << scoresSparse;
+//    fs.release();
+//}
+//
+//void ScoredDetections::load(std::string filePath, std::string name)
+//{
+//    cv::Mat positionsSparse, scoresSparse;
+//    
+//    cv::FileStorage fs (filePath, cv::FileStorage::READ);
+//    fs["positions_" + name] >> positionsSparse;
+//    fs["scores_" + name] >> scoresSparse;
+//    fs.release();
+//    
+//    setSparseRepresentation(positionsSparse, scoresSparse);
+//}
 
 void ScoredDetections::setSparseRepresentation(cv::Mat positions, cv::Mat scores)
 {
@@ -215,20 +217,27 @@ void loadMonitorizationRecognitionPrecomputedScoresFile(std::string filePath, in
 {
     scoredsFrames.clear();
     
+    cv::FileStorage fs (filePath, cv::FileStorage::READ);
     int f = 0;
-    ScoredDetections s;
     
-    do
+    bool bSuccess = true;
+    while (bSuccess)
     {
         std::string id = to_str(cid) + "-" + to_str(sid) + "-" + to_str(f);
         
-        s.load(filePath, id);
-        if (!s.empty())
-            scoredsFrames.push_back(s);
+        cv::Mat positionsSparse, scoresSparse;
+        fs["positions_" + id] >> positionsSparse;
+        fs["scores_" + id] >> scoresSparse;
+        
+        ScoredDetections s (positionsSparse, scoresSparse);
+        
+        if (s.empty()) bSuccess = false;
+        else scoredsFrames.push_back(s);
         
         f++;
-    }
-    while (!s.empty());
+    };
+    
+    fs.release();
 }
 
 void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::vector<int> combinationsIds, std::vector<int> sequencesIds, std::vector<std::vector<std::vector<ScoredDetections> > >& scoreds)
@@ -248,7 +257,78 @@ void loadMonitorizationRecognitionScoredDetections(std::string filePath, std::ve
     }
 }
 
-void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds)
+void perform(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in, float r, float a, float b, float c, pcl::PointCloud<pcl::PointXYZRGB>& table_out)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in_aux (new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    pcl::VoxelGrid<pcl::PointXYZRGB> vg;
+    vg.setInputCloud (cloud_in);
+    vg.setLeafSize (0.005, 0.005, 0.005);
+    vg.setDownsampleAllData (true);
+    vg.filter (*cloud_in_aux);
+
+    cloud_in_aux.swap(cloud_in);
+    
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    
+    // Set up a Normal Estimation class and merge data in cloud_with_normals
+    pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr search_tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+    
+    pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
+    ne.setInputCloud (cloud_in);
+    ne.setSearchMethod (search_tree);
+    ne.setRadiusSearch (r);
+    ne.compute (*normals);
+    
+    pcl::concatenateFields(*cloud_in, *normals, *cloud_with_normals);
+    
+    pcl::SACSegmentationFromNormals<pcl::PointXYZRGB,pcl::Normal> sac (false);
+	sac.setOptimizeCoefficients (true); // optional
+    sac.setModelType (pcl::SACMODEL_NORMAL_PLANE);
+    sac.setMethodType (pcl::SAC_RANSAC);
+    sac.setMaxIterations (a);
+    sac.setDistanceThreshold (b);
+    sac.setNormalDistanceWeight(c);
+    
+    // create filtering object
+    
+    pcl::ModelCoefficients::Ptr pCoefficients (new pcl::ModelCoefficients);
+    
+    pcl::ExtractIndices<pcl::PointXYZRGBNormal> pointExtractor;
+    pointExtractor.setKeepOrganized(true);
+    
+    pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals_plane (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals_nonplane (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals_filtered (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_out_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::Normal>::Ptr normals_filtered (new pcl::PointCloud<pcl::Normal>);
+    
+    int n = cloud_in->size();
+    //	while (cloud_out->size() > 0.3 * n) // Do just one iteration!
+    //    {
+    // Segment the largest planar component from the remaining cloud
+    sac.setInputCloud(cloud_in);
+    sac.setInputNormals(normals);
+    sac.segment(*inliers, *pCoefficients);
+    
+    // Extract the inliers (points in the plane)
+    pointExtractor.setInputCloud (cloud_with_normals);
+    pointExtractor.setIndices (inliers);
+    pointExtractor.setNegative (false);
+    pointExtractor.filter (*cloud_with_normals_plane);
+    pointExtractor.setNegative(true);
+    pointExtractor.filter(*cloud_with_normals_nonplane);
+    
+    pcl::copyPointCloud(*cloud_with_normals_nonplane, *cloud_in);
+    pcl::copyPointCloud(*cloud_with_normals_nonplane, *normals);
+    
+    table_out = *cloud_in;
+}
+
+void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, BackgroundSubtractor<cv::BackgroundSubtractorMOG2, ColorDepthFrame>::Ptr pBS, cv::Mat combination, int offset, std::string filePath, std::string id, ScoredDetections& scoreds, std::vector<std::vector<pcl::PointXYZ> >& detectionPositions)
 {
     g_Mutex.lock();
     pSys->getRegisterer()->setInputFrames(frames);
@@ -261,22 +341,29 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     pBS->subtract(foregroundMasks);
     g_Mutex.unlock();
     
-    vector<cv::Mat> tabletopMasks;
-    pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
-    
     for (int v = 0; v < frames.size(); v++)
-        frames[v]->setMask(foregroundMasks[v] & tabletopMasks[v]);
+    {
+        frames[v]->setMask(foregroundMasks[v]);
+    }
+    
+    vector<cv::Mat> tabletopMasks, interactionMasks;
+    pSys->getTableModeler()->getTabletopMask(frames, tabletopMasks);
+    pSys->getTableModeler()->getInteractionMask(frames, interactionMasks);
     
     ObjectDetector od (*pSys->getObjectDetector());
-    od.setInputFrames(frames);
-    
     od.setDownsamplingSize(combination.at<double>(0, offset + 0));
     od.setClusteringIntradistanceFactor(combination.at<double>(0, offset + 1));
     od.setMinClusterSize(combination.at<double>(0, offset + 2));
     od.setInterviewCorrepondenceDistance(combination.at<double>(0, offset + 3));
     
+    od.setInputFrames(frames);
+    od.setActorMasks(tabletopMasks);
+    od.setInteractionMasks(interactionMasks);
+    
     od.detect();
-//    od.getDetectionPositions(detectionsPositions);
+    
+    detectionPositions.clear();
+    od.getDetectionPositions(detectionPositions);
     
     vector<vector< pair<int,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > > detectionsCorrespondences;
     od.getDetectionCorrespondences(detectionsCorrespondences, true);
@@ -302,7 +389,12 @@ void _precomputeScores(ReMedi::Ptr pSys, vector<ColorDepthFrame::Ptr> frames, Ba
     scoreds.set(detectionsVids, _detectionsPositions, detectionsScores);
    
     g_Mutex.lock();
-    scoreds.append(filePath, id);
+    cv::Mat positionsSparse, scoresSparse;
+    scoreds.getSparseRepresentation(positionsSparse, scoresSparse);
+    cv::FileStorage fs (filePath, cv::FileStorage::APPEND);
+    fs << ("positions_" + id) << positionsSparse;
+    fs << ("scores_" + id) << scoresSparse;
+    fs.release();
     g_Mutex.unlock();
 }
 
@@ -375,13 +467,13 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
         {
             int s = seqsIndices[k];
             Sequence<ColorDepthFrame>::Ptr pSeq = sequences[s];
-            
+            detectionGroundtruths[seqsIndices[k]].setTolerance(combinations.at<double>(i,bsCombinations.cols + 3));
+
             int f = 0;
             
             // Threading variables
             // ---------------------------------
             boost::thread_group tg;
-//            std::vector<boost::thread*> actives;
             // ---------------------------------
             
             boost::timer t;
@@ -389,6 +481,12 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
             pSeq->restart();
             while (pSeq->hasNextFrames())
             {
+//                if (f < 23)
+//                {
+//                    pSeq->next();
+//                    f++;
+//                    continue;
+//                }
                 // Threading stuff
                 // ---------------------------------
                 if (tg.size() > 0 && (tg.size() % numOfThreads) == 0)
@@ -397,14 +495,6 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                     t.restart();
                     
                     tg.join_all();
-
-//                    for (int t = 0; t < actives.size(); t++)
-//                    {
-//                        tg.remove_thread(actives[t]);
-//                        actives[t]->interrupt();
-//                        delete actives[t];
-//                    }
-//                    actives.clear();
                     
                     std::cout << t.elapsed() << " secs." << std::endl;
                 }
@@ -416,15 +506,19 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 
                 string id = to_str(c) + "-" + to_str(s) + "-" + to_str(f);
                 
-//                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
-//                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
+                std::cout << "Processing frames " << f << " in seq " << s << " .. " << std::endl;
+                std::vector<std::vector<pcl::PointXYZ> > detectionPositions;
+                _precomputeScores(pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, scoreds[i][k][f], detectionPositions);
+                
+                vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > matches, rejections;
+                cv::Mat frameErrors;
+                detectionGroundtruths[seqsIndices[k]].getFrameSegmentationResults(pSeq->getFrameCounters(), detectionPositions, matches, rejections, frameErrors);
+                //visualizeSegmentations(frames, matches, rejections, 0.02, 3);
+                visualizeScored(frames, scoreds[i][k][f], 0.02);
                 
                 // Threading stuff (incl function calling)
                 // ---------------------------------------
-                tg.add_thread( new boost::thread(_precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f])) );
-//                boost::thread* pThread = new boost::thread( _precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f]), boost::ref(detectionsPositions) );
-//                tg.add_thread(pThread);
-//                actives.push_back(pThread);
+//                tg.add_thread( new boost::thread(_precomputeScores, pSys, frames, pBS, scoresCombinations.row(i), bsCombinations.cols, path + filename, id, boost::ref(scoreds[i][k][f])) );
                 // ---------------------------------------
             
                 f++;
@@ -435,14 +529,6 @@ void precomputeRecognitionScores(ReMedi::Ptr pSys, vector<Sequence<ColorDepthFra
                 std::cout << "Processing frames [" << (f - (pSeq->getMinNumOfFrames() % numOfThreads)) << "," << f << ") in seq " << s << " .. ";
 
                 tg.join_all();
-                
-//                for (int t = 0; t < actives.size(); t++)
-//                {
-//                    tg.remove_thread(actives[t]);
-//                    actives[t]->interrupt();
-//                    delete actives[t];
-//                }
-//                actives.clear();
                 
                 std::cout << t.elapsed() << " secs." << std::endl;
             }
@@ -482,34 +568,44 @@ float computeAccuracy(std::vector<int> groundtruth, std::vector<int> predictions
     return accSum / instancesMap.size();
 }
 
+float computeAccuracy(cv::Mat groundtruth, cv::Mat predictions)
+{
+    std::vector<int> _groundtruth (groundtruth.begin<int>(), groundtruth.end<int>());
+    std::vector<int> _predictions (predictions.begin<int>(), predictions.end<int>());
+    
+    return computeAccuracy(_groundtruth, _predictions);
+}
+
 void trainObjectRejectionThresholds(std::vector<std::vector<float> > S,
-                                    std::vector<int> G, vector<double>& bestRjtValues)
+                                    std::vector<int> G, std::vector<double>& bestRjtValues)
 {
     bestRjtValues.clear();
     
     // Prepare the matrix of scores
     cv::Mat Sm = wToMat(S);
+    cout << Sm << endl; //dbg
     
     // Prepare the binary matrix of groundtruth
-    cv::Mat B (Sm.rows, Sm.cols, CV_8U);
+    cv::Mat B (Sm.rows, Sm.cols, CV_32S, cv::Scalar(0));
     for (int i = 0; i < G.size(); i++)
-        B.at<unsigned char>(i,G[i]) = 255;
+        if (G[i] > 0) B.at<int>(i, G[i]-1) = 1; // discar not matched detections
     
     // Prepare the rejection thresholds to be tested
     std::vector<double> rjtValues;
-    cvx::linspace(0, 1, 20, rjtValues);
+    cvx::linspace(0, 1, 100, rjtValues);
     rjtValues.pop_back(); // value == 1 is a non-sense
     
     // Find the best threshold for each model. As many models as columns of Sm
     bestRjtValues.clear();
     bestRjtValues.resize(Sm.cols);
+    std::vector<float> accs (Sm.cols);
     for (int i = 0; i < Sm.cols; i++)
     {
         float maxAcc = 0.f;
         double bestVal;
         for (int t = 0; t < rjtValues.size(); t++)
         {
-            cv::Mat p = (Sm.col(i) >= rjtValues[t]);
+            cv::Mat p = (Sm.col(i) >= rjtValues[t]) / 255;
             float acc = computeAccuracy(B.col(i), p);
             if (acc > maxAcc)
             {
@@ -517,12 +613,111 @@ void trainObjectRejectionThresholds(std::vector<std::vector<float> > S,
                 maxAcc = acc;
             }
         }
-        
+        accs[i] = maxAcc;
         bestRjtValues[i] = bestVal;
     }
 }
 
-void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsIndices, cv::Mat sgmtCombinations, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
+void a(ReMedi::Ptr pSys, Sequence<ColorDepthFrame>::Ptr pSeq, std::vector<ScoredDetections> scoreds, cv::Mat combination, DetectionOutput dtOut, std::vector<std::vector<float> >& S, std::vector<int>& G)
+{
+    pSeq->restart();
+    int f = 0;
+    while (pSeq->hasNextFrames())
+    {
+        pSeq->next();
+        
+        std::vector<std::vector< int > > vids;
+        std::vector<std::vector< pcl::PointXYZ > > positions;
+        std::vector<std::vector< std::vector<float> > > scores;
+        scoreds[f].get(vids, positions, scores);
+        
+        // "OF" from "Output Frame". Is the kind of output DetectionOutput class gets.
+        std::vector<std::vector<std::vector<  pcl::PointXYZ  > > > recognitionsOF;
+        std::vector<std::vector<std::vector<  std::vector<float>  > > > scoresOF;
+        
+        void* recognizer = pSys->getObjectRecognizer();
+        if (pSys->getDescriptionType() == DESCRIPTION_FPFH)
+        {
+            ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::FPFHSignature33>*) recognizer) );
+            orc.setRecognitionStrategy(combination.at<double>(0,0));
+            orc.setRecognitionConsensus(combination.at<double>(0,1));
+            
+            orc.setObjectRejection(false);
+            orc.recognize(vids, positions, scores, recognitionsOF, scoresOF);
+        }
+        else if (pSys->getDescriptionType() == DESCRIPTION_PFHRGB)
+        {
+            ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250> orc ( *((ObjectRecognizer<pcl::PointXYZRGB,pcl::PFHRGBSignature250>*) recognizer) );
+            orc.setRecognitionStrategy(combination.at<double>(0,0));
+            orc.setRecognitionConsensus(combination.at<double>(0,1));
+            
+            orc.setObjectRejection(false);
+            orc.recognize(vids, positions, scores, recognitionsOF, scoresOF);
+        }
+        
+//        vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
+//        cv::Mat frameErrors;
+//        dtOut.getFrameRecognitionResults(pSeq->getFrameCounters(), recognitionsOF, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
+//
+//        vector<ColorDepthFrame::Ptr> frames = pSeq->getFrames(f);
+//        visualizeRecognitions(frames, matches, rejections, 0.02, 3);
+        
+        std::vector<std::vector<std::vector<  int  > > > groundtruthOF;
+        dtOut.getRecognitionGroundtruth(pSeq->getFrameCounters(), recognitionsOF, groundtruthOF);
+        
+        assert( scoresOF.size() == groundtruthOF.size() );
+        for (int v = 0; v < scoresOF.size(); v++)
+        {
+            assert( scoresOF[v].size() == groundtruthOF[v].size() );
+            for (int o = 0; o < scoresOF[v].size(); o++)
+            {
+                assert( scoresOF[v][o].size() == groundtruthOF[v][o].size() );
+                for (int i = 0; i < scoresOF[v][o].size(); i++)
+                {
+                    S.push_back(scoresOF[v][o][i]);
+                    G.push_back(groundtruthOF[v][o][i]);
+                }
+            }
+        }
+        
+        f++;
+    }
+}
+
+
+void computeRejectionThresholds(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsSubjectIds, std::vector<int> seqsIndices, cv::Mat sgmtCombinations, cv::Mat rcgnCombinations, cv::Mat combinations, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<DetectionOutput> detectionGroundtruths, std::vector<std::vector<std::vector<double> > >& rejections)
+{
+    rejections.clear();
+     // #{combinations} x #{subjects} x #{models}
+    rejections.resize(combinations.rows);
+    for (int i = 0; i < combinations.rows; i++)
+        rejections[i].resize(NUM_OF_SUBJECTS);
+    
+    for (int c = 0; c < combinations.rows; c++)
+    {
+        for (int j = 0; j < NUM_OF_SUBJECTS; j++)
+        {
+            std::vector<std::vector<float> > S; // auxiliary to "rejections"
+            std::vector<int> G; // auxiliary to "rejections"
+
+            for (int s = 0; s < seqsIndices.size(); s++)
+            {
+                int sid = seqsIndices[s]; // sequence real identifier (0to30) indexed by seqIndices[s]
+                if (j == seqsSubjectIds[sid]) continue;
+                
+                Sequence<ColorDepthFrame>::Ptr pSeq = sequences[sid];
+                detectionGroundtruths[sid].setTolerance(combinations.at<double>(c, sgmtCombinations.cols-1)); // TODO: check detec gt var index, instead of 9
+                
+                cv::Mat rcgnCombination = combinations.row(c).colRange(sgmtCombinations.cols, combinations.cols);
+                a(pSys, pSeq, scoreds[c/rcgnCombinations.rows][s], rcgnCombination, detectionGroundtruths[sid], S, G);
+            }
+            
+            trainObjectRejectionThresholds(S, G, rejections[c][j]);
+        }
+    }
+}
+
+void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<ColorDepthFrame>::Ptr> sequences, std::vector<int> seqsSubjectIds, std::vector<int> seqsIndices, cv::Mat sgmtCombinations, std::vector<std::vector<std::vector<ScoredDetections> > > scoreds, std::vector<std::vector<double> > rcgnParameters, std::vector<DetectionOutput> detectionGroundtruths, std::string path, std::string filename, std::vector<std::vector<cv::Mat> >& errors, bool bQualitativeEvaluation)
 {
     cv::Mat rcgnCombinations;
     expandParameters<double>(rcgnParameters, rcgnCombinations);
@@ -530,29 +725,29 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     cv::Mat combinations; // #{sgmt combs} * #{rcgn combs}
     cvx::combine(sgmtCombinations, rcgnCombinations, 1, combinations);
     
-    if (!bQualitativeEvaluation)
-    {
-        errors.clear();
-        errors.resize(combinations.rows);
-        for (int c = 0; c < combinations.rows; c++)
-        {
-            errors[c].resize(seqsIndices.size()); // sequences (indexed)
-            for (int j = 0; j < seqsIndices.size(); j++)
-            {
-                errors[c][j] = cv::Mat(sequences[seqsIndices[j]]->getNumOfViews(),
-                                          sequences[seqsIndices[j]]->getMinNumOfFrames(),
-                                          CV_32SC3, cv::Scalar(0));
-            }
-        }
-    }
+//    std::vector<std::vector<std::vector<double> > > rejections;
+//    computeRejectionThresholds(pSys, sequences, seqsSubjectIds, seqsIndices, sgmtCombinations, rcgnCombinations, combinations, scoreds, detectionGroundtruths, rejections);
+    
+//    if (!bQualitativeEvaluation)
+//    {
+//        errors.clear();
+//        errors.resize(combinations.rows);
+//        for (int c = 0; c < combinations.rows; c++)
+//        {
+//            errors[c].resize(seqsIndices.size()); // sequences (indexed)
+//            for (int j = 0; j < seqsIndices.size(); j++)
+//            {
+//                errors[c][j] = cv::Mat(sequences[seqsIndices[j]]->getNumOfViews(),
+//                                          sequences[seqsIndices[j]]->getMinNumOfFrames(),
+//                                          CV_32SC3, cv::Scalar(0));
+//            }
+//        }
+//    }
     
     std::vector<std::vector<std::vector<ScoredDetections> > > scoredsAux = scoreds; // debug
     
     for (int c = 0; c < combinations.rows; c++)
     {
-        std::vector<std::vector<float> > S;
-        std::vector<int> G;
-        
         for (int s = 0; s < seqsIndices.size(); s++)
         {
             int sid = seqsIndices[s];
@@ -570,7 +765,7 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                 std::vector<std::vector< pcl::PointXYZ > > positions;
                 std::vector<std::vector< std::vector<float> > > scores;
 
-                scoreds[c/sgmtCombinations.rows][s][f].get(vids, positions, scores); // BAD ACCESS ERROR here because of f > 2. There are not scores precomputed yet!
+                scoreds[c/rcgnCombinations.rows][s][f].get(vids, positions, scores); // BAD ACCESS ERROR here because of f > 2. There are not scores precomputed yet!
 
                 // "OF" from "Output Frame". Is the kind of output DetectionOutput class gets.
                 std::vector<std::vector<std::vector<  pcl::PointXYZ  > > > recognitionsOF;
@@ -596,24 +791,6 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                     orc.recognize(vids, positions, scores, recognitionsOF, scoresOF);
                 }
                 
-                std::vector<std::vector<std::vector<  int  > > > groundtruthOF;
-                detectionGroundtruths[sid].getRecognitionGroundtruth(pSeq->getFrameCounters(), recognitionsOF, groundtruthOF);
-                
-                assert( scoresOF.size() == groundtruthOF.size() );
-                for (int v = 0; v < scoresOF.size(); v++)
-                {
-                    assert( scoresOF[v].size() == groundtruthOF[v].size() );
-                    for (int o = 0; o < scoresOF[v].size(); o++)
-                    {
-                        assert( scoresOF[v][o].size() == groundtruthOF[v][o].size() );
-                        for (int i = 0; i < scoresOF[v][o].size(); i++)
-                        {
-                            S.push_back(scoresOF[v][o][i]);
-                            G.push_back(groundtruthOF[v][o][i]);
-                        }
-                    }
-                }
-                
                 vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
                 cv::Mat frameErrors;
                 detectionGroundtruths[sid].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitionsOF, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
@@ -626,43 +803,27 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
                 
                 f++;
             }
-//          vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, rejections;
-//          cv::Mat frameErrors;
-//          detectionGroundtruths[sid].getFrameRecognitionResults(pSeq->getFrameCounters(), recognitionsOF, matches, rejections, frameErrors); // TODO: get from somewhere the frame counters frame ids
-
-//          if (bQualitativeEvaluation)
-//          {
-//              vector<ColorDepthFrame::Ptr> frames = pSeq->getFrames(f);
-//              visualizeRecognitions(frames, matches, rejections, 0.02, 3);
-//          }
-//          else
-//          {
-//              frameErrors.copyTo(errors[c][s].col(f));
-//          }
         }
-    
-        std::vector<double> objRjtThreshs;
-        trainObjectRejectionThresholds(S, G, objRjtThreshs);
     }
-    
-    if (!bQualitativeEvaluation)
-    {
-        cv::FileStorage fs;
-        fs.open(path + filename, cv::FileStorage::WRITE);
-        fs << "seqs_indices" << seqsIndices;
-        fs << "sgmt_combinations" << sgmtCombinations;
-        fs << "rcgn_combinations" << rcgnCombinations;
-        fs << "combinations" << combinations;
-        
-        for (int i = 0; i < combinations.rows; i++) for (int k = 0; k < seqsIndices.size(); k++)
-        {
-            string id = "combination_" + to_str(i) + "-" + to_str(seqsIndices[k]);
-            // errors[i][k] is a #{NUM_OF_VIEWS} x #{number of frames in sequence 'seqsIndices[k]'}
-            // mat with 3-channels, representing TP,FN,FP.
-            fs << id << errors[i][k];
-        }
-        fs.release();
-    }
+//
+//    if (!bQualitativeEvaluation)
+//    {
+//        cv::FileStorage fs;
+//        fs.open(path + filename, cv::FileStorage::WRITE);
+//        fs << "seqs_indices" << seqsIndices;
+//        fs << "sgmt_combinations" << sgmtCombinations;
+//        fs << "rcgn_combinations" << rcgnCombinations;
+//        fs << "combinations" << combinations;
+//        
+//        for (int i = 0; i < combinations.rows; i++) for (int k = 0; k < seqsIndices.size(); k++)
+//        {
+//            string id = "combination_" + to_str(i) + "-" + to_str(seqsIndices[k]);
+//            // errors[i][k] is a #{NUM_OF_VIEWS} x #{number of frames in sequence 'seqsIndices[k]'}
+//            // mat with 3-channels, representing TP,FN,FP.
+//            fs << id << errors[i][k];
+//        }
+//        fs.release();
+//    }
 }
 
 // Faster version
@@ -1008,6 +1169,42 @@ void validateMonitorizationRecognition(vector<Sequence<ColorDepthFrame>::Ptr> se
 //        fs.release();
 //    }
 //}
+
+void visualizeScored(vector<ColorDepthFrame::Ptr> frames, ScoredDetections scored, float markersRadius)
+{
+    cv::Mat positionsSparse, scoresSparse;
+    scored.getSparseRepresentation(positionsSparse, scoresSparse);
+    
+    // Create visualizer
+    pcl::visualization::PCLVisualizer::Ptr pVis ( new pcl::visualization::PCLVisualizer );
+    
+    // Create viewports (horizontally)
+    vector<int> viewports (positionsSparse.cols);
+    for (int v = 0; v < positionsSparse.cols; v++)
+    {
+        pVis->createViewPort(v * (1.f/viewports.size()), 0, (v+1) * (1.f/viewports.size()), 1, viewports[v]);
+    }
+    
+    // Draw clouds, matches, and rejections
+    
+    for (int v = 0; v < positionsSparse.cols; v++)
+    {
+        // Annotations are not registered, so get the unregistered point clouds
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pColoredCloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+        frames[v]->getColoredPointCloud( *pColoredCloud ); // unregistered
+        
+        pVis->addPointCloud(pColoredCloud, "cloud_" + to_str(v), viewports[v]);
+        
+        for (int i = 0; i < positionsSparse.rows; i++)
+        {
+            cv::Vec3f p = positionsSparse.at<cv::Vec3f>(i,v);
+            if (!(p[0] == 0 && p[1] == 0 && p[2] == 0))
+                pVis->addSphere(pcl::PointXYZ(p[0],p[1],p[2]), markersRadius, g_Colors[i][2], g_Colors[i][1], g_Colors[i][0], "detection_" + to_str(v) + to_str(i), viewports[v]);
+        }
+    }
+    
+    pVis->spin();
+}
 
 void visualizeRecognitions(vector<ColorDepthFrame::Ptr> frames, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > matches, vector<vector<vector<pair<pcl::PointXYZ, pcl::PointXYZ> > > > rejections, float markersRadius, float lineWidth)
 {

@@ -573,12 +573,19 @@ void DetectionOutput::getFrameSegmentationResults(vector<vector<pcl::PointXYZ> >
     {
         fn = fp = 0;
         
-        for (int o = 0; o < groundtruth.size(); o++)
-            for (int i = 0; i < groundtruth[o].size(); i++)
-                fn++;
+        for (int o = 0; o < groundtruth.size(); o++) for (int i = 0; i < groundtruth[o].size(); i++)
+        {
+            fn++;
+            std::pair<pcl::PointXYZ,pcl::PointXYZ> rejection (pcl::PointXYZ(0,0,0), groundtruth[o][i]);
+            rejections.push_back(rejection);
+        }
         
         for (int k = 0; k < predictions.size(); k++)
+        {
             fp++;
+            std::pair<pcl::PointXYZ,pcl::PointXYZ> rejection (predictions[k], pcl::PointXYZ(0,0,0));
+            rejections.push_back(rejection);
+        }
     }
     else
     {

@@ -84,6 +84,8 @@
 #define OD_MINIMUM_CLUSTER_SIZE             50
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
 
+#define OD_CONDITIONAL_CLUSTERING
+
 // ... recognition-related ones (computed in an independent dataset)
 #define OR_OBJECTS_NAMES                    "dish,pillbox,book,tetrabrick,cup"
 #define OR_OBJECTS_REJECTIONS               "0,0,0,0,0" //"0.85,0.80,0.85,0.8,0.75"
@@ -100,7 +102,6 @@
 
 // Marker colors (as many as objects at least)
 static float g_Colors[][3] = {
-    {1, 1, 1},
     {1, 0, 0},
     {0, 1, 0},
     {0, 0, 1},
@@ -113,7 +114,8 @@ static float g_Colors[][3] = {
     {0, 1, .5},
     {.5, 0, 1},
     {0, .5, 1},
-    {.5, 1, 0}
+    {.5, 1, 0},
+    {.25, .5, 0}
 };
 
 enum { COLOR = 0, DEPTH = 1, COLOR_WITH_SHADOWS = 2, COLORDEPTH = 3 };

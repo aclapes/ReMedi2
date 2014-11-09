@@ -43,10 +43,12 @@ public:
     ObjectDetector& operator=(const ObjectDetector& rhs);
     
     void setInputFrames(vector<ColorDepthFrame::Ptr> frames);
+    void setActorMasks(vector<cv::Mat> masks);
+    void setInteractionMasks(vector<cv::Mat> masks);
     
     void setDownsamplingSize(float leafSize);
     void setClusteringIntradistanceFactor(float factor);
-    void setMinClusterSize(int minSize);
+    void setMinClusterSize(float minSize);
     void setInterviewCorrepondenceDistance(float d);
     
     void setRegistration(bool registration);
@@ -61,7 +63,8 @@ public:
     typedef boost::shared_ptr<ObjectDetector> Ptr;
     
 private:
-    void clusterize(ColorPointCloudPtr pCloud, float leafSize, float intraDistFactor, int minSize, vector<ColorPointCloudPtr>& clusters);
+    void clusterize(ColorPointCloudPtr pCloud, float leafSize, float intraDistFactor, float minSize, std::vector<ColorPointCloudPtr>& clusters);
+    void cclusterize(ColorPointCloudPtr pCloud, float leafSize, float intraDistFactor, float minSize, std::vector<ColorPointCloudPtr>& clusters);
     
     void downsample(ColorPointCloudPtr pCloud, float leafSize, ColorPointCloud& cloudFiltered);
     
@@ -70,12 +73,21 @@ private:
     void findNextCorrespondence(vector<vector<PointT> >& detections, vector<vector<bool> >& assignations, int v, float tol, vector<pair<pair<int,int>,PointT> >& chain);
     
     void _getDetectionPositions(vector<vector<ColorPointCloudPtr> > detections, bool bRegistrate, vector<vector<PointT> >& positions);
+    
+    void merge(vector<ColorPointCloudPtr> detections, vector<ColorPointCloudPtr>& mergeds);
+    
+    void subtractInteractionFromActors(std::vector<ColorPointCloudPtr> tabletopRegionClusters, ColorPointCloudPtr interactionCloud, std::vector<int>& indices, float leafSize);
+    bool isInteractive(ColorPointCloudPtr tabletopRegionCluster, ColorPointCloudPtr interactionCloud, float leafSize);
+    
+//    bool enforceCurvatureOrIntensitySimilarity (const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance);
 
     //
     // Attributes
     //
     
     vector<ColorDepthFrame::Ptr> m_InputFrames;
+    vector<cv::Mat> m_ActorMasks;
+    vector<cv::Mat> m_InteractionMasks;
     
     float m_LeafSize;
     float m_ClusterIdF; // Cluster intradistance factor
@@ -83,6 +95,9 @@ private:
     float m_CorrespenceDist;
     
     bool m_bRegistration;
+    
+    float m_ColorDist;
+    float m_NormalDotThresh; // should range in [0, pi/2]
     
     vector<vector<ColorPointCloudPtr> > m_Detections;
 };
