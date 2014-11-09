@@ -577,7 +577,6 @@ void trainObjectRejectionThresholds(std::vector<std::vector<float> > S,
     
     // Prepare the matrix of scores
     cv::Mat Sm = wToMat(S);
-    cout << Sm << endl; //dbg
     
     // Prepare the binary matrix of groundtruth
     cv::Mat B (Sm.rows, Sm.cols, CV_32S, cv::Scalar(0));
@@ -719,8 +718,8 @@ void validateMonitorizationRecognition(ReMedi::Ptr pSys, std::vector<Sequence<Co
     cv::Mat combinations; // #{sgmt combs} * #{rcgn combs}
     cvx::combine(sgmtCombinations, rcgnCombinations, 1, combinations);
     
-//    std::vector<std::vector<std::vector<double> > > rejections;
-//    computeRejectionThresholds(pSys, sequences, seqsSubjectIds, seqsIndices, sgmtCombinations, rcgnCombinations, combinations, scoreds, detectionGroundtruths, rejections);
+    std::vector<std::vector<std::vector<double> > > rejections;
+    computeRejectionThresholds(pSys, sequences, seqsSubjectIds, seqsIndices, sgmtCombinations, rcgnCombinations, combinations, scoreds, detectionGroundtruths, rejections);
     
 //    if (!bQualitativeEvaluation)
 //    {

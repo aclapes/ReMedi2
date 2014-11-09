@@ -84,7 +84,7 @@
 #define OD_MINIMUM_CLUSTER_SIZE             50
 #define OD_INTERVIEW_CORRESPONDENCE         0.1
 
-#define OD_CONDITIONAL_CLUSTERING
+//#define OD_CONDITIONAL_CLUSTERING
 
 // ... recognition-related ones (computed in an independent dataset)
 #define OR_OBJECTS_NAMES                    "dish,pillbox,book,tetrabrick,cup"
