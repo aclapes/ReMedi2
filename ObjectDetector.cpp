@@ -23,12 +23,92 @@ using namespace boost::assign;
 float g_ColorDist = 20;
 float g_NormalDotThresh = 0.9;
 
-bool e(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+bool color10Normal09(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
 {
     Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
     float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
     
-    if (d < g_ColorDist && fabs (point_a_normal.dot (point_b_normal)) > g_NormalDotThresh)
+    if (d < 10 && fabs (point_a_normal.dot (point_b_normal)) > 0.9)
+        return (true);
+    return (false);
+}
+
+bool color20Normal09(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 20 && fabs (point_a_normal.dot (point_b_normal)) > 0.9)
+        return (true);
+    return (false);
+}
+
+bool color40Normal09(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 40 && fabs (point_a_normal.dot (point_b_normal)) > 0.9)
+        return (true);
+    return (false);
+}
+
+bool color10Normal095(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 10 && fabs (point_a_normal.dot (point_b_normal)) > 0.95)
+        return (true);
+    return (false);
+}
+
+bool color20Normal095(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 20 && fabs (point_a_normal.dot (point_b_normal)) > 0.95)
+        return (true);
+    return (false);
+}
+
+bool color40Normal095(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 40 && fabs (point_a_normal.dot (point_b_normal)) > 0.95)
+        return (true);
+    return (false);
+}
+
+bool color10Normal099(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 10 && fabs (point_a_normal.dot (point_b_normal)) > 0.99)
+        return (true);
+    return (false);
+}
+
+bool color20Normal099(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 20 && fabs (point_a_normal.dot (point_b_normal)) > 0.99)
+        return (true);
+    return (false);
+}
+
+bool color40Normal099(const pcl::PointXYZRGBNormal& point_a, const pcl::PointXYZRGBNormal& point_b, float squared_distance)
+{
+    Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    float d = sqrtf(powf(point_a.r - point_b.r,2) + powf(point_a.g - point_b.g,2) + powf(point_a.b - point_b.b,2));
+    
+    if (d < 40 && fabs (point_a_normal.dot (point_b_normal)) > 0.99)
         return (true);
     return (false);
 }
@@ -53,6 +133,7 @@ ObjectDetector& ObjectDetector::operator=(const ObjectDetector& rhs)
         m_LeafSize = rhs.m_LeafSize;
         m_ClusterIdF = rhs.m_ClusterIdF;
         m_MinClusterSize = rhs.m_MinClusterSize;
+        m_Condition = rhs.m_Condition;
         m_CorrespenceDist = rhs.m_CorrespenceDist;
         
         m_bRegistration = rhs.m_bRegistration;
@@ -90,6 +171,11 @@ void ObjectDetector::setClusteringIntradistanceFactor(float idf)
 void ObjectDetector::setMinClusterSize(float minSize)
 {
     m_MinClusterSize = minSize;
+}
+
+void ObjectDetector::setCondition(float condition)
+{
+    m_Condition = condition;
 }
 
 void ObjectDetector::setInterviewCorrepondenceDistance(float d)
@@ -204,19 +290,20 @@ void ObjectDetector::detect(vector<vector<ColorPointCloudPtr> >& detections)
         downsample(pForegroundActorCloud, m_LeafSize, *pForegroundActorFiltered); // cloud downsampling
         
         // Clustering
-#ifdef OD_CONDITIONAL_CLUSTERING
-        vector<ColorPointCloudPtr> clusters, _clusters;
-        cclusterize(pForegroundActorFiltered, m_LeafSize, m_ClusterIdF, m_MinClusterSize, _clusters);
-        merge(_clusters, clusters);
-#else
         vector<ColorPointCloudPtr> clusters;
-        clusterize(pForegroundActorFiltered, m_LeafSize, m_ClusterIdF, m_MinClusterSize, clusters);
-#endif
-//        m_Detections[v] = clusters;
+        if (m_Condition > 0)
+        {
+            vector<ColorPointCloudPtr> _clusters;
+            cclusterize(pForegroundActorFiltered, m_LeafSize, m_ClusterIdF, m_MinClusterSize, _clusters);
+            merge(_clusters, clusters);
+        }
+        else
+        {
+            clusterize(pForegroundActorFiltered, m_LeafSize, m_ClusterIdF, m_MinClusterSize, clusters);
+        }
 
         std::vector<int> indices;
         subtractInteractionFromActors(clusters, pInteractorCloud, indices, 3 * m_LeafSize); // leaf size of the most downsampled either actor of interactor
-        
         for (int i = 0; i < indices.size(); i++)
             m_Detections[v].push_back(clusters[indices[i]]);
     }
@@ -323,7 +410,17 @@ void ObjectDetector::cclusterize(ColorPointCloudPtr pCloud, float leafSize, floa
     // Set up a Conditional Euclidean Clustering class
     pcl::ConditionalEuclideanClustering<pcl::PointXYZRGBNormal> cec (true);
     cec.setInputCloud (pCloudWithNormals);
-    cec.setConditionFunction (&e);
+    
+    if (m_Condition == 1) cec.setConditionFunction (&color10Normal09);
+    else if (m_Condition == 2) cec.setConditionFunction (&color20Normal09);
+    else if (m_Condition == 3) cec.setConditionFunction (&color40Normal09);
+    else if (m_Condition == 4) cec.setConditionFunction (&color10Normal095);
+    else if (m_Condition == 5) cec.setConditionFunction (&color20Normal095);
+    else if (m_Condition == 6) cec.setConditionFunction (&color40Normal095);
+    else if (m_Condition == 7) cec.setConditionFunction (&color10Normal099);
+    else if (m_Condition == 8) cec.setConditionFunction (&color20Normal099);
+    else cec.setConditionFunction (&color40Normal099);
+
     cec.setClusterTolerance (clusterIdF);
     cec.setMinClusterSize (pCloud->points.size () * minSize);
     cec.setMaxClusterSize (pCloud->points.size () );

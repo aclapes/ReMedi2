@@ -12,8 +12,10 @@
 // KinectReader's constants
 #ifdef __APPLE__
 #define PARENT_PATH                         "../../../Data/"
+#define RESULTS_PATH                        "../../Results/"
 #elif _WIN32 || _WIN64
 #define PARENT_PATH                         "../../Data/"
+#define RESULTS_PATH                        "../Results/"
 #endif
 
 #define NUM_OF_THREADS                      4

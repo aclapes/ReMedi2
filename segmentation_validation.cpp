@@ -506,6 +506,7 @@ void validateMonitorizationSegmentation2(ReMedi::Ptr pSys, vector<Sequence<Color
                         pObjectDetector->setDownsamplingSize(combinations.at<double>(i,bsCombinations.cols + 0));
                         pObjectDetector->setClusteringIntradistanceFactor(combinations.at<double>(i,bsCombinations.cols + 1));
                         pObjectDetector->setMinClusterSize(combinations.at<double>(i,bsCombinations.cols + 2));
+                        pObjectDetector->setCondition(combinations.at<double>(i,bsCombinations.cols + 3));
                         
                         pObjectDetector->setInputFrames(frames);
                         pObjectDetector->setActorMasks(tabletopMasks);

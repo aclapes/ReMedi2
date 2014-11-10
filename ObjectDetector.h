@@ -49,6 +49,7 @@ public:
     void setDownsamplingSize(float leafSize);
     void setClusteringIntradistanceFactor(float factor);
     void setMinClusterSize(float minSize);
+    void setCondition(float condition);
     void setInterviewCorrepondenceDistance(float d);
     
     void setRegistration(bool registration);
@@ -92,6 +93,7 @@ private:
     float m_LeafSize;
     float m_ClusterIdF; // Cluster intradistance factor
     float m_MinClusterSize;
+    float m_Condition;
     float m_CorrespenceDist;
     
     bool m_bRegistration;
